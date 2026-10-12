@@ -5,14 +5,14 @@
 #   - creating a map works (the data stage, randomization included, then on_init)
 #   - the game used the settings the config asked for
 #   - the randomizer panel wouldn't warn about a softlock: every science pack reachable before randomization still is (the check at the end of data-final-fixes.lua)
-#   - the MECHCHECK verdict (randomizations/graph/unified/skeleton/check.lua) is ok: no recipe became unreachable and no mechanic context was lost beyond isolatability
-#   - ocean swaps left at most one conversion recipe in the game (PLANETCHECK conversions, randomizations/planetary/scaffolds.lua)
-#   - resource swaps left extra patches for at most a third of all the resource patches they work on (PLANETCHECK extra patches, randomizations/planetary/resources.lua)
+#   - the MECHCHECK verdict (src/randomizations/unified/skeleton/check.lua) is ok: no recipe became unreachable and no mechanic context was lost beyond isolatability
+#   - ocean swaps left at most one conversion recipe in the game (PLANETCHECK conversions, src/randomizations/planetary/scaffolds.lua)
+#   - resource swaps left extra patches for at most a third of all the resource patches they work on (PLANETCHECK extra patches, src/randomizations/planetary/resources.lua)
 #   - when operation readiness is audited, no building arrives before its operation inputs
 # Resource-patch limit and operation-readiness violations fail even work-in-progress suites.
 #   - the new map runs some ticks without errors (the control stage)
 # Configs matching an oldlogic line in tests/configs.txt (for now, old item randomization) are judged by the old logic's check of the built game (OLDLOGICCHECK) instead of the two reachability checks
-# Both reachability checks compare against the game after planetary randomization, whose own changes are checked by PLANETCHECK (randomizations/planetary/check.lua)
+# Both reachability checks compare against the game after planetary randomization, whose own changes are checked by PLANETCHECK (src/randomizations/planetary/check.lua)
 #
 # Configs and suites are described in tests/configs.txt, and mod sets are the mod lists in tests/mod-configs; every config runs on every mod set, unless a limit line in tests/configs.txt narrows a mod set
 # A mod set's file can also give other mods' startup settings, as "settings": {"aps-planet": "gleba"} next to "mods" (a double setting's value needs a decimal point, like 1.0); the runner checks the game used them
@@ -105,13 +105,13 @@ FAILURE_GUIDANCE = (
 
 # The end-of-load check's verdict, which leaves out losses that only affect isolatability (those are acceptable)
 VERDICT = re.compile(r"MECHCHECK verdict: (ok|FAILED) (\(.*\))")
-# With the hidden test-reductions setting, every logic build is made twice, full and reduced, and compared (lib/logic/reduction-check.lua)
+# With the hidden test-reductions setting, every logic build is made twice, full and reduced, and compared (src/logic/analysis/reduction-check.lua)
 REDUCTIONCHECK = re.compile(r"REDUCTIONCHECK build \d+ \(([^)]*)\): (ok|FAILED)(.*)$", re.MULTILINE)
-# Conversion recipes the ocean scaffolds left in the game, logged at the end of planetary randomization with the limit the mod holds them to (scaffolds.MAX_CONVERSIONS in randomizations/planetary/scaffolds.lua)
+# Conversion recipes the ocean scaffolds left in the game, logged at the end of planetary randomization with the limit the mod holds them to (scaffolds.MAX_CONVERSIONS in src/randomizations/planetary/scaffolds.lua)
 CONVERSIONS = re.compile(r"PLANETCHECK conversions: (\d+) in the game(?: \(at most (\d+)\))?[^:\r\n]*:? ?([^\r\n]*)")
 # The user's rule (2026-10-01): one conversion is the worst that should ever happen; only for logs that don't give the limit
 MAX_CONVERSIONS = 1
-# Extra patches resource swaps gave planets back (a planet keeping a resource it lost), logged at the end of planetary randomization with the limit the mod holds them to (resources.PATCHES_PER_EXTRA_PATCH in randomizations/planetary/resources.lua), which the randomizer panel also lists in red when broken
+# Extra patches resource swaps gave planets back (a planet keeping a resource it lost), logged at the end of planetary randomization with the limit the mod holds them to (resources.PATCHES_PER_EXTRA_PATCH in src/randomizations/planetary/resources.lua), which the randomizer panel also lists in red when broken
 EXTRA_PATCHES = re.compile(r"PLANETCHECK extra patches: (\d+) on (\d+) planets(?: \(at most (\d+)\))?:? ?([^\r\n]*)")
 # The user's limit from 2026-10-01 to 2026-10-09: half an extra patch per planet, so 7 for the 15 planets of two copies each; only for logs from before the mod logged its limit (like --ref of an older version), which also held that limit
 MAX_EXTRA_PATCHES_PER_PLANET = 0.5
@@ -335,7 +335,7 @@ class Plan:
         rows = self.pairwise(self.visible, random.Random(23))
         for i, row in enumerate(rows):
             self.add("settings", "pairwise-" + str(i + 1).zfill(2), row)
-        # No single-setting unified configs: while dev-unified is on, randomizations/graph/unified/execute.lua runs its own handler list whatever the unified-* settings say, so they'd only repeat unified-all on other seeds
+        # No single-setting unified configs: while dev-unified is on, src/randomizations/unified/execute.lua runs its own handler list whatever the unified-* settings say, so they'd only repeat unified-all on other seeds
         all_unified = {setting.name: True for setting in self.unified if setting.type == "bool-setting"}
         if len(all_unified) > 0:
             self.add("unified", "unified-all", all_unified, seeds=UNIFIED_SEEDS)
@@ -505,13 +505,22 @@ def run_localisation_checks(mod_dir):
     if not os.path.isfile(python):
         python = sys.executable
     commands = []
-    for name in ("dev/check-localisation.py", "dev/test-localisation.py"):
-        path = os.path.join(mod_dir, name)
-        if os.path.isfile(path):
-            commands.append([python, path])
-    for name in ("lib/test-localisation.lua", "lib/test-customization.lua", "scripts/test-customizer.lua", "scripts/test-explorer-localisation.lua"):
-        if os.path.isfile(os.path.join(mod_dir, name)):
-            commands.append([shutil.which("lua"), name])
+    for candidates in (("dev/check-localisation.py",), ("tests/unit/dev/test-localisation.py", "dev/test-localisation.py")):
+        for name in candidates:
+            path = os.path.join(mod_dir, name)
+            if os.path.isfile(path):
+                commands.append([python, path])
+                break
+    for candidates in (
+        ("tests/unit/localisation/test-localisation.lua", "tests/unit/lib/test-localisation.lua", "lib/test-localisation.lua"),
+        ("tests/unit/config/test-customization.lua", "tests/unit/lib/test-customization.lua", "lib/test-customization.lua"),
+        ("tests/unit/runtime/customizer/test-customizer.lua", "tests/unit/scripts/test-customizer.lua", "scripts/test-customizer.lua"),
+        ("tests/unit/runtime/explorer/test-explorer-localisation.lua", "tests/unit/scripts/test-explorer-localisation.lua", "scripts/test-explorer-localisation.lua"),
+    ):
+        for candidate in candidates:
+            if os.path.isfile(os.path.join(mod_dir, candidate)):
+                commands.append([shutil.which("lua"), candidate])
+                break
     for command in commands:
         result = subprocess.run(command, cwd=mod_dir, capture_output=True, text=True)
         if result.returncode != 0:

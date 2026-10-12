@@ -20,7 +20,7 @@ runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
 
 BASELINE = r'''
-local fluid_ports = require("__propertyrandomizer__/lib/fluid-ports")
+local fluid_ports = require("__propertyrandomizer__/src/prototypes/entities/fluid-ports")
 if OFFSET_TEST_MIXED_PORTS then
     fluid_ports.fit_mining_drills(true)
 end
@@ -217,7 +217,7 @@ def run_preview():
 
     def snapshot_with_check(dest, ref, staged, source_dir):
         original_snapshot(dest, ref, staged, source_dir)
-        with (Path(dest) / "randomizations/misc/offsets.lua").open("a") as offsets:
+        with (Path(dest) / "src/randomizations/misc/offsets.lua").open("a") as offsets:
             offsets.write(PREVIEW_CHECK)
 
     def checked_run_one(run, ctx):

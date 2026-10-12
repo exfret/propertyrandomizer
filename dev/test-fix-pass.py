@@ -12,12 +12,12 @@ spec.loader.exec_module(runner)
 base = Path(tempfile.mkdtemp(prefix='fixpass-pipeline-', dir='/private/tmp'))
 mod = base / 'propertyrandomizer'
 runner.snapshot(str(mod), None, False, None)
-source = mod / 'data-final-fixes.lua'
+source = mod / 'src/pipeline/data-final-fixes.lua'
 text = source.read_text()
 fixture = '''
 -- Keep the stress assignment, but let the normal planetary pipeline repair it.
-local stress_resources = require("randomizations/planetary/resources")
-local stress_check = require("randomizations/planetary/check")
+local stress_resources = require("src/randomizations/planetary/resources")
+local stress_check = require("src/randomizations/planetary/check")
 local stress_execute = stress_resources.execute
 local stress_lost
 stress_resources.execute = function()
@@ -45,8 +45,8 @@ assert(#stress_remaining == 0, "The complete planetary pipeline must restore eve
 log("FIXPASS STRESS final failures: " .. #stress_remaining)
 '''
 # Require and instrument resources before planetary.execute; verify after run_pending.
-setup_marker = 'local mining_fluids = require("lib/mining-fluids")\n'
-verify_marker = '-- Independent deposits (randomizations/graph/unified/deposit-copies.lua):'
+setup_marker = 'local mining_fluids = require("src/prototypes/entities/mining-fluids")\n'
+verify_marker = '-- Independent deposits (src/randomizations/unified/deposit-copies.lua):'
 assert text.count(setup_marker) == 1, 'Planetary setup insertion point changed'
 assert text.count(verify_marker) == 1, 'Planetary verification insertion point changed'
 text = text.replace(setup_marker, setup_marker + fixture, 1)

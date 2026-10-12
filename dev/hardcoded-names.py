@@ -21,6 +21,7 @@
 #   dev/hardcoded-names.py --hook prompt|stop|pre-bash    Claude Code hook mode (reads hook JSON on stdin)
 
 import datetime
+from collections import Counter
 import fcntl
 import hashlib
 import importlib.metadata
@@ -59,6 +60,9 @@ CACHE_DIR = os.path.join(tempfile.gettempdir(), "propertyrandomizer-hardcoded-na
 # As in dev/style-check.py: generated data and dead code
 # Old logic is checked, since the mod still uses it while it's phased out
 EXCLUDE_PREFIXES = (
+    "src/cost/material-costs",
+    "research/",
+    "archive/",
     "lib/cost/recipe-randomizations/",
     "lib/cost/material-costs",
     "lib/cost/science-flows/",
@@ -204,13 +208,14 @@ def load_names():
 
 
 class Table:
-    def __init__(self, path, row, matches, lines):
+    def __init__(self, path, row, matches, lines, fingerprint=None):
         self.path = path
         # 0-indexed row of the opening brace
         self.row = row
         # (row, text, kind) for each matching entry
         self.matches = matches
         self.lines = lines
+        self.fingerprint = fingerprint
         self.names = sorted({text for _, text, _ in matches})
         self.id = hashlib.sha1((path + "\n" + "\n".join(self.names)).encode()).hexdigest()[:8]
 
@@ -274,13 +279,24 @@ def is_test_fixture(path):
     return "test" in os.path.basename(path)
 
 
-def scan_file(path, names):
+def scan_file(path, names, path_aliases=None):
+    with open(os.path.join(REPO, path), "rb") as f:
+        return scan_source(path, f.read(), names, path_aliases)
+
+
+def table_fingerprint(node, source):
+    children = [table_fingerprint(child, source) for child in node.named_children if child.type != "comment"]
+    return (node.type, tuple(children)) if children else (node.type, source[node.start_byte:node.end_byte])
+
+
+def scan_source(path, source, names, path_aliases=None):
     if is_test_fixture(path):
         return []
     # Nested matching tables are folded into their nearest matching ancestor, so one data table is one approval
-    with open(os.path.join(REPO, path), "rb") as f:
-        source = f.read()
     lines = source.decode(errors="replace").split("\n")
+    if path_aliases is not None:
+        pattern, aliases = path_aliases
+        source = pattern.sub(lambda match: aliases[match.group()], source)
     # Node id of each matching table -> node id of the outermost matching table it's folded into
     owner = {}
     groups = {}
@@ -296,11 +312,11 @@ def scan_file(path, names):
             ancestor = ancestor.parent
         if ancestor is None:
             owner[node.id] = node.id
-            groups[node.id] = (node.start_point.row, matches)
+            groups[node.id] = (node.start_point.row, matches, table_fingerprint(node, source))
         else:
             owner[node.id] = owner[ancestor.id]
             groups[owner[node.id]][1].extend(matches)
-    return [Table(path, row, matches, lines) for row, matches in groups.values()]
+    return [Table(path, row, matches, lines, fingerprint) for row, matches, fingerprint in groups.values()]
 
 
 def is_checked(path):
@@ -334,10 +350,43 @@ def changed_rows(base):
     return {path: rows for path, rows in changed.items() if is_checked(path) and os.path.exists(os.path.join(REPO, path))}
 
 
+def original_implementation_present(previous, current):
+    path = os.path.join(REPO, previous)
+    if not os.path.isfile(path):
+        return False
+    # Named root entrypoints remain as transparent delegates after extraction.
+    with open(path, encoding="utf-8") as f:
+        source = f.read().strip()
+    module = current.removesuffix(".lua")
+    return source not in (f'require("{module}")', f"require('{module}')")
+
+
 def changed_tables(base, names):
     tables = []
+    history = os.path.join(REPO, "dev", "module-moves.json")
+    moved = {}
+    if os.path.isfile(history):
+        with open(history) as f:
+            moved = json.load(f)
+    aliases = {}
+    for previous, current in moved.items():
+        aliases[current.encode()] = previous.encode()
+        if current.endswith(".lua"):
+            aliases[current[:-4].encode()] = previous[:-4].encode()
+    path_aliases = (re.compile(b"|".join(re.escape(path) for path in sorted(aliases, key=len, reverse=True))), aliases) if aliases else None
+    origins = {current: previous for previous, current in moved.items()}
     for path, rows in sorted(changed_rows(base).items()):
-        tables.extend(table for table in scan_file(path, names) if table.touches(rows))
+        previous = origins.get(path)
+        unchanged = Counter()
+        if previous is not None and not original_implementation_present(previous, path):
+            original = git("show", base + ":" + previous)
+            if original.returncode == 0:
+                unchanged.update(table.fingerprint for table in scan_source(previous, original.stdout.encode(), names, path_aliases))
+        for table in scan_file(path, names, path_aliases):
+            if unchanged[table.fingerprint] > 0:
+                unchanged[table.fingerprint] -= 1
+            elif table.touches(rows):
+                tables.append(table)
     return tables
 
 
@@ -385,7 +434,22 @@ class Approvals:
 
 def load_approvals():
     with Approvals() as approvals:
-        return dict(approvals.entries)
+        entries = dict(approvals.entries)
+    # A directory move preserves the user's approval of the same name set.
+    # These aliases exist only for this audit; the approval store is not rewritten.
+    history = os.path.join(REPO, "dev", "module-moves.json")
+    if os.path.isfile(history):
+        with open(history) as f:
+            moved = json.load(f)
+        for entry in list(entries.values()):
+            previous = entry["file"]
+            current = moved.get(previous)
+            if current is None or original_implementation_present(previous, current) or not os.path.isfile(os.path.join(REPO, current)):
+                continue
+            names = entry["names"]
+            table_id = hashlib.sha1((current + "\n" + "\n".join(names)).encode()).hexdigest()[:8]
+            entries.setdefault(table_id, {**entry, "file": current, "moved_from": previous})
+    return entries
 
 
 def unapproved(tables, approved):

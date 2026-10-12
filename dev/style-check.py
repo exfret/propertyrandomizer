@@ -38,12 +38,16 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Generated data and dead code
 EXCLUDE_PREFIXES = (
+    "src/cost/material-costs",
+    "research/",
+    "archive/",
     "lib/cost/recipe-randomizations/",
     "lib/cost/material-costs",
     "lib/cost/science-flows/",
     "lib/unused/",
     "lib/old-logic/",
 )
+LEGACY_PREFIXES = ("lib/old-logic/", "src/legacy/logic/")
 
 # Names treated as booleans for the explicit nil check rule
 BOOLEAN_NAME_RE = re.compile(r"^(is|has|should|can|do|does|use|allow|needs?|was|did|include|skip|force)_|^[A-Z][A-Z0-9_]*$|^valid$")
@@ -447,7 +451,7 @@ def changed_files(staged):
 def is_checked(path):
     # Old logic is still used by the mod: enforce require placement there too,
     # without imposing all the newer formatting rules on it.
-    return path.endswith(".lua") and (path.startswith("lib/old-logic/") or not path.startswith(EXCLUDE_PREFIXES))
+    return path.endswith(".lua") and (path.startswith(LEGACY_PREFIXES) or not path.startswith(EXCLUDE_PREFIXES))
 
 
 def read_source(path, staged):
@@ -459,7 +463,7 @@ def read_source(path, staged):
 
 def check_file(path, staged=False, all_rows=False, requires_only=False):
     source = read_source(path, staged)
-    findings = check_source(source, requires_only or path.startswith("lib/old-logic/"))
+    findings = check_source(source, requires_only or path.startswith(LEGACY_PREFIXES))
     if all_rows:
         return findings
     rows = changed_rows(path, staged)
@@ -496,7 +500,7 @@ def hook_post_edit(payload):
         return 0
 
     source = read_source(path, False)
-    findings = check_source(source, path.startswith("lib/old-logic/"))
+    findings = check_source(source, path.startswith(LEGACY_PREFIXES))
     rows = changed_rows(path, False)
     errors = [f for f in findings if f.severity == "error" and (rows is None or f.touches(rows) or f.rule == "syntax")]
     # Warnings only for what this edit touched, so they aren't repeated on every later edit to the file

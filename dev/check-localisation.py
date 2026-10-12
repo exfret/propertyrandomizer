@@ -165,7 +165,7 @@ def check_source(source, path, keys):
                 check_text(args[0])
             elif name == "label" and len(args) > 1:
                 check_text(args[1])
-            if path == "scripts/customizer.lua" and name == "text" and args:
+            if path in ("src/runtime/customizer/customizer.lua", "scripts/customizer.lua") and name == "text" and args:
                 key = literal(args[0])
                 if key is not None and "propertyrandomizer-customizer." + key not in keys:
                     report(args[0], "missing English locale key propertyrandomizer-customizer." + key)
@@ -185,7 +185,7 @@ def active_lua(path):
     return path.endswith(".lua") and not any(
         part in {"dev", "tests", "unused", "old-logic"} or part.startswith("test-")
         for part in parts
-    ) and not path.startswith(("lib/cost/recipe-randomizations/", "lib/cost/material-costs", "lib/cost/science-flows/"))
+    ) and not path.startswith(("research/", "archive/", "src/cost/material-costs", "src/legacy/logic/", "lib/cost/recipe-randomizations/", "lib/cost/material-costs", "lib/cost/science-flows/"))
 
 
 def read_files(root, staged=False):
@@ -196,7 +196,7 @@ def read_files(root, staged=False):
             for name in names if active_lua(name) or name.startswith("locale/en/") and name.endswith(".cfg")
         }
     files = {}
-    for directory in ("lib", "scripts", "randomizations", "locale/en"):
+    for directory in ("src", "lib", "scripts", "randomizations", "locale/en"):
         for path in (root / directory).rglob("*"):
             relative = path.relative_to(root).as_posix()
             if path.is_file() and (active_lua(relative) or relative.endswith(".cfg")):

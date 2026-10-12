@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Recolored sprite sheets for duplicated entities (lib/dupe.lua)
+# Recolored sprite sheets for duplicated entities (src/prototypes/duplicates/dupe.lua)
 #
 # Duplicates of the entities in dev/dupe-entities.txt get their own copies of every body sheet and icon, recolored
 # offline (Factorio's own tint washes a sprite out, so the recolor is done on the pixels instead). The recolor goes
@@ -14,19 +14,19 @@
 # rule, so they match the building. A machine with no paint at all (grey plates, rust, dark floors) says "grey" instead:
 # then its light, unsaturated metal plates are the mask, the way vanilla's own turret and vehicle masks cover the
 # housing plates, and rust and shadow stay. "whole" colorizes the whole sprite and is only a fallback.
-# The copies go to graphics/dupes/<n>/... mirroring the original path, and lib/dupe-graphics-manifest.lua lists which
+# The copies go to graphics/dupes/<n>/... mirroring the original path, and src/prototypes/duplicates/dupe-graphics-manifest.lua lists which
 # originals have copies, so dupe.lua can swap filenames without knowing anything about the entities.
 #
 # Items (dev/dupe-items.txt: modules, fuels, guns, ammo, armor, equipment items) go through the same rule with their icons,
 # their belt pictures, the icons of the recipes that make them, the grid sprite of the equipment they place and, for an
-# armor, the character's animation sheets for it (lib/dupe.lua copies those animations for the armor's dupe).
+# armor, the character's animation sheets for it (src/prototypes/duplicates/dupe.lua copies those animations for the armor's dupe).
 # Every line gets dupe numbers 2 up to --dupes (9, as far as the number badges go; the setting propertyrandomizer-dupe-count
 # picks how many of them a game uses). The first colors are the line's own dupes= list, hand-picked; the rest are filled
 # from a palette (MUTED_PALETTE, or VIVID_PALETTE for a palette=vivid line) in its order, skipping colors whose hue is near
 # the paint's or an avoid= hue and colors that would look too much like the paint or an earlier dupe (CIEDE2000 under
 # MIN_COLOR_DISTANCE on a masked mid-grey pixel); when too few are left, the ones farthest from the rest are taken.
 #
-# Planets (dev/dupe-planets.txt) are copied whole by lib/dupe-planets.lua, so their line uses the rotate mode: every pixel's
+# Planets (dev/dupe-planets.txt) are copied whole by src/prototypes/duplicates/dupe-planets.lua, so their line uses the rotate mode: every pixel's
 # hue turned by the given degrees, on the planet's icon, its star map icon and the image of the technology discovering it.
 # Rotations past the line's dupes= list come from its tints= angles, each the farthest from the original and the copies before it.
 # A planet copy's science packs are item lines like any other (they're only copied along with their planet).
@@ -34,8 +34,8 @@
 # half keeps the original's color: a science pack copy shows its original's color and its own side by side (split=layer
 # colors the bottom half instead).
 # A planet line's tints= list makes more rotations of the same images, one per angle, at graphics/dupes/tint-<degrees>/...:
-# lib/planet-tints.lua gives every planet but the starting one a random one of them. They're listed per original path in
-# their own manifest, lib/planet-tint-manifest.lua, written from what's on disk whenever a line with tints= is generated.
+# src/randomizations/planetary/planet-tints.lua gives every planet but the starting one a random one of them. They're listed per original path in
+# their own manifest, src/randomizations/planetary/planet-tint-manifest.lua, written from what's on disk whenever a line with tints= is generated.
 #
 # Which sheets are "body" comes from a data.raw dump (dev/run-tests.py --dump-data writes one per run): every PNG
 # reachable from the entity prototype except shadows, glows, lights, layers the game tints at runtime (force/player,
@@ -75,8 +75,8 @@ from skimage.morphology import binary_closing, disk, remove_small_holes, remove_
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GAME_DATA = "/Applications/factorio.app/Contents/data"
 OUT_DIR = os.path.join(REPO, "graphics", "dupes")
-MANIFEST = os.path.join(REPO, "lib", "dupe-graphics-manifest.lua")
-TINT_MANIFEST = os.path.join(REPO, "lib", "planet-tint-manifest.lua")
+MANIFEST = os.path.join(REPO, "src", "prototypes", "duplicates", "dupe-graphics-manifest.lua")
+TINT_MANIFEST = os.path.join(REPO, "src", "randomizations", "planetary", "planet-tint-manifest.lua")
 # A planet tint's folder under OUT_DIR, by its hue rotation in degrees
 TINT_FOLDER = "tint-{}"
 
@@ -86,7 +86,7 @@ STRENGTH = 0.7
 DUPE_SATURATION = 0.55
 # The brightness-preserving scaling of a color stops here, so light pixels don't clip to neon
 MAX_GAIN = 1.15
-# The highest dupe number: the number badges (graphics/number_*.png, lib/dupe.lua) go up to nine
+# The highest dupe number: the number badges (graphics/number_*.png, src/prototypes/duplicates/dupe.lua) go up to nine
 MAX_DUPE = 9
 # The colors a line's dupes past its own dupes= list are filled from, in order of preference, as (hue, saturation, brightness):
 # brightness scales the masked pixels' own (1 keeps it, under 1 is a darker shade, over 1 a paler one)
@@ -346,7 +346,7 @@ def main_product(recipe):
 
 
 def item_recipes(raw, item_name):
-    """The recipes (not hidden) whose main product is the item: lib/dupe.lua duplicates them along with it"""
+    """The recipes (not hidden) whose main product is the item: src/prototypes/duplicates/dupe.lua duplicates them along with it"""
     return [recipe for recipe in raw.get("recipe", {}).values() if not recipe.get("hidden") and main_product(recipe) == item_name]
 
 
@@ -843,7 +843,7 @@ def write_tint_manifest():
                 tints.setdefault("__" + mod + "__/" + rest, []).append(int(match.group(1)))
     lines = [
         "-- Generated by dev/make-dupe-graphics.py; don't edit",
-        "-- Original sprite path -> the hue rotations in degrees with a tinted copy at graphics/dupes/tint-<degrees>/<same path> (lib/planet-tints.lua)",
+        "-- Original sprite path -> the hue rotations in degrees with a tinted copy at graphics/dupes/tint-<degrees>/<same path> (src/randomizations/planetary/planet-tints.lua)",
         "return {",
         "    files = {",
     ]

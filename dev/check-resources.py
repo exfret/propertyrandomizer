@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # Runs non-unified recipe randomization headless on the base game over several seeds and checks its local resource balance:
 # for each recipe choice that preserves resource costs, the vanilla-priced raw resource bill of the new ingredients versus
-# the old ones (RECIPEBILL lines, from randomizations/graph/recipe.lua)
+# the old ones (RECIPEBILL lines, from src/legacy/randomizations/recipe.lua)
 # Fails if, summed over those choices, any major raw resource leaves [1 / MAX_LOCAL_RATIO, MAX_LOCAL_RATIO] times its old amount
 #
 # Also prints, for information only, the raw resources in one unit of an all-science-pack research before and after
-# (RESOURCEREPORT lines, from lib/cost/resource-report.lua); these drift in ways a local measure can't control
+# (RESOURCEREPORT lines, from src/cost/resource-report.lua); these drift in ways a local measure can't control
 #
 # Runs from a copy of the mod with unified randomization skipped, so only non-unified recipe randomization is measured
 # Settings come from the main mod-settings.dat with the seed changed, recipe randomization on, and numerical randomization off
@@ -55,11 +55,11 @@ RECIPE_BILL = re.compile(r"RECIPEBILL (\S+) (preserved|unpreserved) (.*)")
 def make_mod_copy(root):
     copy = os.path.join(root, "propertyrandomizer")
     shutil.copytree(REPO, copy, ignore=shutil.ignore_patterns(".git"))
-    path = os.path.join(copy, "data-final-fixes.lua")
+    path = os.path.join(copy, "src/pipeline/data-final-fixes.lua")
     with open(path) as f:
         text = f.read()
     if UNIFIED_CALL not in text:
-        sys.exit("Couldn't find '" + UNIFIED_CALL + "' in data-final-fixes.lua to skip unified randomization")
+        sys.exit("Couldn't find '" + UNIFIED_CALL + "' in src/pipeline/data-final-fixes.lua to skip unified randomization")
     with open(path, "w") as f:
         f.write(text.replace(UNIFIED_CALL, "unified_info = {}"))
     return copy

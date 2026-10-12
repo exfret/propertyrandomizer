@@ -44,7 +44,7 @@ function isolation.capture()
     if not config.graph.technology and not config.tech_tree_rebuild and not config.planetary_rewards and not config.planetary_freezing then
         prerequisites = {}
         for name, tech in pairs(data.raw.technology) do
-            -- The star map's discovery order (planetary connections, which dupes turn on) gives the technologies discovering a space location new prerequisites on purpose (randomizations/planetary/discovery.lua)
+            -- The star map's discovery order (planetary connections, which dupes turn on) gives the technologies discovering a space location new prerequisites on purpose (src/randomizations/planetary/discovery.lua)
             if not (config.planetary_connections and discovers_location(tech)) then
                 prerequisites[name] = table.deepcopy(tech.prerequisites or {})
             end

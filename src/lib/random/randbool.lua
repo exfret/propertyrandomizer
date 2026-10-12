@@ -1,0 +1,38 @@
+local constants = require("src/config/constants")
+local rng = require("src/lib/random/rng")
+local randprob = require("src/lib/random/randprob")
+
+local randbool = {}
+
+randbool.converge = function(key, p)
+    return rng.value(key) < p
+end
+
+--- randomly returns true or false, high config.chaos increases likelyhood of true
+randbool.rand_chaos = function(key, base_probability)
+    local p = randprob.scale_odds(base_probability, config.chaos)
+    return randbool.converge(key, p)
+end
+
+local bias_idx_to_factor = { 0.7, 0.85, 1, 1.15, 1.3 }
+
+--- randomly returns true or false, affected by config.bias
+randbool.rand_bias = function (key, base_probability, dir)
+    if dir == 0 then
+        return randbool.converge(key, base_probability)
+    end
+    local factor = bias_idx_to_factor[config.bias_idx + 1]
+    if dir < 0 then
+        factor = 1 / factor
+    end
+    local p = randprob.scale_odds(base_probability, factor)
+    return randbool.converge(key, p)
+end
+
+--- randomly returns true or false, affected by both config.chaos and config.bias
+randbool.rand_bias_chaos = function (key, base_probability, dir)
+    local half = math.sqrt(base_probability)
+    return randbool.rand_bias(key, half, dir) and randbool.rand_chaos(key, half)
+end
+
+return randbool

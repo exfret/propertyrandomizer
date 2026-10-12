@@ -1,0 +1,91 @@
+-- Maintenance-wise, it's easiest to keep this exact header for all stage 2 lookups, even if not all these are used
+-- START repeated header
+
+local collision_mask_util = require("__core__/lualib/collision-mask-util")
+
+local categories = require("src/prototypes/categories")
+local gutils = require("src/lib/graph/graph-utils")
+local lutils = require("src/logic/logic-utils")
+local dutils = require("src/prototypes/data-utils")
+local tutils = require("src/prototypes/entities/trigger")
+
+local prots = dutils.prots
+
+local stage = {}
+
+local lu
+stage.link = function(lu_to_link)
+    lu = lu_to_link
+end
+
+-- END repeated header
+
+-- Reverse map: item -> fuels that burn into it
+stage.burnt_result_to_items = function()
+    local burnt_result_to_items = {}
+
+    for _, item in pairs(lu.items) do
+        if item.burnt_result ~= nil and item.burnt_result ~= "" then
+            if burnt_result_to_items[item.burnt_result] == nil then
+                burnt_result_to_items[item.burnt_result] = {}
+            end
+            burnt_result_to_items[item.burnt_result][item.name] = true
+        end
+    end
+
+    lu.burnt_result_to_items = burnt_result_to_items
+end
+
+-- Reverse map: item --> items that have it as a rocket launch result
+stage.rocket_results_to_items = function()
+    local rocket_results_to_items = {}
+
+    for _, item in pairs(lu.items) do
+        if item.rocket_launch_products ~= nil then
+            for _, product in pairs(item.rocket_launch_products) do
+                if product.type == "item" then
+                    rocket_results_to_items[product.name] = rocket_results_to_items[product.name] or {}
+                    rocket_results_to_items[product.name][item.name] = true
+                end
+            end
+        end
+    end
+
+    lu.rocket_results_to_items = rocket_results_to_items
+end
+
+-- Map from item --> whether it is the result of a silo recipe (used for determining whether an item is "special"/shouldn't be randomized)
+stage.silo_items = function()
+    local silo_items = {}
+
+    for _, silo in pairs(data.raw["rocket-silo"]) do
+        if silo.fixed_recipe ~= nil then
+            local recipe = data.raw.recipe[silo.fixed_recipe]
+            for _, result in pairs(recipe.results or {}) do
+                -- Technically could be a fluid with the same name but that's too cursed for even me to think about
+                silo_items[result.name] = true
+            end
+        end
+    end
+
+    lu.silo_items = silo_items
+end
+
+-- Reverse map: item -> items that spoil into it
+stage.spoil_result_to_items = function()
+    local spoil_result_to_items = {}
+
+    for _, item in pairs(lu.items) do
+        -- The game only loads spoil_result when spoil_ticks is above 0 (its default is 0)
+        if item.spoil_result ~= nil and item.spoil_result ~= "" and (item.spoil_ticks or 0) > 0 then
+            if spoil_result_to_items[item.spoil_result] == nil then
+                spoil_result_to_items[item.spoil_result] = {}
+            end
+            spoil_result_to_items[item.spoil_result][item.name] = true
+        end
+    end
+
+    lu.spoil_result_to_items = spoil_result_to_items
+end
+
+return stage

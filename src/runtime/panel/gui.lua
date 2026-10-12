@@ -1,0 +1,1229 @@
+-- TODO:
+--   * (DONE) Clutter
+--      - Deal with long names like entity-buildability or science sets, so custom abbreviations?
+--   * Better names
+--      - (DONE) First, "Reachability" (button opens contexts below), also red/yellow/green/purple/gray (implement actual reachability checks later)
+--      - Second, the quantity, if applicable (try this at this point!)
+--      - The action (build) if prototype is implicit (if any), or the prototype itself if it's not been revealed as a parent, and put that in rich text
+--      - The op, T/F/OR/AND (explain T vs. F etc. somewhere later)
+--   * Close window button and formatting
+--      - Make scrollable
+--      - Add styles to list selector to make it not collapse (maybe a horizontal scroll bar too)
+--      - Buffer between top description and bottom
+--      - A potential title on the page (not just tab)
+--   * Persistence
+--      - Make choices persistent across closing and reopening (maybe it just requires changing visibility rather than full deletion?)
+--   * Sorting
+--      - Make sure top sort works in control stage
+--      - Perform top sort and keep track of reachable as techs are unlocked, updating colors
+--      - Put prereqs in order of "usual" unlock/top sort (putting already unlocked first)
+--   * Tooltips
+--      - Tooltips for node types, op?, helpful info
+
+local locale = require("src/localisation/locale")
+local localised_text = require("src/localisation/localised-text")
+local explorer_localisation = require("src/runtime/explorer/explorer-localisation")
+local cutils = require("src/cost/cost-utils")
+local gutils = require("src/lib/graph/graph-utils")
+local top = require("src/lib/sort/context-sort")
+local logic = require("src/logic/init")
+local common = require("src/runtime/panel/common")
+local explorer_sorts = require("src/runtime/explorer/explorer-sorts")
+local explorer_rows = require("src/runtime/explorer/explorer-rows")
+local events = require("src/runtime/events")
+local customizer = require("src/runtime/customizer/customizer")
+local derandomizer = require("src/runtime/panel/derandomizer")
+
+local set_width_height = common.set_width_height
+
+local selected_ind_to_elem_type = {
+    "entity",
+    "fluid",
+    "item",
+    "recipe",
+    "technology",
+    "tile",
+    "asteroid-chunk",
+    -- There is weirdness with this due to how rooms work, skip for now
+    --"space-location"
+}
+local is_elem_type = {
+    ["achievement"] = true,
+    ["decorative"] = true,
+    ["entity"] = true,
+    ["equipment"] = true,
+    ["fluid"] = true,
+    ["item"] = true,
+    ["item-group"] = true,
+    ["recipe"] = true,
+    ["signal"] = true,
+    ["technology"] = true,
+    ["tile"] = true,
+    ["asteroid-chunk"] = true,
+    ["space-location"] = true,
+}
+customizer.set_selector_types(selected_ind_to_elem_type)
+
+local function can_be_derandomized(element)
+    if prototypes.recipe["derandomized-" .. element.elem_type .. "--" .. element.elem_value] ~= nil then
+        return true
+    end
+end
+
+local function add_derandomizer_amount_caption(element)
+    local color = "white"
+    if storage.num_derandomizations == 0 and not script.active_mods["pyalternativeenergy"] then
+        color = "red"
+    end
+    if script.active_mods["pyalternativeenergy"] then
+        local explorer_derandomizer_amount_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-amount", caption = {"propertyrandomizer-gui.derandomizations-used", color, tostring(-storage.num_derandomizations)}})
+    else
+        local explorer_derandomizer_amount_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-amount", caption = {"propertyrandomizer-gui.derandomizations-left", color, tostring(storage.num_derandomizations)}})
+        local explorer_derandomizer_left_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-left", caption = {"propertyrandomizer-gui.derandomization-next", tostring(storage.techs_until_derandomization)}})
+    end
+end
+
+local function reset_derandomizer(element)
+    local explorer_derandomizer_prot_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = {"propertyrandomizer-gui.select-derandomizer"}})
+    add_derandomizer_amount_caption(element)
+end
+
+local get_node_type_caption
+local get_node_caption
+
+local function node_type_name(node_type)
+    return {"?", {"propertyrandomizer-node-name." .. node_type}, node_type}
+end
+
+-- Graph selectors keep keys in tags so filtered captions never become node identities.
+-- General node intentionally includes the full graph, even nodes omitted from prerequisite rows.
+local function refresh_node_choices(selector, refresh_types, preserve_selection)
+    local mechanics = selector.tags.mechanics
+    local player = game.players[selector.player_index]
+    local type_choice = selector["randomizer-explorer-node-type"]
+    local selected_type
+    if type_choice ~= nil and type_choice.selected_index > 0 then
+        selected_type = (type_choice.tags.keys or {})[type_choice.selected_index]
+    end
+    if refresh_types == true and type_choice ~= nil then
+        local types = {}
+        local seen = {}
+        local query = selector["randomizer-explorer-type-search"].text
+        for _, node in pairs(storage.graph.nodes) do
+            if not seen[node.type] then
+                seen[node.type] = true
+                local caption = node_type_name(node.type)
+                local translated = explorer_localisation.value(player, "type:" .. node.type, caption, node.type)
+                if explorer_localisation.matches(query, translated, node.type) then
+                    table.insert(types, {
+                        key = node.type,
+                        caption = caption,
+                        translated = translated,
+                    })
+                end
+            end
+        end
+        table.sort(types, function(a, b)
+            return a.translated < b.translated or (a.translated == b.translated and a.key < b.key)
+        end)
+        local items, keys = {}, {}
+        local selected = 0
+        for index, choice in pairs(types) do
+            table.insert(items, choice.caption)
+            table.insert(keys, choice.key)
+            if choice.key == selected_type then
+                selected = index
+            end
+        end
+        type_choice.items = items
+        type_choice.tags = {keys = keys}
+        type_choice.selected_index = selected > 0 and selected or (#keys > 0 and 1 or 0)
+        selected_type = keys[type_choice.selected_index]
+    end
+    local query = selector["randomizer-explorer-node-search"].text
+    local choices = {}
+    for key, node in pairs(storage.graph.nodes) do
+        if (mechanics == true and node.class == "balance-mechanics") or (mechanics == false and node.type == selected_type) then
+            local caption
+            if node.prot ~= nil then
+                caption = {"propertyrandomizer-gui.node-caption", get_node_type_caption(node), get_node_caption(node)}
+                local prot_key = gutils.deconstruct(node.prot)
+                for class, members in pairs(defines.prototypes) do
+                    if members[prot_key.type] ~= nil then
+                        local lookup = prototypes[string.gsub(class, "-", "_")]
+                        local prot = lookup ~= nil and lookup[prot_key.name] or nil
+                        if prot ~= nil then
+                            caption = {"propertyrandomizer-gui.node-caption", get_node_type_caption(node), prot.localised_name}
+                        end
+                        break
+                    end
+                end
+            elseif mechanics == true then
+                caption = {"propertyrandomizer-gui.mechanic-caption", node_type_name(node.type), node.name}
+            else
+                caption = node.name ~= "" and node.name or {"propertyrandomizer-gui.unnamed"}
+            end
+            local translated = explorer_localisation.value(player, "node:" .. key, caption, node.name)
+            if explorer_localisation.matches(query, translated, node.name .. " " .. node.type) then
+                table.insert(choices, {
+                    key = key,
+                    caption = caption,
+                    translated = translated,
+                })
+            end
+        end
+    end
+    table.sort(choices, function(a, b)
+        return a.translated < b.translated or (a.translated == b.translated and a.key < b.key)
+    end)
+    local names = selector["randomizer-explorer-node-name"]
+    local previous = preserve_selection and (names.tags.keys or {})[names.selected_index] or nil
+    local items, keys = {}, {}
+    local selected = 0
+    for index, choice in pairs(choices) do
+        table.insert(items, choice.caption)
+        table.insert(keys, choice.key)
+        if choice.key == previous then
+            selected = index
+        end
+    end
+    names.items = items
+    names.tags = {keys = keys}
+    names.selected_index = selected
+end
+
+local function add_node_selector(parent, mechanics)
+    local selector = parent.add({
+        type = "flow",
+        name = "randomizer-explorer-node-selector",
+        direction = "vertical",
+        tags = {mechanics = mechanics},
+    })
+    if mechanics == false then
+        selector.add({
+            type = "label",
+            caption = {"propertyrandomizer-gui.node-type"},
+        })
+        selector.add({
+            type = "textfield",
+            name = "randomizer-explorer-type-search",
+            tooltip = {"propertyrandomizer-gui.type-search"},
+        })
+        selector.add({
+            type = "drop-down",
+            name = "randomizer-explorer-node-type",
+            items = {},
+        })
+    end
+    selector.add({
+        type = "label",
+        caption = mechanics == true and {"propertyrandomizer-gui.mechanic"} or {"propertyrandomizer-gui.node-name"},
+    })
+    selector.add({
+        type = "textfield",
+        name = "randomizer-explorer-node-search",
+        tooltip = mechanics == true and {"propertyrandomizer-gui.mechanic-search"} or {"propertyrandomizer-gui.node-search"},
+    })
+    selector.add({
+        type = "drop-down",
+        name = "randomizer-explorer-node-name",
+        items = {},
+    })
+    for _, child in pairs(selector.children) do
+        child.style.width = 220
+    end
+    refresh_node_choices(selector, true)
+end
+
+local select_graph_node
+
+local function update_explorer_choice(player_index, explorer_type_choice)
+    local explorer_flow_choice = explorer_type_choice.parent
+    -- Choosing the same thing shouldn't reset things
+    if storage.explorer_prot_choice ~= nil then
+        if storage.explorer_prot_choice[player_index] == explorer_type_choice.selected_index and (explorer_flow_choice["randomizer-explorer-prot-choice"] ~= nil or explorer_flow_choice["randomizer-explorer-node-selector"] ~= nil) then
+            -- Return false to signal that nothing should change to outer function
+            return false
+        end
+    end
+
+    if explorer_flow_choice["randomizer-explorer-prot-choice"] ~= nil then
+        explorer_flow_choice["randomizer-explorer-prot-choice"].destroy()
+    end
+    if explorer_flow_choice["randomizer-explorer-node-selector"] ~= nil then
+        explorer_flow_choice["randomizer-explorer-node-selector"].destroy()
+    end
+    local explorer_elem_type = selected_ind_to_elem_type[explorer_type_choice.selected_index]
+    if explorer_elem_type ~= nil then
+        explorer_flow_choice.add({
+            type = "choose-elem-button",
+            name = "randomizer-explorer-prot-choice",
+            elem_type = explorer_elem_type,
+        })
+    else
+        add_node_selector(explorer_flow_choice, explorer_type_choice.selected_index == #selected_ind_to_elem_type + 1)
+    end
+    storage.explorer_prot_choice = storage.explorer_prot_choice or {}
+    storage.explorer_prot_choice[player_index] = explorer_type_choice.selected_index
+    return true
+end
+
+-- Fraction of the screen the main panel takes up in each direction
+local MAIN_PANEL_FRAC = 0.7
+-- The frame's content padding plus the tab content's padding, left and right (see frame and tabbed_pane in core's style.lua)
+local MAIN_PANEL_PADDING = 8 + 8 + 12 + 12
+
+-- Sizes that depend on the player's screen; redone when their resolution or UI scale changes
+local function size_main_panel(player, main_frame)
+    set_width_height(main_frame, player, MAIN_PANEL_FRAC, MAIN_PANEL_FRAC)
+    local tabbed_pane = main_frame["randomizer-main-tabbed-pane"]
+    -- Labels are single line by default, and a long one widens the whole tabbed pane past the frame, so wrap them at the panel's width
+    local inner_width = common.screen_size(player).width * MAIN_PANEL_FRAC - MAIN_PANEL_PADDING
+    local customizer_flow = tabbed_pane["randomizer-customizer-flow"]
+    if customizer_flow ~= nil then
+        customizer.resize(customizer_flow, inner_width, common.screen_size(player).height * MAIN_PANEL_FRAC)
+    end
+    for _, child in pairs(tabbed_pane["randomizer-home-flow"].children) do
+        if child.type == "label" then
+            child.style.single_line = false
+            child.style.maximal_width = inner_width
+        end
+    end
+    local explorer_intro = tabbed_pane["randomizer-explorer-flow"]["randomizer-explorer-intro"]
+    explorer_intro.style.single_line = false
+    explorer_intro.style.maximal_width = inner_width
+    local explorer_flow_left = tabbed_pane["randomizer-explorer-flow"]["randomizer-explorer-flow-main"]["randomizer-explorer-flow-left"]
+    -- Leave room for the category list and the searchable selector side by side.
+    explorer_flow_left.style.maximal_width = math.max(common.screen_size(player).width / 6, 448)
+end
+
+-- E and Escape close player.opened, which works like Factory Planner's main and modal dialogs.
+-- The main panel is player.opened while it's visible, and the contexts panel while it's open, which hands it back to the main panel when it closes (see on_gui_closed).
+local function close_contexts_panel(player)
+    local contexts_frame = player.gui.screen["randomizer-contexts-panel"]
+    if contexts_frame ~= nil then
+        contexts_frame.destroy()
+    end
+end
+
+local function toggle_randomizer_panel(event)
+    local player = game.players[event.player_index]
+    local gui = player.gui.screen
+
+    if gui["randomizer-main-panel"] ~= nil then
+        --gui["randomizer-main-panel"].destroy()
+        gui["randomizer-main-panel"].visible = not gui["randomizer-main-panel"].visible
+        if gui["randomizer-main-panel"].visible then
+            -- Add the new tab to panels that were already saved before this update.
+            customizer.create(gui["randomizer-main-panel"]["randomizer-main-tabbed-pane"], event.player_index)
+            size_main_panel(player, gui["randomizer-main-panel"])
+            player.opened = gui["randomizer-main-panel"]
+            gui["randomizer-main-panel"].force_auto_center()
+        else
+            close_contexts_panel(player)
+            if player.opened == gui["randomizer-main-panel"] then
+                player.opened = nil
+            end
+        end
+        return
+    end
+
+    local main_frame = gui.add({type = "frame", name = "randomizer-main-panel", direction = "vertical"})
+    local title_flow = main_frame.add({type = "flow", name = "randomizer-main-title-flow", direction = "horizontal"})
+    title_flow.drag_target = main_frame
+    local title_label = title_flow.add({type = "label", caption = {"propertyrandomizer-gui.panel-title"}, style = "frame_title"})
+    title_label.drag_target = main_frame
+    local drag_space = title_flow.add({type = "empty-widget", style = "draggable_space_header"})
+    drag_space.style.horizontally_stretchable = true
+    drag_space.style.height = 24
+    drag_space.drag_target = main_frame
+    title_flow.add({type = "sprite-button", name = "randomizer-main-close", sprite = "utility/close", style = "frame_action_button", tooltip = {"propertyrandomizer-gui.close"}})
+    player.opened = main_frame
+    local main_tabbed_pane = main_frame.add({type = "tabbed-pane", name = "randomizer-main-tabbed-pane"})
+    main_tabbed_pane.style.horizontally_stretchable = true
+    main_tabbed_pane.style.vertically_stretchable = true
+
+    local home_tab = main_tabbed_pane.add({type = "tab", name = "randomizer-home-tab", caption = {"propertyrandomizer-gui.home"}})
+    local home_flow = main_tabbed_pane.add({type = "flow", name = "randomizer-home-flow", direction = "vertical"})
+    home_flow.style.horizontally_stretchable = true
+    home_flow.style.vertically_stretchable = true
+    main_tabbed_pane.add_tab(home_tab, home_flow)
+    local home_flow_caption = home_flow.add({type = "label", name = "randomizer-home-flow-caption", caption = {"propertyrandomizer-gui.welcome"}})
+    local reachability_text
+    local reachable = prototypes.mod_data["propertyrandomizer-reachability-data"].data["reachable"]
+    local total = prototypes.mod_data["propertyrandomizer-reachability-data"].data["total"]
+    if reachable < total then
+        reachability_text = {"propertyrandomizer-gui.science-unreachable", tostring(reachable), tostring(total)}
+    elseif prototypes.mod_data["propertyrandomizer-reachability-data"].data["check_ok"] == false then
+        -- The mechanic context check (skeleton/check.lua) found something a player needs lost, like a recipe no longer reachable
+        reachability_text = {"propertyrandomizer-gui.mechanic-check-failed"}
+    else
+        reachability_text = {"propertyrandomizer-gui.science-reachable", tostring(total)}
+    end
+    local home_flow_reachability = home_flow.add({type = "label", name = "randomizer-home-flow-reachability", caption = reachability_text})
+    -- Limits on planetary changes the game breaks (planetary.broken_limits), each a red line: not a softlock, but a game the tests fail
+    for ind, caption in pairs(prototypes.mod_data["propertyrandomizer-reachability-data"].data["broken_limits"] or {}) do
+        home_flow.add({type = "label", name = "randomizer-home-flow-broken-limit-" .. ind, caption = caption})
+    end
+    -- What randomization warned about at startup (randomization_info.warnings, smuggled by data-final-fixes.lua), without the chat-style prefix each one starts with
+    for data, _ in pairs(prototypes.item["propertyrandomizer-warnings"].get_entity_type_filters(defines.selection_mode.select)) do
+        local _, warnings = serpent.load(data)
+        for ind, warning in pairs(warnings or {}) do
+            local message = warning
+            if type(warning) == "string" then
+                message = string.gsub(warning, "^%[img=item%.propertyrandomizer%-gear%] %[color=[^%]]*%]exfret's Randomizer:%[/color%] ", "")
+            end
+            home_flow.add({type = "label", name = "randomizer-home-flow-startup-warning-" .. ind, caption = {"propertyrandomizer-gui.warning", message}})
+        end
+        break
+    end
+    if settings.startup["propertyrandomizer-seed"].value == 0 then
+        local home_default_seed_warning_caption = home_flow.add({type = "label", name = "randomizer-home-flow-warning", caption = {"propertyrandomizer-gui.default-seed"}})
+        local home_default_seed_warning_caption_2 = home_flow.add({type = "label", name = "randomizer-home-flow-warning-2", caption = {"propertyrandomizer-gui.default-disabled"}})
+        local home_default_seed_warning_caption_3 = home_flow.add({type = "label", name = "randomizer-home-flow-warning-3", caption = {"propertyrandomizer-gui.prototype-caching"}})
+    end
+    local home_flow_tip_sync = home_flow.add({type = "label", name = "randomizer-home-flow-tip-1", caption = {"propertyrandomizer-gui.sync-tip"}})
+
+    --local derandomizer_tab = derandomizer.create(main_tabbed_pane, event.player_index)
+
+    local explorer_tab = main_tabbed_pane.add({type = "tab", name = "randomizer-explorer-tab", caption = {"propertyrandomizer-gui.explorer"}})
+    local explorer_flow = main_tabbed_pane.add({type = "flow", name = "randomizer-explorer-flow", direction = "vertical"})
+    explorer_flow.style.horizontally_stretchable = true
+    explorer_flow.style.vertically_stretchable = true
+    main_tabbed_pane.add_tab(explorer_tab, explorer_flow)
+    local explorer_intro = explorer_flow.add({
+        type = "label",
+        name = "randomizer-explorer-intro",
+        caption = {"propertyrandomizer-gui.explorer-intro"},
+    })
+    explorer_flow.add({
+        type = "checkbox",
+        name = "randomizer-explorer-show-hidden",
+        caption = {"propertyrandomizer-gui.show-hidden"},
+        state = storage.explorer_show_hidden ~= nil and storage.explorer_show_hidden[event.player_index] == true,
+        tooltip = {"propertyrandomizer-gui.show-hidden-help"},
+    })
+    local explorer_flow_main = explorer_flow.add({type = "flow", name = "randomizer-explorer-flow-main", direction = "horizontal"})
+    explorer_flow_main.style.horizontally_stretchable = true
+    explorer_flow_main.style.vertically_stretchable = true
+    local explorer_flow_left = explorer_flow_main.add({type = "flow", name = "randomizer-explorer-flow-left", direction = "vertical"})
+    local explorer_flow_choice = explorer_flow_left.add({type = "flow", name = "randomizer-explorer-flow-choice", direction = "horizontal"})
+    local explorer_type_choice = explorer_flow_choice.add({
+        type = "list-box",
+        name = "randomizer-explorer-type-choice",
+        selected_index = 1,
+        items = {
+            {"propertyrandomizer-gui.entity"},
+            {"propertyrandomizer-gui.fluid"},
+            {"propertyrandomizer-gui.item"},
+            {"propertyrandomizer-gui.recipe"},
+            {"propertyrandomizer-gui.technology"},
+            {"propertyrandomizer-gui.tile"},
+            {"propertyrandomizer-gui.asteroid-chunk"},
+            {"propertyrandomizer-gui.mechanics"},
+            {"propertyrandomizer-gui.general-node"},
+        },
+    })
+    explorer_type_choice.style.width = 220
+    update_explorer_choice(event.player_index, explorer_type_choice)
+    local explorer_derandomizer = explorer_flow_left.add({type = "flow", name = "randomizer-explorer-derandomizer", direction = "vertical"})
+    reset_derandomizer(explorer_derandomizer)
+    local explorer_dropdowns_scroll = explorer_flow_main.add({type = "scroll-pane", name = "randomizer-explorer-dropdowns-scroll", vertical_scroll_policy = "dont-show-but-allow-scrolling", horizontal_scroll_policy = "dont-show-but-allow-scrolling"})
+    explorer_dropdowns_scroll.style.horizontally_stretchable = true
+    explorer_dropdowns_scroll.style.vertically_stretchable = true
+    local explorer_dropdowns = explorer_dropdowns_scroll.add({type = "flow", name = "randomizer-explorer-dropdowns", direction = "vertical"})
+
+    customizer.create(main_tabbed_pane, event.player_index)
+    size_main_panel(player, main_frame)
+    main_frame.force_auto_center()
+end
+
+local function on_display_changed(event)
+    local player = game.players[event.player_index]
+    local main_frame = player.gui.screen["randomizer-main-panel"]
+    if main_frame ~= nil then
+        size_main_panel(player, main_frame)
+        main_frame.force_auto_center()
+    end
+end
+events.on_event(defines.events.on_player_display_resolution_changed, on_display_changed)
+events.on_event(defines.events.on_player_display_scale_changed, on_display_changed)
+
+events.on_event("randomizer-panel", function(event)
+    toggle_randomizer_panel(event)
+end)
+
+events.on_event(defines.events.on_gui_selection_state_changed, function(event)
+    if customizer.on_selection_changed(event) then
+        return
+    end
+
+    if event.element.name == "randomizer-explorer-node-type" then
+        refresh_node_choices(event.element.parent, false)
+        select_graph_node(event, nil)
+    elseif event.element.name == "randomizer-explorer-node-name" then
+        select_graph_node(event, event.element.tags.keys[event.element.selected_index])
+    elseif event.element.name == "randomizer-explorer-type-choice" then
+        local should_update = update_explorer_choice(event.player_index, event.element)
+        if should_update ~= false then
+            -- Also clear the dropdowns
+            explorer_dropdowns = event.element.parent.parent.parent["randomizer-explorer-dropdowns-scroll"]["randomizer-explorer-dropdowns"]
+            explorer_dropdowns.clear()
+
+            local explorer_derandomizer = event.element.parent.parent["randomizer-explorer-derandomizer"]
+            explorer_derandomizer.clear()
+            reset_derandomizer(explorer_derandomizer)
+        end
+    end
+end)
+
+events.on_event(defines.events.on_gui_text_changed, function(event)
+    if customizer.on_text_changed(event) then
+        return
+    end
+    if event.element.name == "randomizer-explorer-type-search" or event.element.name == "randomizer-explorer-node-search" then
+        refresh_node_choices(event.element.parent, event.element.name == "randomizer-explorer-type-search")
+        select_graph_node(event, nil)
+    end
+end)
+
+local function decon_to_prot(deconstructed)
+    local top_level_class
+    for top_level_name, class_names in pairs(defines.prototypes) do
+        if class_names[deconstructed.type] then
+            top_level_class = top_level_name
+            break
+        end
+    end
+    -- Control phase uses _'s instead of -'s for some reason
+    local control_top_level_name = string.gsub(top_level_class, "-", "_")
+    local prot = prototypes[control_top_level_name][deconstructed.name]
+    return {prot = prot, control_top_level_name = control_top_level_name, top_level_class = top_level_class}
+end
+
+
+
+
+get_node_type_caption = function(node)
+    if node.class == "balance-mechanics" then
+        return {"propertyrandomizer-gui.type-prefix", node_type_name(node.type)}
+    end
+    return {"?", {"propertyrandomizer-node-type." .. node.type}, {"propertyrandomizer-gui.type-prefix", node_type_name(node.type)}}
+end
+
+local dont_print_name_types = {
+    ["energy-source-burner"] = true,
+    ["entity-collision-group"] = true,
+    ["resistance-group"] = true,
+    ["science-pack-set-lab"] = true,
+    ["science-pack-set-science"] = true,
+    ["space-connection-enter"] = true,
+    ["tile-collision-group"] = true,
+}
+
+get_node_caption = function(node)
+    local graph = storage.graph
+
+    if dont_print_name_types[node.type] then
+        return ""
+    end
+
+    if node.type == "space-connection" then
+        local two_locations = {}
+        for pre, _ in pairs(node.pre) do
+            local prenode = graph.nodes[graph.edges[pre].start]
+            if prenode.type == "space-connection-enter" then
+                for pre2, _ in pairs(prenode.pre) do
+                    local prenode2 = graph.nodes[graph.edges[pre2].start]
+                    if prenode2.type == "space-location-spaceship" then
+                        table.insert(two_locations, prenode2)
+                    end
+                end
+            end
+        end
+        return {"propertyrandomizer-name.connection", get_node_caption(two_locations[1]), get_node_caption(two_locations[2])}
+    end
+
+    if node.prot == nil then
+        return node.name
+    end
+
+    local deconstructed = gutils.deconstruct(node.prot)
+    local prot_info = decon_to_prot(deconstructed)
+    if is_elem_type[prot_info.top_level_class] then
+        if node.type == "fluid-temperature" then
+            log(deconstructed.name)
+            local temp_decon = gutils.deconstruct(node.name)
+            return {"propertyrandomizer-gui.fluid-temperature", "[" .. prot_info.top_level_class .. "=" .. temp_decon.type .. "]", temp_decon.name}
+        end
+        return "[" .. prot_info.top_level_class .. "=" .. deconstructed.name .. "]"
+    else
+        return {"?", locale.find_localised_name(prot_info.prot), prot_info.prot.name}
+    end
+end
+
+
+-- Contexts panel: clicking a node's reachability button shows its complex contexts (room + ability string) in each room
+
+-- Same order and colors as the reachability buttons in expand_prereq_dropdown
+local reach_levels = {
+    {sort = "tech", color = "green", caption = {"propertyrandomizer-gui.now"}, tooltip = {"propertyrandomizer-gui.now-help"}},
+    {sort = "science_pack", color = "yellow", caption = {"propertyrandomizer-gui.with-science"}, tooltip = {"propertyrandomizer-gui.with-science-help"}},
+    {sort = "full", color = "red", caption = {"propertyrandomizer-gui.later"}, tooltip = {"propertyrandomizer-gui.later-help"}},
+    {color = "pink", caption = {"propertyrandomizer-gui.never"}, tooltip = {"propertyrandomizer-gui.never-help"}},
+}
+
+local ability_names = {
+    [top.ISOLATABILITY] = {"propertyrandomizer-gui.isolated"},
+    [top.AUTOMATABILITY] = {"propertyrandomizer-gui.automated"},
+}
+local ability_tooltips = {
+    [top.ISOLATABILITY] = {"propertyrandomizer-gui.isolated-help"},
+    [top.AUTOMATABILITY] = {"propertyrandomizer-gui.automated-help"},
+}
+
+-- Ability masks with fewer abilities first, so {"propertyrandomizer-gui.reachable"} leads and "Isolated + Automated" ends (isolated before automated among single abilities)
+local function ordered_ability_masks()
+    local masks = {}
+    for _, mask in pairs(top.ability_masks) do
+        table.insert(masks, mask)
+    end
+    local function num_abilities(mask)
+        local num = 0
+        for ability, _ in pairs(ability_names) do
+            if top.has_ability(mask, ability) then
+                num = num + 1
+            end
+        end
+        return num
+    end
+    table.sort(masks, function(a, b)
+        if num_abilities(a) ~= num_abilities(b) then
+            return num_abilities(a) < num_abilities(b)
+        end
+        return a > b
+    end)
+    return masks
+end
+
+local function ability_mask_caption(mask)
+    local captions = {}
+    local tooltips = {}
+    for ability, name in pairs(ability_names) do
+        if top.has_ability(mask, ability) then
+            table.insert(captions, name)
+            table.insert(tooltips, {"propertyrandomizer-gui.ability-help", name, ability_tooltips[ability]})
+        end
+    end
+    if #captions == 0 then
+        return {caption = {"propertyrandomizer-gui.reachable"}, tooltip = {"propertyrandomizer-gui.reachable-help"}}
+    end
+    return {
+        caption = localised_text.join(captions, {"propertyrandomizer-gui.ability-separator"}),
+        tooltip = localised_text.join(tooltips, "\n"),
+    }
+end
+
+-- Room keys are prototype keys of planets and surfaces (see logic.contexts)
+local function room_info(room)
+    local deconstructed = gutils.deconstruct(room)
+    local prot = prototypes.space_location[deconstructed.name]
+    local sprite = "space-location/" .. deconstructed.name
+    if deconstructed.type == "surface" then
+        prot = prototypes.surface[deconstructed.name]
+        sprite = "surface/" .. deconstructed.name
+    end
+    if not helpers.is_valid_sprite_path(sprite) then
+        sprite = nil
+    end
+    return {
+        room = room,
+        localised_name = prot.localised_name,
+        order = prot.order,
+        is_surface = deconstructed.type == "surface",
+        sprite = sprite,
+    }
+end
+
+local function reach_level_of(complex_inds, node_key, context)
+    for _, level in pairs(reach_levels) do
+        if level.sort == nil or complex_inds[level.sort][node_key][context] ~= nil then
+            return level
+        end
+    end
+end
+
+local function add_level_square(parent, level, tooltip)
+    local square = parent.add({type = "button", style = "randomizer_slot_button_" .. level.color, tooltip = tooltip})
+    square.style.size = 24
+    square.ignored_by_interaction = tooltip == nil
+    return square
+end
+
+local function show_contexts_panel(player, node)
+    local gui = player.gui.screen
+    if gui["randomizer-contexts-panel"] ~= nil then
+        gui["randomizer-contexts-panel"].destroy()
+    end
+    local complex_inds = explorer_sorts.inds()
+    local node_key = gutils.key(node)
+
+    local frame = gui.add({type = "frame", name = "randomizer-contexts-panel", direction = "vertical"})
+    local title_flow = frame.add({type = "flow", direction = "horizontal"})
+    title_flow.drag_target = frame
+    local title_caption = {"propertyrandomizer-gui.node-title", get_node_type_caption(node), get_node_caption(node), ""}
+    -- The node caption is just an icon for prototypes, so spell out the name too
+    if node.prot ~= nil then
+        local prot_info = decon_to_prot(gutils.deconstruct(node.prot))
+        if is_elem_type[prot_info.top_level_class] then
+            title_caption[4] = prot_info.prot.localised_name
+        end
+    end
+    local title_label = title_flow.add({type = "label", caption = title_caption, style = "frame_title"})
+    title_label.drag_target = frame
+    local drag_space = title_flow.add({type = "empty-widget", style = "draggable_space_header"})
+    drag_space.style.horizontally_stretchable = true
+    drag_space.style.height = 24
+    drag_space.drag_target = frame
+    title_flow.add({type = "sprite-button", name = "randomizer-contexts-close", sprite = "utility/close", style = "frame_action_button", tooltip = {"propertyrandomizer-gui.close"}})
+
+    local inside = frame.add({type = "frame", style = "inside_shallow_frame_with_padding", direction = "vertical"})
+    inside.add({type = "label", caption = {"propertyrandomizer-gui.contexts-intro"}})
+
+    local ability_masks = ordered_ability_masks()
+    -- One row per room, so with many planet copies (the dupe count setting) the table scrolls rather than running off the screen
+    local table_scroll = inside.add({type = "scroll-pane", vertical_scroll_policy = "auto", horizontal_scroll_policy = "never"})
+    table_scroll.style.maximal_height = 600
+    local table_elt = table_scroll.add({type = "table", style = "bordered_table", column_count = 1 + #ability_masks})
+    table_elt.style.top_margin = 8
+    table_elt.add({type = "label", style = "bold_label", caption = {"propertyrandomizer-gui.room"}})
+    for _, mask in pairs(ability_masks) do
+        local info = ability_mask_caption(mask)
+        local header = table_elt.add({type = "label", style = "bold_label", caption = info.caption, tooltip = info.tooltip})
+        header.style.minimal_width = 72
+        header.style.horizontal_align = "center"
+    end
+
+    -- Planets in their usual order, then platforms
+    local rooms = {}
+    for room, _ in pairs(logic.contexts) do
+        table.insert(rooms, room_info(room))
+    end
+    table.sort(rooms, function(a, b)
+        if a.is_surface ~= b.is_surface then
+            return b.is_surface
+        end
+        if a.order ~= b.order then
+            return a.order < b.order
+        end
+        return a.room < b.room
+    end)
+
+    for _, info in pairs(rooms) do
+        local room_flow = table_elt.add({type = "flow", direction = "horizontal"})
+        room_flow.style.vertical_align = "center"
+        if info.sprite ~= nil then
+            local icon = room_flow.add({type = "sprite", sprite = info.sprite})
+            icon.style.size = 24
+            icon.style.stretch_image_to_widget_size = true
+        end
+        local reached_anywhere = false
+        for _, mask in pairs(ability_masks) do
+            if reach_level_of(complex_inds, node_key, top.context_key(info.room, mask)).sort ~= nil then
+                reached_anywhere = true
+            end
+        end
+        local room_label = room_flow.add({type = "label", caption = info.localised_name})
+        if not reached_anywhere then
+            room_label.style.font_color = {0.5, 0.5, 0.5}
+        end
+
+        for _, mask in pairs(ability_masks) do
+            local level = reach_level_of(complex_inds, node_key, top.context_key(info.room, mask))
+            local cell = table_elt.add({type = "flow", direction = "horizontal"})
+            cell.style.horizontally_stretchable = true
+            cell.style.horizontal_align = "center"
+            add_level_square(cell, level, {"propertyrandomizer-gui.context-help", info.localised_name, ability_mask_caption(mask).caption, level.tooltip})
+        end
+    end
+
+    local legend = inside.add({type = "flow", direction = "horizontal"})
+    legend.style.top_margin = 8
+    legend.style.vertical_align = "center"
+    legend.style.horizontal_spacing = 6
+    for _, level in pairs(reach_levels) do
+        add_level_square(legend, level)
+        local legend_label = legend.add({type = "label", caption = level.caption, tooltip = level.tooltip})
+        legend_label.style.right_margin = 8
+    end
+
+    -- Offset down and right from the main panel, so it reads as a popup of it and the explorer tree stays partly in view
+    -- Locations are in pixels, so the offset is scaled like the rest of the GUI
+    local main_frame = gui["randomizer-main-panel"]
+    if main_frame ~= nil and main_frame.visible and main_frame.location ~= nil then
+        local offset = 48 * player.display_scale
+        frame.location = {x = math.floor(main_frame.location.x + offset), y = math.floor(main_frame.location.y + offset)}
+    else
+        frame.force_auto_center()
+    end
+    -- After the frame exists, so the main panel's on_gui_closed knows it's staying open under it
+    player.opened = frame
+    return frame
+end
+
+-- gui_elt.parent[gui_elt.name .. "-flow"][gui_elt.name .. "-flow-down"]
+local function expand_prereq_dropdown(gui_elt_flow_down, player_index, new_node, extra)
+    local extra = extra or {}
+    local amount = extra.amount
+
+    local new_name = gui_elt_flow_down.name .. "-" .. gutils.key(new_node)
+    local flow_name = new_name .. "-flow"
+    local flow_name_down = new_name .. "-flow-down"
+    storage.gui_element_to_node = storage.gui_element_to_node or {}
+    storage.gui_element_to_node[player_index] = storage.gui_element_to_node[player_index] or {}
+    storage.gui_element_to_node[player_index][new_name] = new_node
+
+    local hor_flow = gui_elt_flow_down.add({type = "flow", name = new_name, direction = "horizontal"})
+    -- Only add if has prereqs
+    local checkbox
+    if new_node.num_pre > 0 then
+        checkbox = hor_flow.add({type = "checkbox", name = new_name .. "-checkbox", state = false})
+    end
+    local right_flow = hor_flow.add({type = "flow", name = flow_name, direction = "vertical"})
+
+    -- TODO: Working on this part
+    local description = right_flow.add({type = "flow", direction = "horizontal"})
+    local style_to_use = "randomizer_slot_button_pink"
+    if next(storage.tech_sort_info.node_to_context_inds[gutils.key(new_node)]) ~= nil then
+        style_to_use = "randomizer_slot_button_green"
+    elseif next(storage.science_pack_sort_info.node_to_context_inds[gutils.key(new_node)]) ~= nil then
+        style_to_use = "randomizer_slot_button_yellow"
+    elseif next(storage.sort_info.node_to_context_inds[gutils.key(new_node)]) ~= nil then
+        style_to_use = "randomizer_slot_button_red"
+    end
+    local reachability_button = description.add({type = "button", name = new_name .. "-randomizer-explorer-contexts-button", style = style_to_use, tooltip = {"propertyrandomizer-gui.contexts-help"}})
+    local description_label_amount
+    if amount ~= nil then
+        -- Ignore recipe nodes since their amounts might cause confusion
+        -- Also don't put numbers to non-item/fluids (like no technology amounts)
+        local dont_print = false
+        if new_node.type == "recipe" then
+            dont_print = true
+        end
+        if new_node.prot == nil then
+            dont_print = true
+        else
+            local deconstructed = gutils.deconstruct(new_node.prot)
+            if deconstructed.type ~= "item" and deconstructed.type ~= "fluid" then
+                dont_print = true
+            end
+        end
+        if not dont_print then
+            description_label_amount = description.add({type = "label", style = "bold_label", caption = {"propertyrandomizer-gui.quantity", tostring(math.floor(10000 * amount) / 10000)}})
+        end
+        storage.gui_element_to_amount = storage.gui_element_to_amount or {}
+        storage.gui_element_to_amount[player_index] = storage.gui_element_to_amount[player_index] or {}
+        storage.gui_element_to_amount[player_index][new_name] = amount
+    end
+    local description_label_type = description.add({type = "label", caption = get_node_type_caption(new_node)})
+    description_label_type.tooltip = {"?", {"propertyrandomizer-node-help." .. new_node.type}, ""}
+    local description_label_name = description.add({type = "label", name = new_name .. "-randomizer-explorer-description-name", caption = get_node_caption(new_node)})
+    description_label_name.style.rich_text_setting = defines.rich_text_setting.highlight
+    if new_node.prot ~= nil then
+        local deconstructed = gutils.deconstruct(new_node.prot)
+        local prot_info = decon_to_prot(deconstructed)
+        if is_elem_type[prot_info.top_level_class] then
+            description_label_name.elem_tooltip = {type = prot_info.top_level_class, name = deconstructed.name}
+        end
+    end
+
+    local right_flow_down = right_flow.add({type = "flow", name = flow_name_down, direction = "vertical"})
+
+    return checkbox
+end
+
+events.on_event(defines.events.on_gui_click, function(event)
+    if customizer.on_click(event) then
+        return
+    end
+    if string.find(event.element.name, "randomizer%-explorer%-description%-name") ~= nil then
+        local hor_flow = event.element.parent.parent.parent
+        local prot_node = storage.gui_element_to_node[event.player_index][hor_flow.name]
+        local prot_key = prot_node.prot
+        if prot_key ~= nil then
+            local deconstructed = gutils.deconstruct(prot_key)
+            local prot_info = decon_to_prot(deconstructed)
+            if is_elem_type[prot_info.top_level_class] then
+                local player = game.players[event.player_index]
+                if prot_info.top_level_class == "technology" then
+                    player.open_technology_gui(player.force.technologies[prot_info.prot.name])
+                else
+                    player.open_factoriopedia_gui(prot_info.prot)
+                end
+            end
+        end
+    end
+    if string.find(event.element.name, "randomizer%-explorer%-contexts%-button") ~= nil then
+        local hor_flow = event.element.parent.parent.parent
+        show_contexts_panel(game.players[event.player_index], storage.gui_element_to_node[event.player_index][hor_flow.name])
+        return
+    end
+    if event.element.name == "randomizer-contexts-close" then
+        local player = game.players[event.player_index]
+        event.element.parent.parent.destroy()
+        -- Hand E/Escape back to the main panel, as closing with them does (see on_gui_closed)
+        local main_frame = player.gui.screen["randomizer-main-panel"]
+        if main_frame ~= nil and main_frame.visible then
+            player.opened = main_frame
+        end
+        return
+    end
+    if event.element.name == "randomizer-explorer-derandomizer-button" then
+        if storage.num_derandomizations > 0 or script.active_mods["pyalternativeenergy"] then
+            storage.num_derandomizations = -1 + storage.num_derandomizations
+            local prot_choice = event.element.parent.parent["randomizer-explorer-flow-choice"]["randomizer-explorer-prot-choice"]
+            game.forces.player.recipes["derandomized-" .. prot_choice.elem_type .. "--" .. prot_choice.elem_value].enabled = true
+            storage.already_derandomized[prot_choice.elem_type .. "--" .. prot_choice.elem_value] = true
+
+            local parent = event.element.parent
+            parent.clear()
+            reset_derandomizer(parent)
+        end
+        return
+    end
+    if event.element.name == "randomizer-main-close" then
+        local player = game.players[event.player_index]
+        -- First, so the main panel's on_gui_closed hides it rather than closing the contexts panel
+        close_contexts_panel(player)
+        if player.opened == event.element.parent.parent then
+            player.opened = nil
+        else
+            event.element.parent.parent.visible = false
+        end
+        return
+    end
+    if event.element.name == "randomizer-main-open" then
+        toggle_randomizer_panel(event)
+        return
+    end
+end)
+
+events.on_event(defines.events.on_gui_closed, function(event)
+    if event.element == nil or not event.element.valid then
+        return
+    end
+    local player = game.players[event.player_index]
+    local main_frame = player.gui.screen["randomizer-main-panel"]
+    if event.element.name == "randomizer-contexts-panel" then
+        -- Hand E/Escape back to the main panel, so they close it next
+        event.element.destroy()
+        if main_frame ~= nil and main_frame.visible then
+            player.opened = main_frame
+        end
+    elseif event.element.name == "randomizer-main-panel" then
+        -- Opening the contexts panel takes player.opened from the main panel, which closes it, but the main panel stays open under the contexts panel
+        if player.gui.screen["randomizer-contexts-panel"] == nil then
+            event.element.visible = false
+        end
+    end
+end)
+
+-- The game only lets one GUI be opened, so like Factory Planner, another GUI opening closes the randomizer panels
+-- (the game closes the contexts panel first, and the main panel's player.opened it hands back gets closed without an event)
+events.on_event(defines.events.on_gui_opened, function(event)
+    if event.element ~= nil and (event.element.name == "randomizer-main-panel" or event.element.name == "randomizer-contexts-panel") then
+        return
+    end
+    local player = game.players[event.player_index]
+    close_contexts_panel(player)
+    local main_frame = player.gui.screen["randomizer-main-panel"]
+    if main_frame ~= nil then
+        main_frame.visible = false
+    end
+end)
+
+-- Recipe amounts along an edge with inds, for explorer_rows.leaves
+local function recipe_amount_factor(curr_node, prenode)
+    local function material(material_node)
+        local material_info = decon_to_prot(gutils.deconstruct(material_node.prot))
+        return {
+            type = material_info.top_level_class,
+            name = material_info.prot.name,
+        }
+    end
+    if prenode.type == "recipe" then
+        return 1 / cutils.find_amount_in_ing_or_prod(prototypes.recipe[prenode.name].products, material(curr_node))
+    elseif curr_node.type == "recipe" then
+        return cutils.find_amount_in_ing_or_prod(prototypes.recipe[curr_node.name].ingredients, material(prenode))
+    end
+    return 1
+end
+
+local function get_node_leaves(node, show_hidden)
+    if show_hidden == true then
+        local leaves, amounts = {}, {}
+        for pre, _ in pairs(node.pre) do
+            local edge = storage.graph.edges[pre]
+            local prenode = storage.graph.nodes[edge.start]
+            table.insert(leaves, prenode)
+            amounts[edge.start] = edge.inds ~= nil and recipe_amount_factor(node, prenode) or 1
+        end
+        return {
+            leaves = leaves,
+            node_to_amount_modifier = amounts,
+        }
+    end
+    return explorer_rows.leaves(storage.graph, node, recipe_amount_factor)
+end
+
+local function expand_node_dropdown(event, node)
+    local graph = storage.graph
+
+    local show_hidden = storage.explorer_show_hidden ~= nil and storage.explorer_show_hidden[event.player_index] == true
+    local leaf_info = get_node_leaves(node, show_hidden)
+    local leaves = leaf_info.leaves
+    local node_to_amount_modifier = leaf_info.node_to_amount_modifier
+
+    -- Only include one example of each leaf having the same leaves as another
+    -- TODO: Allow this to be disabled as a setting
+    local leaf_to_concat = {}
+    for _, leaf in pairs(leaves) do
+        local leaf_table = {}
+        for _, leaf_leaf in pairs(get_node_leaves(leaf).leaves) do
+            table.insert(leaf_table, gutils.key(leaf_leaf))
+        end
+        -- Sort for determinism
+        table.sort(leaf_table)
+        leaf_to_concat[gutils.key(leaf)] = gutils.concat(leaf_table)
+    end
+    local already_has_rep = {}
+    for _, leaf in pairs(leaves) do
+        -- Check if this is a hidden prot and hide it if so (in particular for recycling recipes)
+        -- TODO: Allow this to be disabled for a setting
+        local is_hidden = false
+        if leaf.prot ~= nil then
+            local prot = decon_to_prot(gutils.deconstruct(leaf.prot)).prot
+            -- add_old_versions names its Original copies old-<entity name> (src/randomizations/rebuild/init.lua).
+            if prot.hidden == true or string.sub(prot.name, 1, 4) == "old-" then
+                is_hidden = true
+            end
+        end
+
+        -- Don't allow certain confusing nodes
+        -- TODO: Allow this to be disabled for a setting
+        local is_confusing_node_type = {
+            ["entity-collision-group"] = true,
+            ["item-deliver"] = true,
+            ["resistance-group"] = true,
+            ["warmth"] = true,
+            ["false"] = true,
+            ["fluid-hold"] = true,
+            ["lightning-safe"] = true,
+        }
+        if show_hidden or (not is_confusing_node_type[leaf.type] and string.find(leaf.name, "derandomized") == nil and string.sub(leaf.name, 1, 4) ~= "old-") then
+            if show_hidden or not is_hidden then
+                if show_hidden or not already_has_rep[leaf_to_concat[gutils.key(leaf)]] then
+                    already_has_rep[leaf_to_concat[gutils.key(leaf)]] = true
+                    -- Remove the -checkbox
+                    local non_checkbox_name = string.sub(event.element.name, 1, -10)
+
+                    -- Calculate amount, if applicable
+                    local amount
+                    storage.gui_element_to_amount = storage.gui_element_to_amount or {}
+                    storage.gui_element_to_amount[event.player_index] = storage.gui_element_to_amount[event.player_index] or {}
+                    local old_amount = storage.gui_element_to_amount[event.player_index][non_checkbox_name]
+                    if old_amount ~= nil then
+                        if leaf.prot == node.prot then
+                            amount = old_amount
+                        elseif node.prot ~= nil and leaf.prot ~= nil then
+                            local decon_node = gutils.deconstruct(node.prot)
+                            local decon_leaf = gutils.deconstruct(leaf.prot)
+                            if decon_node.type == "recipe" or decon_leaf.type == "recipe" then
+                                amount = old_amount * node_to_amount_modifier[gutils.key(leaf)]
+                            end
+                        end
+                    end
+                    if amount == nil and leaf.prot ~= nil then
+                        local deconstructed = gutils.deconstruct(leaf.prot)
+                        if deconstructed.type == "item" or deconstructed.type == "recipe" or deconstructed.type == "fluid" then
+                            amount = 1
+                        end
+                    end
+
+                    expand_prereq_dropdown(event.element.parent[non_checkbox_name .. "-flow"][non_checkbox_name .. "-flow-down"], event.player_index, leaf, {amount = amount})
+                end
+            end
+        end
+    end
+end
+
+select_graph_node = function(event, key)
+    local left = event.element.parent.parent.parent
+    local dropdowns = left.parent["randomizer-explorer-dropdowns-scroll"]["randomizer-explorer-dropdowns"]
+    dropdowns.clear()
+    local derandomizer_flow = left["randomizer-explorer-derandomizer"]
+    derandomizer_flow.clear()
+    reset_derandomizer(derandomizer_flow)
+    local node = key and storage.graph.nodes[key]
+    if node == nil then
+        return
+    end
+    local root = dropdowns.add({
+        type = "flow",
+        name = "randomizer-explorer-dropdowns-root",
+        direction = "horizontal",
+    })
+    local amount
+    if node.type == "recipe" or node.type == "item" or node.type == "fluid" then
+        amount = 1
+    end
+    local checkbox = expand_prereq_dropdown(root, event.player_index, node, {amount = amount})
+    if checkbox ~= nil then
+        checkbox.state = true
+        expand_node_dropdown({
+            player_index = event.player_index,
+            element = checkbox,
+        }, node)
+    end
+end
+
+events.on_event(defines.events.on_gui_elem_changed, function(event)
+    if customizer.on_elem_changed(event) then return end
+    local graph = storage.graph
+
+    if event.element.name == "randomizer-explorer-prot-choice" then
+        local prot_choice = event.element
+        explorer_dropdowns = prot_choice.parent.parent.parent["randomizer-explorer-dropdowns-scroll"]["randomizer-explorer-dropdowns"]
+        explorer_dropdowns.clear()
+
+        local explorer_derandomizer = prot_choice.parent.parent["randomizer-explorer-derandomizer"]
+
+        if prot_choice.elem_value ~= nil then
+            local node_type_to_use = prot_choice.elem_type
+
+            explorer_derandomizer.clear()
+            if storage.already_derandomized[prot_choice.elem_type .. "--" .. prot_choice.elem_value] then
+                local explorer_derandomizer_prot_caption = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = {"propertyrandomizer-gui.derandomized"}})
+            elseif can_be_derandomized(prot_choice) then
+                if prot_choice.elem_type == "item" and next(storage.tech_sort_info.node_to_context_inds[gutils.key("item", prot_choice.elem_value)]) == nil then
+                    explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = {"propertyrandomizer-gui.derandomizer-inaccessible"}})
+                else
+                    local explorer_derandomizer_prot_caption = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = {"propertyrandomizer-gui.derandomizable"}})
+                    if prot_choice.elem_type == "entity" then
+                        local explorer_derandomizer_prot_caption_desc = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc", caption = {"propertyrandomizer-gui.derandomize-entity"}})
+                    elseif prot_choice.elem_type == "recipe" then
+                        local explorer_derandomizer_prot_caption_desc = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc", caption = {"propertyrandomizer-gui.derandomize-recipe"}})
+                        for _, cat in pairs(prototypes.recipe["derandomized-" .. prot_choice.elem_type .. "--" .. prot_choice.elem_value].categories) do
+                            explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc-" .. cat, caption = {"propertyrandomizer-gui.recipe-category", {"?", {"recipe-category-name." .. cat}, cat}}})
+                        end
+                    elseif prot_choice.elem_type == "item" then
+                        local explorer_derandomizer_prot_caption_desc = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc", caption = {"propertyrandomizer-gui.derandomize-item"}})
+                        local explorer_derandomizer_prot_caption_desc_2 = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc-2", caption = {"propertyrandomizer-gui.derandomize-aside"}})
+                    end
+                end
+            else
+                local explorer_derandomizer_prot_caption = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = {"propertyrandomizer-gui.not-derandomizable"}})
+            end
+            add_derandomizer_amount_caption(explorer_derandomizer)
+            if not storage.already_derandomized[prot_choice.elem_type .. "--" .. prot_choice.elem_value] and can_be_derandomized(prot_choice) and (storage.num_derandomizations > 0 or script.active_mods["pyalternativeenergy"]) then
+                local explorer_derandomizer_button = explorer_derandomizer.add({type = "button", name = "randomizer-explorer-derandomizer-button", caption = {"propertyrandomizer-gui.derandomize"}})
+            end
+
+            -- Refer to the operate entity node if there are more requirements to operation than just having the entity
+            if node_type_to_use == "entity" then
+                local operate_node = graph.nodes[gutils.key("entity-operate", prot_choice.elem_value)]
+                if operate_node ~= nil and explorer_rows.operate_needs_more(graph, operate_node) then
+                    node_type_to_use = "entity-operate"
+                end
+            end
+            local node = graph.nodes[gutils.key(node_type_to_use, prot_choice.elem_value)]
+            if node ~= nil then
+                local root_flow = explorer_dropdowns.add({type = "flow", name = "randomizer-explorer-dropdowns-root", direction = "horizontal"})
+                local amount
+                if node.type == "recipe" or node.type == "item" or node.type == "fluid" then
+                    amount = 1
+                end
+                local root_checkbox = expand_prereq_dropdown(root_flow, event.player_index, node, {amount = amount})
+
+                -- Return in case root_checkbox is nil due to it being a weird entity like half-diagonal rails
+                -- We should fix this bug in a better way in the future
+                if root_checkbox == nil then
+                    return
+                end
+
+                -- Do an initial expansion to reveal first prereqs, though we'll need to spoof the event
+                root_checkbox.state = true
+                expand_node_dropdown({player_index = event.player_index, element = root_checkbox}, node)
+            end
+        else
+            explorer_derandomizer.clear()
+            reset_derandomizer(explorer_derandomizer)
+        end
+    end
+end)
+
+events.on_event(defines.events.on_gui_checked_state_changed, function(event)
+    local graph = storage.graph
+
+    if event.element.name == "randomizer-explorer-show-hidden" then
+        storage.explorer_show_hidden = storage.explorer_show_hidden or {}
+        storage.explorer_show_hidden[event.player_index] = event.element.state
+        local dropdowns = event.element.parent["randomizer-explorer-flow-main"]["randomizer-explorer-dropdowns-scroll"]["randomizer-explorer-dropdowns"]
+        local root = dropdowns["randomizer-explorer-dropdowns-root"]
+        if root ~= nil and root.children[1] ~= nil then
+            local row_name = root.children[1].name
+            local node = storage.gui_element_to_node[event.player_index][row_name]
+            local amounts = storage.gui_element_to_amount and storage.gui_element_to_amount[event.player_index]
+            local amount = amounts and amounts[row_name]
+            root.clear()
+            local checkbox = expand_prereq_dropdown(root, event.player_index, node, {amount = amount})
+            if checkbox ~= nil then
+                checkbox.state = true
+                expand_node_dropdown({
+                    player_index = event.player_index,
+                    element = checkbox,
+                }, node)
+            end
+        end
+        return
+    end
+
+    if string.find(event.element.name, "randomizer%-explorer%-dropdowns") ~= nil then
+        local non_checkbox_name = string.sub(event.element.name, 1, -10)
+        if event.element.state == false then
+            local gui_elt_flow_down = event.element.parent[non_checkbox_name .. "-flow"][non_checkbox_name .. "-flow-down"]
+            gui_elt_flow_down.clear()
+        else
+            local node = storage.gui_element_to_node[event.player_index][non_checkbox_name]
+            expand_node_dropdown(event, node)
+        end
+    end
+end)
+
+
+events.on_event(defines.events.on_string_translated, explorer_localisation.on_translated)
+
+events.on_event(defines.events.on_tick, function(event)
+    if event.tick % 30 ~= 0 then
+        return
+    end
+    local dirty = storage.explorer_translation_dirty or {}
+    storage.explorer_translation_dirty = {}
+    for player_index, _ in pairs(dirty) do
+        customizer.refresh_translations(player_index)
+        local player = game.players[player_index]
+        local panel = player ~= nil and player.gui.screen["randomizer-main-panel"] or nil
+        if panel ~= nil then
+            local explorer = panel["randomizer-main-tabbed-pane"]["randomizer-explorer-flow"]
+            local choices = explorer["randomizer-explorer-flow-main"]["randomizer-explorer-flow-left"]["randomizer-explorer-flow-choice"]
+            local selector = choices["randomizer-explorer-node-selector"]
+            if selector ~= nil then
+                refresh_node_choices(selector, true, true)
+            end
+        end
+    end
+end)
+
+events.on_event(defines.events.on_player_locale_changed, function(event)
+    explorer_localisation.invalidate(event.player_index)
+end)

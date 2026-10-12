@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Runs the randomizer headless on several seeds and fails if the logic check (MECHCHECK, from
-# randomizations/graph/unified/skeleton/check.lua) finds any unreachable recipe or lost mechanic context
+# src/randomizations/unified/skeleton/check.lua) finds any unreachable recipe or lost mechanic context
 # The logic graph is the source of truth, so this is the correctness gate for randomization changes
 #
 # Each run uses its own mod and write-data directories, so it works while Factorio or other runs are open

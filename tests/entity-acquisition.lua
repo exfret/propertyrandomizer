@@ -1,11 +1,11 @@
--- Unit tests for entity acquisition in logic (see lib/logic/acquisition.lua), run from tests/execute.lua
+-- Unit tests for entity acquisition in logic (see src/logic/builders/acquisition.lua), run from tests/execute.lua
 -- Also logs an inventory of acquisition edges with the prefix ENTSTATS, which is what entity randomization has to work with
 
-local gutils = require("lib/graph/graph-utils")
-local top = require("lib/graph/context-sort")
-local acquisition = require("lib/logic/acquisition")
-local cutils = require("lib/cost/cost-utils")
-local dutils = require("lib/data-utils")
+local gutils = require("src/lib/graph/graph-utils")
+local top = require("src/lib/sort/context-sort")
+local acquisition = require("src/logic/builders/acquisition")
+local cutils = require("src/cost/cost-utils")
+local dutils = require("src/prototypes/data-utils")
 
 local key = gutils.key
 local concat = gutils.concat

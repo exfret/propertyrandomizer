@@ -6,7 +6,7 @@ Overrides provide an extra level of customization, at the cost of a higher compl
 
 ## Basic Form
 
-Overrides are separated by semicolons, with no spaces. At their most basic, an override simply turns a specific randomization on or off (overriding what any previous settings do, hence the name). To turn a randomization on, simply type it in (remembering to separate different overrides with semicolons). To turn it off, preface it with an exclamation mark. The names of all randomizations can be found under `helper-tables/spec.lua`. For example, if you turned off logistics randomization, but still wanted specifically belt speeds randomized, and were fine with production randomization except for assembling machine crafting speeds being randomized, you could use the following override:
+Overrides are separated by semicolons, with no spaces. At their most basic, an override simply turns a specific randomization on or off (overriding what any previous settings do, hence the name). To turn a randomization on, simply type it in (remembering to separate different overrides with semicolons). To turn it off, preface it with an exclamation mark. The names of all randomizations can be found under `src/config/spec.lua`. For example, if you turned off logistics randomization, but still wanted specifically belt speeds randomized, and were fine with production randomization except for assembling machine crafting speeds being randomized, you could use the following override:
 
 `belt_speed;!crafting_machine_speed`
 
@@ -31,7 +31,7 @@ The existing `propertyrandomizer-overrides` startup setting accepts these instru
 
 Drafts are stored separately for each player. **Import / reload a string** accepts a pasted override string or reloads the current startup string. Invalid customization imports leave the draft intact. Existing `SET` and `RESET` instructions keep their relative order; unrecognized instructions in an initially loaded startup string are preserved with a warning. **Reset this target** removes one target's overrides, while **Clear customization overrides** removes numerical and graph choices/exclusions and preserves those other instructions.
 
-An individual target is an active numerical randomization ID from `helper-tables/spec.lua`, such as `belt_speed`. A group target starts with `setting/` and uses the exact startup setting name, such as `setting/propertyrandomizer-logistic`. Group membership is derived from the spec's setting references, including randomizations above the currently selected setting level. Entries whose setting is `none` have no group and can still be targeted individually.
+An individual target is an active numerical randomization ID from `src/config/spec.lua`, such as `belt_speed`. A group target starts with `setting/` and uses the exact startup setting name, such as `setting/propertyrandomizer-logistic`. Group membership is derived from the spec's setting references, including randomizations above the currently selected setting level. Entries whose setting is `none` have no group and can still be targeted individually.
 
 `ON` and `OFF` work with either target. A group toggle enables or disables every numerical randomization tied to that setting. Changing a tuning parameter does **not** enable a randomization.
 

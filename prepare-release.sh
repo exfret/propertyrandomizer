@@ -106,10 +106,10 @@ rsync -a --files-from="$STAGE_ROOT/files.txt" "$PROJECT_DIR/" "$STAGE_PATH/"
 
 # -------------------------------------------------------------------
 # 3. Turn off the unified randomizations still in development in the release
-#    (the hidden setting propertyrandomizer-dev-unified, on in the checkout), then verify the copied settings.lua
+#    (the hidden setting propertyrandomizer-dev-unified, on in the checkout), then verify the copied settings implementation
 #    forced_value keeps it off even for players whose saved settings came from a development build (for a hidden setting it forces the value, https://wiki.factorio.com/Tutorial:Mod_settings)
 # -------------------------------------------------------------------
-"$RELEASE_PYTHON" - "$STAGE_PATH/settings.lua" <<'PYTHON'
+"$RELEASE_PYTHON" - "$STAGE_PATH/src/config/settings.lua" <<'PYTHON'
 import re
 import sys
 
@@ -117,7 +117,7 @@ with open(sys.argv[1], encoding="utf-8") as f:
     source = f.read()
 source, count = re.subn(r'(name = "propertyrandomizer-dev-unified",(?:[^{}])*?)default_value = true,', r"\g<1>default_value = false,\n        forced_value = false,", source)
 if count > 1:
-    sys.exit("Error: more than one propertyrandomizer-dev-unified setting in settings.lua")
+    sys.exit("Error: more than one propertyrandomizer-dev-unified setting in src/config/settings.lua")
 with open(sys.argv[1], "w", encoding="utf-8") as f:
     f.write(source)
 match = re.search(r'name = "propertyrandomizer-dev-unified",([^{}]*)', source)

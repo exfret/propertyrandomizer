@@ -6,7 +6,7 @@
 #   - the docs players are pointed to: README.md (the overrides setting's description points there) and OVERRIDES.md (README.md points there)
 #   - the Lua files the stage files (settings.lua, data.lua, control.lua and their -updates and -final-fixes) can require
 #   - the files the shipped Lua names as __propertyrandomizer__/..., like graphics
-# Everything else (dev tools, notes, test configs, cost research data in lib/cost, dead code) stays out without being listed anywhere
+# Everything else (dev tools, notes, test configs, cost research data in research/cost, dead code) stays out without being listed anywhere
 # Files git ignores never ship, except graphics/dupes/: .gitignore keeps the recolored duplicate graphics (the game's own sprites) out of the public repo, but the mod needs them
 #
 # Requires are followed with a Lua parser:
@@ -221,7 +221,7 @@ def report(files, shipped):
         return sum(os.path.getsize(os.path.join(REPO, path)) for path in paths)
 
     def group(path):
-        # Two folders deep: lib/cost/, notes/, CLAUDE.md
+        # Two folders deep: src/cost/, notes/, CLAUDE.md
         parts = path.split("/")[:-1]
         return "/".join(parts[:2]) + "/" if len(parts) > 0 else path
 

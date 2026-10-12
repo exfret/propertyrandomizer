@@ -169,7 +169,7 @@ def main():
 
     def snapshot(dest, ref, staged, source_dir):
         original_snapshot(dest, ref, staged, source_dir)
-        final = Path(dest) / "data-final-fixes.lua"
+        final = Path(dest) / "src/pipeline/data-final-fixes.lua"
         text = final.read_text()
         gate = 'if config.planetary_resources == true then\n    planet_resource_profiles.execute()\nend'
         assert text.count(gate) == 1

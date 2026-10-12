@@ -1,0 +1,145 @@
+-- Run from the mod root: lua tests/unit/randomizations/rebuild/test-rebuild-research.lua
+-- Exercise the actual rebuild when removing old tech prerequisites changes the earliest recipe unlock.
+function table.deepcopy(value)
+    if type(value) ~= "table" then
+        return value
+    end
+    local copy = {}
+    for key, child in pairs(value) do
+        copy[key] = table.deepcopy(child)
+    end
+    return copy
+end
+function log(message) end
+serpent = { block = tostring }
+mods = {}
+config = { operation_readiness = false }
+randomizations = {}
+
+local logic = {
+    contexts = { home = true },
+    type_info = {},
+    home_sets = {
+        ids = {},
+        sets = {},
+    },
+}
+package.loaded["src/logic/state"] = logic
+package.loaded["src/logic/init"] = logic
+package.loaded["src/lib/random/rng"] = { int = function() return 1 end }
+package.loaded["src/prototypes/data-utils"] = { get_prot = function() return nil end }
+package.loaded["src/localisation/locale"] = { find_localised_name = function(recipe) return recipe.name end }
+package.loaded["src/prototypes/duplicates/dupe"] = {
+    get_recipe_icons = function() return {} end,
+    technology_icons = function(icons) return icons end,
+}
+package.loaded["src/prototypes/technology/technology-abilities"] = { bundle = function() return {} end }
+package.loaded["src/prototypes/entities/fluid-ports"] = {}
+package.loaded["src/prototypes/recipes/recycling"] = {}
+package.loaded["src/logic/builders/recycling-sources"] = {}
+package.loaded["src/prototypes/entities/crafter-slots"] = {}
+
+local gutils = require("src/lib/graph/graph-utils")
+require("src/randomizations/rebuild/init")
+-- Games are built like logic.build builds them: concrete.lua's unlock nodes, contracted where one technology unlocks a recipe (src/logic/analysis/unlock-contraction.lua), and pass-through nodes left out (src/logic/analysis/pass-through.lua)
+local pass_through = require("src/logic/analysis/pass-through")
+local reductions = require("src/logic/analysis/reductions")
+local unlock_contraction = require("src/logic/analysis/unlock-contraction")
+
+data = { raw = {} }
+data.raw.lab = {}
+data.raw.recipe = {}
+data.raw.technology = {}
+function data:extend(prototypes)
+    for _, prototype in pairs(prototypes) do
+        self.raw[prototype.type][prototype.name] = prototype
+    end
+end
+
+local function recipe(name)
+    data.raw.recipe[name] = {
+        type = "recipe",
+        name = name,
+        enabled = false,
+        results = {},
+    }
+end
+local function tech(name, unlocked, trigger)
+    local prototype = {
+        type = "technology",
+        name = name,
+    }
+    prototype.effects = {
+        {
+            type = "unlock-recipe",
+            recipe = unlocked,
+        },
+    }
+    if trigger == true then
+        prototype.research_trigger = {
+            type = "craft-item",
+            item = "test-trigger-material",
+            count = 630,
+        }
+    else
+        prototype.unit = {
+            count = 1,
+            ingredients = {},
+        }
+    end
+    data.raw.technology[name] = prototype
+end
+
+recipe("test-material-recipe")
+recipe("test-target-recipe")
+tech("test-material-tech", "test-material-recipe")
+tech("test-copied-tech", "test-target-recipe", true)
+tech("test-alternate-tech", "test-target-recipe")
+UNIFIED_TRIGGER_TAKERS = { ["test-original-trigger"] = { "test-copied-tech" } }
+
+logic.build = function()
+    local graph = {
+        nodes = {},
+        edges = {},
+        sources = {},
+    }
+    local function node(kind, name, op, pres)
+        logic.type_info[kind] = logic.type_info[kind] or {}
+        local created = gutils.add_node(graph, kind, name, { op = op })
+        local key = gutils.key(created)
+        for _, pre in pairs(pres or {}) do
+            gutils.add_edge(graph, pre, key)
+        end
+        return key
+    end
+    local start = node("start", "", "AND")
+    local material_tech = node("technology", "test-material-tech", "AND", { start })
+    local material = node("recipe", "test-material-recipe", "AND", { node("recipe-unlock", "test-material-recipe", "OR", { node("recipe-tech-unlock", "test-material-recipe", "OR", { material_tech }) }) })
+    local trigger = node("technology-trigger", "test-copied-tech", "OR", { material })
+    local copied = node("technology", "test-copied-tech", "AND", { trigger })
+    local alternate = node("technology", "test-alternate-tech", "AND", {
+        start,
+        copied,
+    })
+    local unlock = node("recipe-tech-unlock", "test-target-recipe", "OR", {
+        copied,
+        alternate,
+    })
+    node("recipe", "test-target-recipe", "AND", { node("recipe-unlock", "test-target-recipe", "OR", { unlock }) })
+    if reductions.enabled then
+        unlock_contraction.contract(graph)
+        pass_through.contract(graph)
+    end
+    logic.graph = graph
+end
+
+randomizations.rebuild_tech_tree()
+local rebuilt = data.raw.technology["exfret-rebuilt-test-target-recipe-suffix"]
+assert(rebuilt.research_trigger.item == "test-trigger-material")
+assert(rebuilt.research_trigger.count == 630)
+assert(#rebuilt.prerequisites == 1)
+assert(rebuilt.prerequisites[1] == "exfret-rebuilt-test-material-recipe-suffix")
+assert(data.raw.technology["test-copied-tech"].hidden == true)
+assert(#UNIFIED_TRIGGER_TAKERS["test-original-trigger"] == 1)
+assert(UNIFIED_TRIGGER_TAKERS["test-original-trigger"][1] == rebuilt.name)
+print("ok - rebuilt trigger technology requires its crafting recipe despite an earlier alternate unlock")

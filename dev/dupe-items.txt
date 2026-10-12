@@ -6,7 +6,7 @@
 # as in dev/dupe-entities.txt, away from the paint's and any avoid= hues (palette=vivid: the strong colors all around the
 # wheel instead of the muted ones). What gets recolored: the item's icon and
 # belt pictures, the icons of the recipes that make it, the grid sprite of the equipment it places and, for an armor, the
-# character's animation sheets for it (lib/dupe.lua copies the animations for the armor's dupe).
+# character's animation sheets for it (src/prototypes/duplicates/dupe.lua copies the animations for the armor's dupe).
 # Check a line with: dev/make-dupe-graphics.py --dump ... --inspect DIR --only NAME
 #
 # Modules: the body plate is the paint, the bulbs keep their own color where it differs. Each kind's dupes stay away from
@@ -42,7 +42,7 @@ exoskeleton-equipment grey val=0.3 smax=0.25 dupes=30,185
 personal-roboport-equipment hue=40 half=25 sat=0.2 dupes=130,355
 toolbelt-equipment hue=25 half=20 sat=0.3 dupes=130,185
 
-# Science packs: copied only with their planet's copy (lib/dupe-planets.lua), each locked to that copy. The flask's liquid is
+# Science packs: copied only with their planet's copy (src/prototypes/duplicates/dupe-planets.lua), each locked to that copy. The flask's liquid is
 # the paint. A pack copy has no number badge (user, 2026-09-30), so its color alone has to tell it apart: no copy shares a
 # color with a pack of the same flask shape (base packs are conical: red 0, gold 42, green 122, cyan 196, violet 277, grey,
 # white; Space Age's round: orange 27, chartreuse 67, blue 236, navy 244, magenta 330), and the copies all differ. Only the

@@ -1,4 +1,4 @@
-local gutils = require("lib/graph/graph-utils")
+local gutils = require("src/lib/graph/graph-utils")
 
 local test_graph_invariants = {}
 

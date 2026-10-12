@@ -139,10 +139,10 @@ def main():
         original_snapshot(dest, ref, staged, source_dir)
         with (Path(dest) / "data-updates.lua").open("a") as updates:
             updates.write(SELECTOR_FIXTURES)
-        module = Path(dest) / "lib/planet-sounds.lua"
+        module = Path(dest) / "src/randomizations/planetary/planet-sounds.lua"
         module.write_text(module.read_text().replace("return planet_sounds\n", CHECK + "\nreturn planet_sounds\n"))
         if args.isolated:
-            final = Path(dest) / "data-final-fixes.lua"
+            final = Path(dest) / "src/pipeline/data-final-fixes.lua"
             gate = "if config.planet_names == true then\n    planet_sounds.execute()\nend\n"
             text = final.read_text()
             assert text.count(gate) == 1, "Production audio gate was not found"

@@ -7,7 +7,7 @@
 #   smoke:    defaults, and every covered visible setting at its last value (true for bools, the maximum for numbers)
 #   settings: each non-default value of each covered visible setting on its own, then pairwise combinations (every two values of two settings meet in some config)
 #   unified:  all unified-* bools on over several seeds (never with other settings: randomizations still in development are only tested in isolation)
-#             No config per unified-* setting: while dev-unified is on, randomizations/graph/unified/execute.lua runs its own handler list whatever they say, so those would only repeat this on other seeds
+#             No config per unified-* setting: while dev-unified is on, src/randomizations/unified/execute.lua runs its own handler list whatever they say, so those would only repeat this on other seeds
 # Plus the hand-picked configs at the bottom
 
 # wip SUITE: the suite is still being worked on, so its failures are reported but don't fail the run
@@ -79,14 +79,14 @@ pin dev-unified=false preview preview-with-graph preview-rewards reduction-check
 config unit-tests smoke nocheck=reachability,mechcheck test-unit=true
 # The unified preview as releases have it (dev-unified off), so the preview alone has to turn on the unified randomizations still in development
 config preview unified seeds=1,2,3,4 unified-preview=true dev-unified=false operation-readiness=false
-# The preview with every logic build made twice, full and reduced (lib/logic/reductions.lua), compared each time (hidden setting test-reductions, lib/logic/reduction-check.lua); a run fails on any build where they disagree
+# The preview with every logic build made twice, full and reduced (src/logic/analysis/reductions.lua), compared each time (hidden setting test-reductions, src/logic/analysis/reduction-check.lua); a run fails on any build where they disagree
 config reduction-check unified seeds=1 unified-preview=true dev-unified=false operation-readiness=false test-reductions=true
 # Parked combat experiment: enable military_resistances in source before restoring these profiles.
 # config combat-preview unified seeds=1 dev-unified=true unified-damage-types=true military=more operation-readiness=false
 # config combat-no-cap unified seeds=1 dev-unified=true unified-damage-types=true military=more military-difficulty=no-cap operation-readiness=false
 # Paused operation dependency prototype (2026-10-05); preserve the profile for a future explicit restart.
 # config operation-preview unified seeds=1 unified-preview=true dev-unified=false operation-readiness=true
-# Planet rewards alone with the development handlers: the special machines trade places, each planet's science moves into the machine that arrived there (science_needs and rehome_plan in randomizations/planetary/rewards.lua), and the lock stage's own check keeps or reverts the moves
+# Planet rewards alone with the development handlers: the special machines trade places, each planet's science moves into the machine that arrived there (science_needs and rehome_plan in src/randomizations/planetary/rewards.lua), and the lock stage's own check keeps or reverts the moves
 config rewards unified seeds=1,2,3 dev-unified=true planetary-rewards=true planetary-rewards-rehome=true
 # The foundry alone
 config rewards-foundry unified seeds=1 dev-unified=true planetary-rewards=true planetary-rewards-rehome=true planetary-rewards-only=foundry
@@ -159,6 +159,6 @@ config exclusions-numerical unified seeds=1 dev-unified=true dupes=false logisti
 config exclusions-all unified seeds=1 dev-unified=true dupes=false unified-entity=true logistic=more production=more military=more misc=more overrides=EXCLUDE:all:group/logistics;EXCLUDE:all:prototype/recipe/iron-gear-wheel;EXCLUDE:graph/all:type/assembling-machine
 config exclusions-legacy settings seeds=1 dupes=false recipe=true recipe-tech-unlock=true technology=true logistic=none production=none military=none misc=none overrides=EXCLUDE:graph/all:prototype/recipe/iron-gear-wheel;EXCLUDE:graph/all:prototype/technology/logistics;EXCLUDE:randomization/recipe_ingredients:prototype/recipe/copper-cable
 config exclusions-legacy-item settings seeds=1 dupes=false item=true logistic=none production=none military=none misc=none overrides=EXCLUDE:graph/all:group/logistics;EXCLUDE:randomization/items:prototype/item/iron-plate
-# Independent deposits (randomizations/graph/unified/deposit-copies.lua): without planet copies (coal, stone and crude oil are mined on two planets each), and on the user's usual settings (11-22 minutes and 12-15 GB of memory per game when run alone, 2026-10-07, so give it the machine: --jobs 1)
+# Independent deposits (src/randomizations/unified/deposit-copies.lua): without planet copies (coal, stone and crude oil are mined on two planets each), and on the user's usual settings (11-22 minutes and 12-15 GB of memory per game when run alone, 2026-10-07, so give it the machine: --jobs 1)
 config deposits unified seeds=1,2 dev-unified=true independent-deposits=true
 config dupes-preview-deposits unified seeds=1 unified-preview=true dev-unified=false dupes=true dupe-count=2 operation-readiness=false independent-deposits=true

@@ -2,7 +2,7 @@
 
 local biomes = require("biomes")
 
--- The randomizer panel's softlock warning (scripts/gui.lua) reads this mod data, so the test reads the same numbers
+-- The randomizer panel's softlock warning (src/runtime/panel/gui.lua) reads this mod data, so the test reads the same numbers
 local function log_reachability()
     local reachability = prototypes.mod_data["propertyrandomizer-reachability-data"]
     if reachability == nil then

@@ -58,28 +58,40 @@ Use **Claim neutral entities** in the shortcut bar to select natural ruins or ra
 
 ## Repository map
 
-For a more complete map and more details, see the corresponding [page on the wiki](https://github.com/exfret/propertyrandomizer/wiki/Directory-structure).
+Maintained code lives in `src/`, grouped by responsibility. The project remains one repository and one mod, with shared algorithms kept as internal modules. See [Directory structure](docs/directory-structure.md) for module boundaries and relocation history.
 
 ```text
 root
-|- helper-tables
-|  |- spec.lua .................... List of all randomizations
-|- lib
-|  |- graph
-|  |  |- build-graph.lua .......... Old game logic
-|  |  |- top-sort.lua ............. Old topological sort logic
-|  |- random
-|  |  |- rng.lua .................. Random number generation library
-|- lib
-|  |- graph ....................... Includes new topological sort
-|  |- logic ....................... New game logic
-|- randomizations
-|  |- graph ....................... Graph randomizations (change fundamental game progression)
-|  |  |- unified .................. New unified graph randomizations (run all at once); use new logic/lib
-|  |- misc ........................ Silly randomizations that aren't just changing a number
-|  |- numerical ................... Simply numerical randomizations
-|- config.lua ..................... Settings parsing
-|- data-final-fixes.lua ........... Entry point for randomization
+|- settings.lua, data*.lua, control.lua .. Thin entrypoint loaders
+|- src
+|  |- config ...................... Settings, overrides, flags, randomization registry
+|  |- pipeline .................... Data-stage sequencing, retries, checks, reporting
+|  |- lib
+|  |  |- graph .................... Graph operations and superposition
+|  |  |- sort ..................... Sorting and reachability algorithms
+|  |  |- random ................... RNG, distributions, active experiments
+|  |- logic ....................... Builders, contexts, analysis, shared model state
+|  |- prototypes .................. Queries, construction, reusable edits
+|  |- cost ........................ Maintained cost models and imported cost tables
+|  |- randomizations
+|  |  |- unified .................. Unified progression randomizations and handlers
+|  |  |- planetary ................ Planetary randomizations and feature helpers
+|  |  |- numerical ................ Numerical randomizations
+|  |  |- misc ..................... Other prototype randomizations
+|  |  |- rebuild .................. Rebuild checks and repair helpers
+|  |  |- experimental ............. Active experiments
+|  |- runtime ..................... Panel, explorer, customizer, event helpers
+|  |- localisation ................ Shared text and prototype naming
+|  |- compat ...................... General compatibility patches
+|  |- legacy ...................... Older logic and randomizations with active consumers
+|- graphics, locale ................ Assets and translations
+|- research ....................... Offline solvers, datasets, and experiments
+|- archive ......................... Retained inactive implementations
+|- dev ............................. Testing, profiling, and release tools
+|- tests
+|  |- unit ......................... Standalone Lua and Python tests mirroring src
+|  |- configs.txt .................. Headless test configurations
+|  |- mod-configs .................. Mod sets for headless tests
 ```
 
 ## Development and testing
@@ -91,6 +103,11 @@ The repository includes:
 * a startup-test harness that launches Factorio across multiple mod-list and settings configurations;
 * pedagogical implementations of selected algorithms under `docs/algorithms/`;
 * release scripts for testing, pruning development files, and packaging the mod.
+
+Run the standalone Lua and Python unit tests with `python3 dev/run-unit-tests.py`.
+Use `--list` to see the suite or `--only lib/graph` to select matching paths.
+Tests run in separate processes from the mod root. See [Tests](tests/README.md)
+for the unit-test layout and the separate in-game test suite.
 
 ## Contributing
 

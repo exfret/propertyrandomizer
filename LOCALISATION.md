@@ -20,7 +20,7 @@ where a line break is intended. Leading spaces in tooltip entries separate the
 label from the numerical percentage. Recipe-prefix keys retain the original
 English choices, including spaces; translate only their values.
 
-Prototype names still use the existing rules in `lib/locale.lua`. Generated
+Prototype names still use the existing rules in `src/localisation/locale.lua`. Generated
 names wrap those resolved names as parameters; translators can reorder the full
 phrase. Numerical annotations accept LocalisedStrings for their addons. Shared
 warning parsing keeps English diagnostic strings for existing customizer callers
@@ -37,8 +37,8 @@ search by technical ID. Latin ASCII case is ignored; other scripts currently use
 literal substring matching. Caches reset when the graph is rebuilt or the player
 changes locale.
 
-Checks: `lua lib/test-localisation.lua`, `lua lib/test-customization.lua`, `lua scripts/test-customizer.lua`, and
-`lua scripts/test-explorer-localisation.lua`. The localisation regression checks table
+Checks: `lua tests/unit/localisation/test-localisation.lua`, `lua tests/unit/config/test-customization.lua`, `lua tests/unit/runtime/customizer/test-customizer.lua`, and
+`lua tests/unit/runtime/explorer/test-explorer-localisation.lua`. The localisation regression checks table
 addons, parameter/nesting limits, warning compatibility, translated searches,
 failed translations and stale results. Use `python3 dev/run-tests.py` for startup
 and runtime checks. For visual QA, use a locale with expanded strings and check
@@ -49,7 +49,7 @@ The normal `dev/run-tests.py` runner checks the localization catalogue, runs
 negative tests for the guard, and runs the standalone GUI/localization tests
 against its snapshot before launching Factorio. This also applies to `--staged`.
 Pre-commit audits the staged catalogue and Lua sources. For quick checks, run
-`python3 dev/check-localisation.py` and `python3 dev/test-localisation.py`.
+`python3 dev/check-localisation.py` and `python3 dev/run-unit-tests.py --only localisation`.
 
 The guard rejects literal prose in captions, tooltips, GUI choice lists, chat
 prints, prototype names/descriptions, and label-helper calls. It also rejects

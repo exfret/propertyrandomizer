@@ -1,4 +1,4 @@
-local logic = require("lib/logic/init")
+local logic = require("src/logic/init")
 local entity_acquisition = require("tests/entity-acquisition")
 local graph_op_test = require("tests/graph-operations")
 local consistent_sort = require("tests/consistent-sort")

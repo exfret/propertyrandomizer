@@ -4,7 +4,7 @@
 
 - Keep `require` at module scope, outside function bodies, loops, and other function calls. Bind the module to a local before calling its methods; do not write `require("module").run(...)`, pass `require(...)` as an argument, alias `require`, or pass it to `pcall`.
 - The only allowed conditional loading is a pure mod-existence check: literal `mods["mod-name"]` / `mods.mod_name` or `script.active_mods` lookups, optionally combined with `not`, `and`, `or`, or comparisons to `nil`. Every enclosing condition and preceding `if`/`elseif` branch must satisfy this rule. Settings, feature flags, version checks, and mixed conditions do not qualify.
-- `dev/style-check.py` enforces this as the blocking `require-context` rule through the existing edit, stop, and pre-commit hooks, including active `lib/old-logic/` code. Run `python3 dev/style-check.py --requires-only --all` for a complete working-tree audit, including files excluded from ordinary style checks. Run `python3 dev/test-style-check.py` for its regression tests. Both need the checker's existing tree-sitter dependencies.
+- `dev/style-check.py` enforces this as the blocking `require-context` rule through the existing edit, stop, and pre-commit hooks, including active `src/legacy/logic/` code. Run `python3 dev/style-check.py --requires-only --all` for a complete working-tree audit, including files excluded from ordinary style checks. Run `python3 dev/run-unit-tests.py --only test-style-check` for its regression tests; the runner uses the existing release Python environment when available. Both need the checker's existing tree-sitter dependencies.
 
 ## Game facts: verify or ask, never assume
 
@@ -17,6 +17,7 @@
 - Don't identify prototypes by name or by hardcoded type lists, since other mods add their own. Derive the property from data.raw, identify by node type, or declare a flag where the node is built.
 - Files whose basenames contain "test" may hardcode tables as testing fixtures; these tables do not need individual approval.
 - `dev/hardcoded-names.py` flags Lua tables that hardcode API class/type names or vanilla prototype names. Each flagged table needs the user's approval: show them the table and why the names can't be derived, then run `python3 dev/hardcoded-names.py --approve <ids>`, which asks them in a permission prompt.
+- `dev/module-moves.json` records relocation history. The checker preserves existing approvals for the exact same name sets and compares moved tables with their original Git baseline, so unchanged tables are not treated as additions. New tables, added names, and substantive table edits remain checked; copies with their originals still present do not inherit relocation treatment.
 
 ## Test failures: don't overfit
 
