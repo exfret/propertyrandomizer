@@ -297,6 +297,18 @@
   "entity-build-tile": {
    "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
   },
+  "entity-build-tile-layout": {
+   "approved": "2026-10-13T19:46:49",
+   "note": "Where a building with tile buildability rules can be placed: per building an OR of grid layouts, each an AND of footprint regions, each an OR of tile collision groups (src/logic/builders/tile-requirements.lua)"
+  },
+  "entity-build-tile-region": {
+   "approved": "2026-10-13T19:46:49",
+   "note": "Where a building with tile buildability rules can be placed: per building an OR of grid layouts, each an AND of footprint regions, each an OR of tile collision groups (src/logic/builders/tile-requirements.lua)"
+  },
+  "entity-build-tile-rules": {
+   "approved": "2026-10-13T19:46:49",
+   "note": "Where a building with tile buildability rules can be placed: per building an OR of grid layouts, each an AND of footprint regions, each an OR of tile collision groups (src/logic/builders/tile-requirements.lua)"
+  },
   "entity-buildability": {
    "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
   },
@@ -626,6 +638,10 @@
   },
   "plant-entity-surface-condition-true": {
    "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "projectile-package": {
+   "approved": "2026-10-13T19:51:05",
+   "note": "An ammo or capsule item's shot (projectile or stream and its payload) as its own acquisition, so unified entity randomization can move shots between items (src/randomizations/unified/handler-helpers/projectile-packages.lua)"
   },
   "pump": {
    "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
