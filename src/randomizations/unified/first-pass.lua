@@ -11,7 +11,7 @@ local EXCLUDE_SCIENCE = true
 local EXCLUDE_RECIPES = true
 local EXCLUDE_TECHS = true
 local EXCLUDE_ENTITY_OPERATE = true
--- How many rounds of monotone matching to iterate (each starts from the last round's matching)
+-- How many rounds of monotone matching should keep a new matching (each starts from the last round's matching); rounds go on until this many do, or as many keep the previous one
 local MONOTONE_MATCHING_ROUNDS = 3
 -- Whether items and fluids trade positions after the rounds, off for now (user, 2026-10-09): gating each trade with a whole-game sort took about 14 of first pass's 20 minutes per attempt in a load with planet copies; parked in notes/wip.txt
 local FORM_SWAPS = false

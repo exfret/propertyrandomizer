@@ -4,10 +4,11 @@
 -- A round starts from a valid matching (the identity matching in round 1) and its graph:
 --   1. Take a random complex sort of that graph, and prove every pebble that must keep its exact context in it (protected mechanics and planet-locked recipes; backings go to strictly earlier pebbles)
 --   2. A trav's needs are the contexts in which those proofs use the identity (see needs_from_proof for which uses count)
---   3. A slot is admissible for a trav if its type and cost fit and, for each need, the slot has a pebble in that context ranked before the trav's; the trav's current slot is always admissible
+--   3. A slot is admissible for a trav if its type and cost fit and, for each need, the slot has a pebble in that context ranked before the trav's, not counting what the trav it holds now brings it (see position_backing); the trav's current slot is always admissible
 --   4. Take a random perfect matching of the admissibility graph (it exists, since the current matching is one), and replace it by the one reflection realizes (params.realize)
---   5. Gate: sort the new graph, and if a hard pebble was lost, add the blocked trav pebbles of its witness to the needs and redo 3-5
+--   5. Gate: sort the new graph, and if a hard pebble was lost, add the blocked trav pebbles of its witness (and of what backs the new slots of blocked travs that moved) to the needs and redo 3-5
 -- Needs only grow and the current matching always passes, so every round ends with a valid matching
+-- A round whose refinements run out keeps the previous matching; rounds go on until params.rounds of them kept a new one, or as many kept the previous one (then a MATCHINGFLAG line says so)
 -- The proofs pick one provider per OR (the earliest that works), so an identity is only pinned where the proof actually uses it: another provider that comes first frees it in the next round
 -- The gate is what guarantees the result; the proofs only make the proposals likely to pass
 -- Sorts use home contexts, so the tech discovery rule is monotone too (see context-sort.lua); first pass's own gate afterward still checks with a fresh sort and retries if needed
@@ -453,6 +454,125 @@ local function is_new_resource_trav(params, slot_key, trav_key)
     return trav_key ~= params.unconnected_graph.nodes[slot_key].old_trav and params.is_interesting(trav_key) and (params.is_new_resource_pair == nil or params.is_new_resource_pair(slot_key, trav_key))
 end
 
+-- Where a slot gets a context for a trav moving in: the earliest pebble of the connection's start (see connection_of) in a context that arrives in the given one through it
+-- The edges from the trav the slot holds now (connect's back edge, into a fluid position's making for a fluid) don't count, since they're that identity's own sources and leave with it
+-- Seen on seed 1 (2026-10-12): the artificial jellynut soil position had Fulgora's isolatable context only from the stone brick identity it held, so an identity needing that context moved there and lost it, and refinement had nothing to pin.
+-- The memo (optional) is a table for one graph and matching, which keeps what each slot's own sources give it
+-- Returns the start's rank in the sort and the pebbles that back it without the held trav (just that pebble when the held trav adds nothing to it), or nil if there are none
+local function position_backing(params, graph, sort_info, assignment, slot_key, trav_key, context, memo)
+    local nci = sort_info.node_to_context_inds
+    local connection = connection_of(params, slot_key, trav_key)
+    local start_key = connection.base or slot_key
+    local sources = { context }
+    if connection.abilities ~= nil then
+        sources = top.edge_source_contexts(sort_info, connection, context)
+    end
+    local start_inds = nci[start_key] or {}
+    local start_ind
+    local start_context
+    for _, source in pairs(sources) do
+        if start_inds[source] ~= nil and (start_ind == nil or start_inds[source] < start_ind) then
+            start_ind = start_inds[source]
+            start_context = source
+        end
+    end
+    if start_ind == nil then
+        return nil
+    end
+    -- A carrier's base (an entity position's connection) isn't the slot, so the held trav has no edge into it
+    if connection.base ~= nil then
+        return start_ind, { start_ind }
+    end
+    if memo ~= nil then
+        memo[slot_key] = memo[slot_key] or {}
+        local cached = memo[slot_key][start_context]
+        if cached ~= nil then
+            if cached == false then
+                return nil
+            end
+            return start_ind, cached
+        end
+    end
+
+    local held = assignment[slot_key]
+    local function has_held_edge(node)
+        for pre, _ in pairs(node.pre or {}) do
+            if graph.edges[pre].start == held then
+                return true
+            end
+        end
+        return false
+    end
+    -- The earliest pebble of an edge's start that brings the context through it
+    local function edge_ind(edge_key)
+        local edge = graph.edges[edge_key]
+        local context_inds = nci[edge.start] or {}
+        if edge.abilities == nil and top.edge_keeps_context(sort_info, edge, start_context) then
+            return context_inds[start_context]
+        end
+        local best
+        for _, source in pairs(top.edge_source_contexts(sort_info, edge, start_context)) do
+            if context_inds[source] ~= nil and (best == nil or context_inds[source] < best) then
+                best = context_inds[source]
+            end
+        end
+        return best
+    end
+    -- An OR node's earliest prerequisite other than the held trav (slot nodes and a fluid's making keep their contexts)
+    local function or_backing(node)
+        local best
+        for pre, _ in pairs(node.pre) do
+            if graph.edges[pre].start ~= held then
+                local i = edge_ind(pre)
+                if i ~= nil and (best == nil or i < best) then
+                    best = i
+                end
+            end
+        end
+        return best
+    end
+    local start = graph.nodes[start_key]
+    local backing = { start_ind }
+    if start.op == "OR" and has_held_edge(start) then
+        backing = { or_backing(start) }
+        if backing[1] == nil then
+            backing = false
+        end
+    elseif start.op == "AND" then
+        -- A fluid position: each prerequisite, its making without the held trav
+        local makings = {}
+        for pre, _ in pairs(start.pre or {}) do
+            local prenode = gutils.prenode(graph, pre)
+            if prenode.op == "OR" and has_held_edge(prenode) then
+                makings[pre] = prenode
+            end
+        end
+        if next(makings) ~= nil then
+            backing = {}
+            for pre, _ in pairs(start.pre) do
+                local i
+                if makings[pre] ~= nil then
+                    i = or_backing(makings[pre])
+                else
+                    i = edge_ind(pre)
+                end
+                if i == nil then
+                    backing = false
+                    break
+                end
+                table.insert(backing, i)
+            end
+        end
+    end
+    if memo ~= nil then
+        memo[slot_key][start_context] = backing
+    end
+    if backing == false then
+        return nil
+    end
+    return start_ind, backing
+end
+
 -- Random perfect matching of travs to admissible slots (Kuhn's algorithm with shuffled candidates, current slot tried last)
 -- With params.is_resource_slot, resource slots then get travs that make them mine something new (see is_new_resource_trav) wherever the matching allows it
 -- Returns the matching
@@ -468,6 +588,7 @@ local function random_matching(params, graph, sort_info, needs, requires_launcha
     table.sort(slots)
     table.sort(travs)
     local nci = sort_info.node_to_context_inds
+    local backing_memo = {}
 
     local admissible = {}
     for _, trav_key in pairs(travs) do
@@ -482,23 +603,21 @@ local function random_matching(params, graph, sort_info, needs, requires_launcha
                     is_admissible = false
                 end
                 if is_admissible then
-                    -- Ranks are the connection's: its start (the slot unless the connection says otherwise) in any context that arrives in the need's through it
-                    local connection = connection_of(params, slot_key, trav_key)
-                    local start_inds = nci[connection.base or slot_key] or {}
+                    -- Ranks are the connection's: its start (the slot unless the connection says otherwise) in any context that arrives in the need's through it, and what backs that without the trav the slot holds now (see position_backing)
                     for context, _ in pairs(needs[trav_key] or {}) do
-                        local slot_ind
-                        local sources = { context }
-                        if connection.abilities ~= nil then
-                            sources = top.edge_source_contexts(sort_info, connection, context)
-                        end
-                        for _, source in pairs(sources) do
-                            if start_inds[source] ~= nil and (slot_ind == nil or start_inds[source] < slot_ind) then
-                                slot_ind = start_inds[source]
-                            end
-                        end
                         local trav_ind = (nci[trav_key] or {})[context]
+                        local slot_ind, backing = position_backing(params, graph, sort_info, assignment, slot_key, trav_key, context, backing_memo)
                         if slot_ind == nil or trav_ind == nil or slot_ind >= trav_ind then
                             is_admissible = false
+                            break
+                        end
+                        for _, i in pairs(backing) do
+                            if i >= trav_ind then
+                                is_admissible = false
+                                break
+                            end
+                        end
+                        if not is_admissible then
                             break
                         end
                     end
@@ -667,8 +786,14 @@ end
 local BLOCKED_PEBBLES_LIMIT = 300
 
 -- Trav pebbles on the witnesses (in the previous graph) of the lost pebbles that are missing from the new sort
-local function blocked_travs(graph, sort_info, lost, new_sort)
+-- A missing trav pebble that moved now gets its context through its new slot, so the witnesses of what backs that slot (see position_backing) count too
+-- Without them, a pinned trav whose new slot lost the context only blocks itself, which is pinned already, and the round gives up with nothing added.
+local function blocked_travs(params, graph, sort_info, assignment, lost, new_assignment, new_sort)
     local blocked = {}
+    local new_slot_of = {}
+    for slot_key, trav_key in pairs(new_assignment) do
+        new_slot_of[trav_key] = slot_key
+    end
     local earliest = {}
     for _, pebble in pairs(lost) do
         local ind = (sort_info.node_to_context_inds[pebble.node_key] or {})[pebble.context]
@@ -684,15 +809,33 @@ local function blocked_travs(graph, sort_info, lost, new_sort)
         earliest[n] = nil
     end
     -- Only the union of the witnesses matters. Trace them together so shared prerequisites are visited once (top.path picks the same backing regardless of the other goals).
-    for i, _ in pairs(top.path(graph, earliest, sort_info).in_path) do
-        local node_key = sort_info.pebble_keys[i]
-        local context = sort_info.pebble_contexts[i]
-        if graph.nodes[node_key].trav == true and (new_sort.node_to_context_inds[node_key] or {})[context] == nil then
-            blocked[node_key .. " @ " .. context] = {
-                node_key = node_key,
-                context = context,
-            }
+    local traced = {}
+    local goals = earliest
+    while #goals > 0 do
+        local next_goals = {}
+        for i, _ in pairs(top.path(graph, goals, sort_info).in_path) do
+            if traced[i] == nil then
+                traced[i] = true
+                local node_key = sort_info.pebble_keys[i]
+                local context = sort_info.pebble_contexts[i]
+                if graph.nodes[node_key].trav == true and (new_sort.node_to_context_inds[node_key] or {})[context] == nil then
+                    blocked[node_key .. " @ " .. context] = {
+                        node_key = node_key,
+                        context = context,
+                    }
+                    local slot_key = new_slot_of[node_key]
+                    if slot_key ~= nil and assignment[slot_key] ~= node_key then
+                        local _, backing = position_backing(params, graph, sort_info, assignment, slot_key, node_key, context)
+                        for _, j in pairs(backing or {}) do
+                            if traced[j] == nil then
+                                table.insert(next_goals, j)
+                            end
+                        end
+                    end
+                end
+            end
         end
+        goals = next_goals
     end
     return blocked
 end
@@ -777,7 +920,8 @@ end
 --   slot_to_base, trav_to_head: first pass's connector nodes
 --   pair_ok(slot, trav): whether the trav can go in the slot (their costs fit, and item reflection's special rules allow it)
 --   cross_type_ok(slot, trav) (optional): whether a trav can go in a slot of another node type at all (pair_ok still has to allow it too); without it, slots only take travs of their own type
---   rounds: how many rounds to iterate (each starts from the last round's matching)
+--   rounds: how many rounds should keep a new matching (each starts from the last round's matching)
+--   max_failed_rounds (optional, rounds when nil): how many rounds may keep the previous matching instead before the rounds stop anyway
 --   is_resource_slot(slot_key), is_interesting(trav_key) (optional): see random_matching
 --   recipe_may_vanish(node_key) (optional): recipes the gate doesn't hold on to (see hard_pebbles)
 --   realize(assignment) (optional): the matching the game will actually have, which is what gets gated and returned
@@ -811,7 +955,13 @@ matching.run = function(params)
         return is_launchable[trav_key] == true
     end
 
-    for round = 1, params.rounds do
+    -- Rounds go on until params.rounds of them kept a new matching, or params.max_failed_rounds kept the previous one because their proposals kept losing hard pebbles (user, 2026-10-12: a round that does nothing is as bad as a failure)
+    local max_failed_rounds = params.max_failed_rounds or params.rounds
+    local num_kept_rounds = 0
+    local num_failed_rounds = 0
+    local round = 0
+    while num_kept_rounds < params.rounds and num_failed_rounds < max_failed_rounds do
+        round = round + 1
         -- Recipe anchors are left to the gate (their needs would be too strict), but planet-locked recipes keep exact contexts, so they're proved like mechanics
         local closure, support, failed = make_prover(graph, sort_info).prove(goal_inds_of(exact, sort_info))
         if #failed > 0 then
@@ -823,6 +973,7 @@ matching.run = function(params)
         local new_assignment
         local new_graph
         local new_sort
+        local round_failed = false
         while true do
             new_assignment = random_matching(params, graph, sort_info, needs, requires_launchable, assignment, rng.key({ id = "monotone-matching-" .. round .. "-" .. num_refinements }))
             new_assignment = realize(params, new_assignment)
@@ -832,7 +983,7 @@ matching.run = function(params)
             if #lost == 0 then
                 break
             end
-            local blocked = blocked_travs(graph, sort_info, lost, new_sort)
+            local blocked = blocked_travs(params, graph, sort_info, assignment, lost, new_assignment, new_sort)
             local num_added = 0
             for _, q in pairs(blocked) do
                 needs[q.node_key] = needs[q.node_key] or {}
@@ -849,6 +1000,7 @@ matching.run = function(params)
                 new_assignment = assignment
                 new_graph = graph
                 new_sort = sort_info
+                round_failed = true
                 break
             end
         end
@@ -859,10 +1011,18 @@ matching.run = function(params)
             end
         end
         local num_resources, num_new_resources = count_new_resources(params, new_assignment)
-        log("Monotone matching: round " .. round .. " done with " .. num_refinements .. " refinements; " .. num_moved .. " identities moved; " .. num_new_resources .. " of " .. num_resources .. " resource slots mine something new")
+        if round_failed then
+            num_failed_rounds = num_failed_rounds + 1
+        else
+            num_kept_rounds = num_kept_rounds + 1
+        end
+        log("Monotone matching: round " .. round .. " done with " .. num_refinements .. " refinements, " .. (round_failed and "kept the previous matching" or "kept a new matching") .. "; " .. num_moved .. " identities moved; " .. num_new_resources .. " of " .. num_resources .. " resource slots mine something new")
         assignment = new_assignment
         graph = new_graph
         sort_info = new_sort
+    end
+    if num_failed_rounds >= max_failed_rounds then
+        log("MATCHINGFLAG Monotone matching: " .. num_failed_rounds .. " rounds kept the previous matching and only " .. num_kept_rounds .. " kept a new one, so first pass moved less than it should have")
     end
 
     -- Positions of different forms trade identities afterwards (params.form_swaps, items and fluids trading positions, see src/randomizations/unified/item-fluid.lua): such a trade moves recipes to other crafters, which the needs above can't repair, so trades are gated like a round and kept only when nothing is lost

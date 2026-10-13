@@ -205,6 +205,46 @@ test("a resource slot keeps its identity when every perfect matching needs that"
     assert(count_matches(graph, params, needs, sort_info, assignment_of(names, {}), "plain-ore", "plain-ore") == NUM_KEYS)
 end)
 
+test("a slot only supplies a need through its own sources, not the trav it holds now", function()
+    -- The fed slot has context C early, but only from its held identity's own sources (connect's back edge), which leave with that identity
+    -- The own slot has C a little later from a source of its own, so the pinned identity can go there but not to the fed slot
+    -- Seen on seed 1 (2026-10-12): the artificial jellynut soil position had Fulgora's isolatable context only from the stone brick identity it held.
+    local names = {
+        "pinned",
+        "fed",
+        "own",
+        "filler",
+    }
+    local graph, params = toy(names, {}, {})
+    graph.sources = {}
+    for _, node in pairs(graph.nodes) do
+        node.pre = {}
+        node.dep = {}
+        node.num_pre = 0
+        node.op = "OR"
+    end
+    gutils.add_node(graph, "item", "source")
+    gutils.add_edge(graph, key("item", "fed-trav"), key("item", "fed"))
+    gutils.add_edge(graph, key("item", "own-trav"), key("item", "own"))
+    gutils.add_edge(graph, key("item", "source"), key("item", "own"))
+    local sort_info = {
+        node_to_context_inds = {
+            [key("item", "fed-trav")] = { C = 1 },
+            [key("item", "fed")] = { C = 2 },
+            [key("item", "source")] = { C = 3 },
+            [key("item", "own")] = { C = 4 },
+            [key("item", "pinned")] = { C = 5 },
+            [key("item", "pinned-trav")] = { C = 6 },
+        },
+    }
+    local needs = {
+        [key("item", "pinned-trav")] = { C = true },
+    }
+    local assignment = assignment_of(names, {})
+    assert(count_matches(graph, params, needs, sort_info, assignment, "fed", "pinned") == 0)
+    assert(count_matches(graph, params, needs, sort_info, assignment, "own", "pinned") > 0)
+end)
+
 test("a trav's needs are checked where its connection starts, like a carried entity's kill", function()
     -- The early slot comes before the carried identity in context C, but connecting them starts at a gate that only comes after it
     local names = { "early", "carried", "filler" }
