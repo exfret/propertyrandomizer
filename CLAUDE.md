@@ -19,6 +19,13 @@
 - `dev/hardcoded-names.py` flags Lua tables that hardcode API class/type names or vanilla prototype names. Each flagged table needs the user's approval: show them the table and why the names can't be derived, then run `python3 dev/hardcoded-names.py --approve <ids>`, which asks them in a permission prompt.
 - `dev/module-moves.json` records relocation history. The checker preserves existing approvals for the exact same name sets and compares moved tables with their original Git baseline, so unchanged tables are not treated as additions. New tables, added names, and substantive table edits remain checked; copies with their originals still present do not inherit relocation treatment.
 
+## New node types need the user's approval
+
+- Every dependency graph node type adds nodes, and contexts for each of them, to every graph the randomizer builds and sorts, so a new one changes load time and what the logic models. Model with the node types that exist where you can.
+- `dev/node-types.py` finds every node type `src/` can create, including through wrappers like `builder.add_node`; `dev/node-types.json` holds the approved ones. For each new type, show the user where it's created, what it models and roughly how many nodes it adds, then run `python3 dev/node-types.py --approve --note "<what it models>" <types>`, which asks them in a permission prompt. Never edit `dev/node-types.json` yourself.
+- A type the checker can't read (`node.type .. "-x"`, a loop variable) is a dynamic site, approved by its id; prefer string literals or names assigned one.
+- The Stop and pre-commit hooks and `tests/unit/dev/test-node-types.py` enforce this.
+
 ## Test failures: don't overfit
 
 - Some failing seeds (`dev/check-seeds.py`) and failing configs (`dev/run-tests.py`, also run by the pre-commit hook) are expected while the randomizer is in development; up to 30-50% of seeds failing is acceptable.

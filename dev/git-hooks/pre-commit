@@ -13,6 +13,8 @@ if git diff --cached --name-only | grep -q '^graphics/dupes/'; then
 fi
 python3 "$root/dev/style-check.py" --staged
 python3 "$root/dev/check-localisation.py" --staged
+# New dependency graph node types need the user's approval (dev/node-types.json)
+python3 "$root/dev/node-types.py" --staged
 if git diff --cached --name-only | grep -qE '\.lua$|^info\.json$|^locale/|^tests/'; then
     python3 "$root/dev/run-tests.py" --tier precommit --staged
 fi

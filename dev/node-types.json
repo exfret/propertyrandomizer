@@ -1,0 +1,925 @@
+{
+ "about": "Node types the dependency graphs may contain, each approved by the user (dev/node-types.py, tests/unit/dev/test-node-types.py). Entries are added only by python3 dev/node-types.py --approve after the user agrees. Baseline entries were in the committed code when approvals started.",
+ "dynamic_sites": {
+  "1b9ae4c7": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12",
+   "expression": "record.type",
+   "file": "src/logic/analysis/pass-through.lua",
+   "note": "Puts back a node pass-through contraction left out, with the type it had"
+  },
+  "459b5a88": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12",
+   "expression": "node.type",
+   "file": "src/randomizations/unified/first-pass.lua",
+   "note": "First pass's traveler copy of a slot node, with the slot's own type"
+  },
+  "9eb044d6": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12",
+   "expression": "node.type .. \"-ingredient\"",
+   "file": "src/randomizations/unified/handlers/item-ingredients.lua",
+   "note": "item-ingredient and fluid-ingredient, for item and fluid nodes only"
+  }
+ },
+ "types": {
+  "agricultural-tower": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "agricultural-tower-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "ammo-category": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "ammo-category-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "assembling-machine": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "asteroid-chunk": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "asteroid-chunk-mine": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "asteroid-collection-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "asteroid-collector": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "balance-gun-turret": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "balance-mechanics-ammo": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "balance-mechanics-construction-robot": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "balance-mechanics-crafting-automation": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "balance-mechanics-inserter": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "balance-mechanics-logistic-storage": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "balance-mechanics-mining-drill": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "balance-mechanics-no-big-electric-pole": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "balance-mechanics-pipe": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "balance-mechanics-pipe-to-ground": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "balance-mechanics-pump": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "balance-mechanics-roboport": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "balance-mechanics-splitter": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "balance-mechanics-storage": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "balance-mechanics-transport-belt": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "balance-mechanics-underground-belt": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "balance-rocket": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "base": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "build-entity": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "build-entity-item": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "build-entity-item-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "build-entity-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "build-entity-surface-condition-false": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "build-entity-surface-condition-true": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "build-tile": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "build-tile-item-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "build-tile-item-surface-buildability": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "build-tile-item-surface-with-item": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "build-tile-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "burn-item": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "burn-item-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "capsule-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "capture-robot": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "capture-spawner": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "capture-spawner-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "cargo-landing-pad": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "cargo-landing-pad-planet": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "character": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "chemical-fuel": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "combat-encounter": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "combat-target": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "combat-weapon": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "construction-robot": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "cost-unit": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "craft-material": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "craft-material-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "create-fluid": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "create-fluid-offshore-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "create-fluid-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "create-platform": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "create-space-platform": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "create-space-platform-tech-unlock": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "damage-category-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "damage-type": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "deal-damage-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "deliver": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "electric-pole": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "electricity-distribution-space-platform": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "electricity-distribution-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "electricity-production-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "electricity-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "enemy-evolution": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "energy-source-burner": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "energy-source-electric": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "energy-source-electric-distribution": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "energy-source-electric-production": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "energy-source-electric-production-lightning": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "energy-source-electric-production-lightning-capture": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "energy-source-electric-production-lightning-existence": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "energy-source-fluid": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "energy-source-heat": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "energy-source-heat-distribution": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "energy-source-heat-production": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "energy-source-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "energy-source-void": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-build": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-build-architecture": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-build-item": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-build-rail": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-build-rail-group": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-build-surface-condition": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-build-tile": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-buildability": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-buildability-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-buildability-surface-true": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-capture-spawner": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-character": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-collision-group": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-harvest": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-kill": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-mine": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-operate": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-operate-fluid": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-operate-py-module": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-own": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-own-bootstrap": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-own-bootstrap-rooms": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-own-operable": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-own-space": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-rocket-silo": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "entity-spawn": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "equipment": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "equipment-category": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "equipment-category-powered": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "equipment-grid": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "equipment-grid-power-source": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "equipment-grid-powered": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "equipment-operate": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "equipment-operate-power": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "equipment-place": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "false": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "fluid": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "fluid-craft": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "fluid-craft-temperature": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "fluid-create": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "fluid-create-offshore-temperature": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "fluid-create-temperature": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "fluid-hold": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "fluid-identity-source": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "fluid-ingredient": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "fluid-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "fluid-temperature": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "fluid-temperature-range": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "fuel-category": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "fuel-category-burn": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "fuel-category-burner": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "fuel-category-burner-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "fuel-category-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "group-construction-robot": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "group-crafting-automation": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "group-electric-mining-drill": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "group-inserter": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "group-logistic-storage-chest": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "group-mining-drill": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "group-pump": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "group-repair-pack": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "group-roboport": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "group-rocket-turret": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "group-splitter": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "group-starter-ammo": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "group-storage": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "group-supply": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "group-transport-belt": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "group-underground-belt": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "gun-ammo-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "gun-category-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "head": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "heat-distribution-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "heat-production-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "heat-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "hold-fluid-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "inserter": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "item": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "item-ammo": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "item-burn": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "item-capsule": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "item-craft": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "item-deliver": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "item-gun": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "item-ingredient": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "item-launch": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "item-slot": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "item-space-platform": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "item-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "kill-entity-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "launch": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "lightning-safe": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "logic-and": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "logic-or": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "loot-entity": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "loot-entity-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "mine-asteroid-chunk": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "mine-asteroid-chunk-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "mine-entity": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "mine-entity-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "mine-tile": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "mine-tile-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "mining-drill": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "mining-fluid": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "mining-with-fluid-unlock": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "operate-entity": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "operate-entity-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "operate-entity-surface-ammo": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "operate-entity-surface-fluid": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "orand": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "planet": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "planet-launch": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "plant-entity-item-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "plant-entity-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "plant-entity-surface-automatability": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "plant-entity-surface-condition-false": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "plant-entity-surface-condition-true": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "pump": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "reachable-room": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "recipe": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "recipe-category": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "recipe-category-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "recipe-category-surface-automation": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "recipe-ingredient-kept-spot": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "recipe-py-module": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "recipe-shape-fluid-slot": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "recipe-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "recipe-surface-condition": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "recipe-surface-condition-false": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "recipe-surface-condition-true": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "recipe-tech-unlock": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "recipe-unlock": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "repair-pack": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "research-science-pack-set": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "research-science-pack-set-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "resource-category": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "resource-category-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "roboport": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "rocket-ammo": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "rocket-launch-planet": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "rocket-part-recipe-planet": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "rocket-silo": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "rocket-turret": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "room": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "room-autoplace": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "room-create-platform": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "room-create-platform-starter-pack": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "room-launch": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "satisfied": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "science-pack-set-lab": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "science-pack-set-science": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "science-pack-set-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "send-heavy-item-to-orbit": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "send-item-to-orbit": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "send-item-to-orbit-planet": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "send-surface-starter-pack": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "send-surface-starter-pack-planet": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "slot": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "space-connection": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "space-connection-asteroids": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "space-connection-discover": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "space-connection-enter": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "space-connection-reverse": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "space-location": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "space-location-discover": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "space-location-discovery": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "space-location-reachable": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "space-location-spaceship": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "space-platform": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "space-platform-unlock": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "space-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "spaceship": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "spaceship-engine-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "spaceship-military-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "spaceship-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "spawn-asteroid-chunk": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "spawn-asteroid-chunk-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "spawn-entity": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "spawn-entity-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "spawn-tile": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "spawn-tile-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "spawner-capturability": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "splitter": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "spoil-sink": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "spoil-slot": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "starter-gun": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "starter-gun-ammo": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "starting-character": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "starting-planet": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "storage": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "technology": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "technology-trigger": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "technology-trigger-sink": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "thruster": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "tile": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "tile-build": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "tile-build-item": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "tile-build-item-place-as-tile": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "tile-build-item-place-as-tile-condition": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "tile-build-space": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "tile-collision-group": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "tile-fluid": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "tile-fluid-pump": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "tile-mine": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "transport-belt": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "transport-item-to-planet": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "traveler": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "true": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "underground-belt": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "unsatisfied": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "valid-tile-placement-surface": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "void-energy": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "warmth": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  },
+  "warmth-bootstrap": {
+   "approved": "baseline: in the committed code (c29e07b) when approvals started, 2026-10-12"
+  }
+ }
+}
