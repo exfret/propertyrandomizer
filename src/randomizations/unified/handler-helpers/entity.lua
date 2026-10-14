@@ -518,14 +518,15 @@ local function tile_layers()
     end
     return layers
 end
+common.tile_layers = tile_layers
 
 -- Whether an entity can be autoplaced wherever another one was: it collides with no tile layer the other doesn't, and its collision box is at most area_tolerance times as big
 -- Autoplace skips spots where an entity collides (AutoplaceSpecification.placement_density), so a bigger entity just shows up less
-common.fits_autoplace_of = function(entity, other, area_tolerance)
+common.fits_autoplace_of = function(entity, other, area_tolerance, known_tile_layers)
     if common.collision_area(entity) > area_tolerance * common.collision_area(other) then
         return false
     end
-    local any_tile_layer = tile_layers()
+    local any_tile_layer = known_tile_layers or tile_layers()
     local other_layers = collision_mask_util.get_mask(other).layers
     for layer, _ in pairs(collision_mask_util.get_mask(entity).layers) do
         if any_tile_layer[layer] ~= nil and other_layers[layer] == nil then

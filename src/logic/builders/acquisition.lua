@@ -155,7 +155,7 @@ end
 -- Which kinds of slots can supply an entity of each demand tier
 -- Items and biters, spawned or hatched from eggs (renewable), can supply anything, since the balance layer keeps some member of every bulk class suppliable automatically (group-supply)
 -- What's found in the wild and what dying enemies leave are only for entities needed in tens or fewer
--- Buildings never move to capsule or ammo slots: obtaining a placement item must not require throwing or firing it, then mining the building
+-- Projectile slots have no quantity veto: group-supply and progression protect required automatic construction instead.
 -- Each capture uses up a spawner, so capturing is only for entities needed a few at a time
 local supplies = {
     bulk = {
@@ -180,6 +180,9 @@ local supplies = {
     },
 }
 acquisition.can_supply = function(tier, slot_kind)
+    if slot_kind == "capsule" or slot_kind == "ammo" then
+        return true
+    end
     return supplies[tier][slot_kind] ~= nil
 end
 
@@ -240,17 +243,15 @@ acquisition.carrier_kinds = {
 acquisition.pairing = function(base, head)
     local base_gives_item = acquisition.gives_item(base.acq_kind)
     local head_is_built = acquisition.gives_item(head.acq_kind)
-    if head_is_built == true and (base.acq_kind == "capsule" or base.acq_kind == "ammo") then
+    if base_gives_item and not head_is_built and head.projectile_package == nil then
         return nil
     end
-    if base_gives_item and not head_is_built then
-        return nil
-    end
-    if not head_is_built and head.ours ~= nil and base.ours == nil then
+    if not head_is_built and not base_gives_item and head.ours ~= nil and base.ours == nil then
         return nil
     end
     local abilities = base.abilities
-    if head_is_built and not base_gives_item then
+    -- This is an output-specific loss. The firing source and its damage keep their own automation.
+    if (head_is_built and not base_gives_item) or (head.projectile_package ~= nil and base_gives_item) then
         abilities = ctx.edge_with(abilities, ctx.AUTOMATABILITY, false)
     end
     local needs_kill

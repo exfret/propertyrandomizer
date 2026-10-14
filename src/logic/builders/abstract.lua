@@ -780,6 +780,9 @@ function abstract.build(lu, extra_params)
     ----------------------------------------
     -- Can we satisfy this AND node that comes right before an OR?
 
+    -- Entity randomization introduces package identities after building logic.
+    add_node("projectile-package", "OR", nil, "", { canonical = "projectile-package" })
+
     ----------------------------------------
     add_node("fluid-identity-source", "OR", nil, "", { canonical = "fluid-identity-source" })
     ----------------------------------------

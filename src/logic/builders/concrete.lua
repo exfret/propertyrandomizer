@@ -146,6 +146,11 @@ function concrete.build(lu, extra_params)
                     add_edge("item-ammo", source.name, {
                         damage_amount = source_info.amount,
                     })
+                elseif source_info.source_type == "capsule" or source_info.source_type == "placed-effect" then
+                    add_edge(source_info.source_type == "capsule" and "item-capsule" or "item", source_info.item_name or source.name, {
+                        damage_amount = source_info.amount,
+                        abilities = ctx.LOSES_AUTOMATABILITY,
+                    })
                 elseif source_info.source_type == "turret" then
                     -- Turrets with built-in damage (electric/fluid)
                     add_edge("entity-operate", source.name, {

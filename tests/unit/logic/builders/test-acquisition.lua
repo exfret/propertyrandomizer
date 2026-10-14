@@ -257,7 +257,7 @@ test("a built entity in a spawn or spoil slot is carried by the unit, so getting
     assert(acquisition.pairing(slot_node("autoplace", fx.edge({
         [1] = true,
     })), slot_node("build")).needs_kill == nil)
-    assert(acquisition.pairing(ours_node("capsule"), slot_node("build")) == nil)
+    assert(acquisition.pairing(ours_node("capsule"), slot_node("build")).needs_kill == nil)
     assert(acquisition.pairing(slot_node("build"), slot_node("build")).needs_kill == nil)
 end)
 
@@ -266,7 +266,7 @@ test("eggs hatch carriers of anything like spawners do, and dying enemies leave 
     assert(acquisition.can_supply("some", "dying") and not acquisition.can_supply("bulk", "dying"))
 end)
 
-test("capsules and ammo cannot replace building placement at any demand tier", function()
+test("capsules and ammo allow all demand tiers but remove only construction automation", function()
     for _, kind in pairs({
         "capsule",
         "ammo",
@@ -276,9 +276,17 @@ test("capsules and ammo cannot replace building placement at any demand tier", f
             "some",
             "few",
         }) do
-            assert(not acquisition.can_supply(tier, kind))
+            assert(acquisition.can_supply(tier, kind))
         end
-        assert(acquisition.pairing(ours_node(kind), slot_node("build")) == nil)
+        local firing = ours_node(kind, ctx.GAINS_AUTOMATABILITY)
+        local building = acquisition.pairing(firing, slot_node("build"))
+        assert(ability_change(building.abilities, ctx.AUTOMATABILITY) == false)
+        local payload = ours_node(kind)
+        payload.projectile_package = "test-package"
+        assert(acquisition.pairing(firing, payload).abilities == firing.abilities)
+        local placed = acquisition.pairing(slot_node("build"), payload)
+        assert(placed ~= nil and ability_change(placed.abilities, ctx.AUTOMATABILITY) == false, "owned payloads can be placed manually")
+        assert(firing.abilities == ctx.GAINS_AUTOMATABILITY, "the damage source must not be mutated")
         assert(acquisition.pairing(ours_node(kind), ours_node("capsule")) ~= nil)
     end
     assert(acquisition.can_supply("few", "capture") and not acquisition.can_supply("some", "capture"))

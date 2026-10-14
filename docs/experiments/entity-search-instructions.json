@@ -1,0 +1,83 @@
+{
+  "instruction_interval": 100000,
+  "runs": [
+    {
+      "run": "base--entity-effects@1",
+      "before_search": 18600000,
+      "after_search": 6200000,
+      "after_total": 643300000,
+      "search_percent": 0.9637805067620084,
+      "prototype_checksum": "2260828700",
+      "assignments_identical": true,
+      "mechcheck": [
+        "MECHCHECK verdict: ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, not counting unprotected isolatability)"
+      ]
+    },
+    {
+      "run": "base--entity-effects@2",
+      "before_search": 28900000,
+      "after_search": 7400000,
+      "after_total": 625200000,
+      "search_percent": 1.183621241202815,
+      "prototype_checksum": "3080614872",
+      "assignments_identical": true,
+      "mechcheck": [
+        "MECHCHECK verdict: ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, not counting unprotected isolatability)"
+      ]
+    },
+    {
+      "run": "sa--entity-effects@1",
+      "before_search": 176400000,
+      "after_search": 23000000,
+      "after_total": 3185600000,
+      "search_percent": 0.7219989954796585,
+      "prototype_checksum": "1445584957",
+      "assignments_identical": true,
+      "mechcheck": [
+        "MECHCHECK verdict: ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, not counting unprotected isolatability)"
+      ]
+    },
+    {
+      "run": "sa--entity-effects@2",
+      "before_search": 174000000,
+      "after_search": 23800000,
+      "after_total": 2548400000,
+      "search_percent": 0.933919321927484,
+      "prototype_checksum": "799600533",
+      "assignments_identical": true,
+      "mechcheck": [
+        "MECHCHECK verdict: ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, not counting unprotected isolatability)"
+      ]
+    }
+  ],
+  "disabled_space_age": [
+    {
+      "run": "sa--entity-effects-disabled@1",
+      "complete": true,
+      "instructions": {
+        "total": 2434200000
+      },
+      "checksums": [
+        "2089144550"
+      ],
+      "verdicts": [
+        "MECHCHECK verdict: ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, not counting unprotected isolatability)"
+      ],
+      "assignments": []
+    },
+    {
+      "run": "sa--entity-effects-disabled@2",
+      "complete": true,
+      "instructions": {
+        "total": 2397300000
+      },
+      "checksums": [
+        "1012679651"
+      ],
+      "verdicts": [
+        "MECHCHECK verdict: ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, not counting unprotected isolatability)"
+      ],
+      "assignments": []
+    }
+  ]
+}

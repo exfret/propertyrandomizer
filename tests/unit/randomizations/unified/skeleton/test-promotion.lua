@@ -45,6 +45,14 @@ package.loaded["src/logic/state"] = package.loaded["src/logic/init"]
 
 local gutils = require("src/lib/graph/graph-utils")
 local promotion = require("src/randomizations/unified/skeleton/promotion")
+if arg ~= nil and arg[1] == "cached-rewires" then
+    local ordinary_new = promotion.new
+    promotion.new = function(params)
+        local state = ordinary_new(params)
+        state.cache_rewires(true)
+        return state
+    end
+end
 local top = require("src/lib/sort/context-sort")
 -- Contexts are numbers (src/logic/contexts/contexts.lua), and edge abilities codes; fixtures write contexts as their names (a room's name for its simple context) and edge abilities as the tables the logic builders used to (tests/unit/logic/contexts/contexts-for-tests.lua)
 local ctx = require("src/logic/contexts/contexts")
@@ -376,6 +384,25 @@ local function promoted_head_graph(x_abilities, connection_abilities, z_abilitie
     return prom, contexts
 end
 
+test("rewire caching invalidates transitive true and false proofs, including rejected trials", function()
+    local graph = build_head_graph(nil)
+    graph.nodes[mechanic_m].mechanic = nil
+    local prom = promotion.new({graph = graph, complex = true})
+    prom.cache_rewires(true)
+    assert(#prom.required_contexts(mechanic_m) > 0)
+    assert(prom.try_rewires({{node_key = head_m, remove = {base_z}, detach = true}}, true))
+    assert(#prom.required_contexts(mechanic_m) == 0, "cached true descendant survived detachment")
+    assert(prom.try_rewires({{node_key = head_m, add = base_z}}, true))
+    assert(#prom.required_contexts(mechanic_m) > 0, "cached false descendant survived reconnection")
+    local trial = {{node_key = head_m, remove = {base_z}, detach = true}}
+    assert(not prom.try_rewires(trial, true, function()
+        assert(#prom.required_contexts(mechanic_m) == 0)
+        return false
+    end))
+    assert(#prom.required_contexts(mechanic_m) > 0, "rejected trial left a stale false proof")
+    prom.cache_rewires(false)
+end)
+
 test("subdividing an edge keeps its abilities on the connection between base and head", function()
     local graph = {
         nodes = {},
@@ -505,7 +532,13 @@ test("a head can be detached only if nothing promised needs it, and a refused de
         },
     }
     -- m is a mechanic, so its head is promised
-    assert(not prom.try_rewires(detach, true))
+    local ok, failure = prom.try_rewires(detach, true)
+    assert(not ok and failure.node_key == head_m)
+    local found = false
+    for _, context in pairs(contexts) do
+        if failure.context == context then found = true end
+    end
+    assert(found, "failure identifies the lost promised context")
     assert(#prom.pre_keys_of(head_m) == 1)
     assert(prom.head_candidate_ok(head_m, base_z, contexts))
 
@@ -1191,7 +1224,8 @@ test("a rewire can't make a solvent promise insolvent", function()
     assert(#prom.promise_mechanics() == 0)
     assert(prom.is_solvent(w, C("A")))
     -- The debt edge alone would still establish w in A, but not solvently
-    assert(not prom.try_rewires(stop_making_w, true))
+    local ok, failure = prom.try_rewires(stop_making_w, true)
+    assert(not ok and failure.solvent and failure.context == C("A"))
     assert(prom.is_solvent(w, C("A")))
 end)
 

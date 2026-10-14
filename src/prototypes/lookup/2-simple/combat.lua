@@ -7,6 +7,7 @@ local categories = require("src/prototypes/categories")
 local gutils = require("src/lib/graph/graph-utils")
 local lutils = require("src/logic/logic-utils")
 local dutils = require("src/prototypes/data-utils")
+local impact = require("src/prototypes/entities/projectile-impact")
 local tutils = require("src/prototypes/entities/trigger")
 
 local prots = dutils.prots
@@ -56,6 +57,25 @@ stage.damage_type_sources = function()
             local structs = {}
             tutils.gather_ammo_structs(structs, item, nil)
             extract_damage_from_structs(structs, gutils.key("item", item_name), "ammo")
+        end
+    end
+
+    -- Directly placed impacts and thrown payloads are manual damage sources. Their use is separate from manufacturing the item.
+    for item_name, item in pairs(lu.items) do
+        local structs = {}
+        if item.type == "capsule" and item.capsule_action ~= nil and item.capsule_action.type == "throw" then
+            tutils.gather_capsule_structs(structs, item, nil)
+            extract_damage_from_structs(structs, gutils.key("item", item_name), "capsule")
+        end
+        local placed = item.place_result ~= nil and (data.raw.explosion or {})[item.place_result] or nil
+        if placed ~= nil and impact.at_position(placed.created_effect) then
+            local effects = {}
+            tutils.gather_trigger_structs(effects, placed.created_effect, nil)
+            extract_damage_from_structs(effects, gutils.key("entity", placed.name), "placed-effect")
+            for _, sources in pairs(damage_type_sources) do
+                local source = sources[gutils.key("entity", placed.name)]
+                if source ~= nil then source.item_name = item_name end
+            end
         end
     end
 

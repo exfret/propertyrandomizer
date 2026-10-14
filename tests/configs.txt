@@ -139,6 +139,8 @@ config mining-drill-offsets-preview unified seeds=1 unified-preview=true dev-uni
 config entity-autoplace-mixing unified seeds=1,2 unified-entity=true dupes=true logistic=none production=none military=none misc=none
 config entity-effects unified seeds=1,2 unified-entity=true unified-entity-biters=true dupes=false logistic=none production=none military=none misc=none
 
+config entity-projectile-combat unified seeds=1 dev-unified=true unified-entity=true unified-entity-biters=true dupes=false logistic=none production=none military=none misc=none
+
 # Fast graph-customizer comparisons deliberately omit duplicates and numerical noise.
 config graph-customizer-baseline unified seeds=1 dev-unified=true dupes=false logistic=none production=none military=none misc=none
 config graph-customizer-zero unified seeds=1 dev-unified=true dupes=false logistic=none production=none military=none misc=none overrides=PARAM:graph/all.amount=0

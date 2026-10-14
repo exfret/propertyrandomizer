@@ -4,7 +4,7 @@
 -- Autoplaced entities can trade autoplace slots or stop being autoplaced, and built entities can be found in the wild instead and salvaged (mined for an item that places them)
 -- Entities made by trigger slots (like combat robots, the capture robot and the captive spawner) trade those slots or stop being made, and built entities can be made by one instead and then mined for an item that places them
 -- Spoil slots (what eggs hatch into) and dying slots (what an enemy leaves behind when killed) trade among their own kind, and built entities can take one as a carrier hatching from the egg, or as a wreck left behind, mined for an item that places it
--- Capsules thrown for an effect can make non-building entities instead; displaced impact actions can occupy compatible unused placement slots, independently of whether the item was a Vestige
+-- Projectile packages keep their payloads while moving between firing slots or become directly placed impacts; building outputs lose only construction automation
 -- Each item places only one entity (planting counts, see common.set_placed_entity), so bases are matched to heads one to one, with promotion keeping mechanic contexts and recipe reachability
 -- With constants.entity_first_pass on, first pass does the matching instead: every claimed acquisition edge is a first pass position like an item's (see first_pass_rules), and this handler only reflects the result
 -- With first pass (and item randomization), a build base belongs to the item's identity, so an item keeps placing its (new) entity wherever item randomization moves it
@@ -25,11 +25,16 @@ local rng = require("src/lib/random/rng")
 local wild = require("src/prototypes/entities/wild-entities")
 local context_costs = require("src/cost/context-costs")
 local common = require("src/randomizations/unified/handler-helpers/entity")
+local packages = require("src/randomizations/unified/handler-helpers/projectile-packages")
 local military_rebalance = require("src/randomizations/unified/handler-helpers/military")
+
+local augmenting_search = require("src/lib/graph/augmenting-search")
 
 local key = gutils.key
 
 local entity = {}
+local projectile_packages = {}
+local fixed_effects = {}
 
 entity.id = "entity"
 
@@ -62,7 +67,7 @@ local SPOOF_CARRIER_NAME = "propertyrandomizer-spoof-carrier"
 local FRIENDLY_CHANCE = 0.25
 -- A unit in a spawn slot whose unit stopped spawning at some evolution (transient, see acquisition.spawn_class) spawns at least this share of its highest weight at every evolution, since logic counts on it
 local TRANSIENT_WEIGHT_FLOOR = 0.1
--- Chance that an entity built from an item may instead be made by capturing a spawner, then mined for an item that places it
+-- Chance that an entity built from an item may instead be deployed by a trigger, with construction automation protected by progression
 local TRIGGER_CHANCE = 0.25
 -- A building a captured spawner turns into is at most this many times the spawner's size, since it takes the spawner's place (see common.fits_autoplace_of)
 local CAPTURE_AREA_TOLERANCE = 1
@@ -254,6 +259,8 @@ entity.initialize = function()
     autoplace_room_counts = {}
     from_space = {}
     identity_of_position = {}
+    projectile_packages = {}
+    fixed_effects = {}
 end
 
 entity.spoof = function(graph)
@@ -356,6 +363,13 @@ entity.spoof = function(graph)
         end
     end
 
+    projectile_packages = packages.prepare(graph, keep_from_first_pass)
+    -- Unsupported payload shapes with modeled damage must not fall through to unmodeled effect swapping.
+    for _, edge in pairs(graph.edges) do
+        local source = graph.nodes[edge.start]
+        if source.type == "item-capsule" and graph.nodes[edge.stop].type == "damage-type" then fixed_effects[source.name] = true end
+    end
+
     -- Every capsule thrown for an effect gets an edge to a spoofed entity-own node, so its use becomes a trigger base an entity can take (made where it's thrown, instead of the effect)
     -- Only capsules with a plain throw action, since others (like cliff explosives) work on something at the spot; the sink is a spoof, so its own heads are never matched
     local maker = gutils.add_node(graph, "entity-own", SPOOF_MAKER_NAME, {
@@ -363,7 +377,7 @@ entity.spoof = function(graph)
         spoof = true,
     })
     for _, item in pairs(dutils.get_all_prots("item")) do
-        if effect_capsule(item) and item.capsule_action.type == "throw" and graph.nodes[key("item-capsule", item.name)] ~= nil then
+        if fixed_effects[item.name] == nil and projectile_packages["item-" .. item.name] == nil and effect_capsule(item) and item.capsule_action.type == "throw" and graph.nodes[key("item-capsule", item.name)] ~= nil then
             local edge = gutils.add_edge(graph, key("item-capsule", item.name), key(maker), acquisition.tag("capsule", {
                 trigger_spoof = true,
                 ours = true,
@@ -527,7 +541,7 @@ entity.claim = function(graph, prereq, dep, edge)
         end
         return 1
     end
-    if edge.trigger_spoof ~= nil then
+    if edge.trigger_spoof ~= nil or edge.projectile_package ~= nil then
         return 1
     end
     if is_made_kind(edge.acq_kind) then
@@ -569,7 +583,7 @@ end
 
 -- Build bases are items, autoplace bases rooms, spawn bases spawners, trigger bases the capsule, ammo or spawner capture making the entity, spoil bases the spoiling item, dying bases killing the dying entity, and carrier bases killing a spawn or spoil slot's unit; claim already makes sure of that, but this is the hard check the search uses
 -- The pairing of the base's and head's acquisition kinds must also be one logic can model (acquisition.pairing)
-entity.validate = function(graph, base, head, extra)
+entity.validate = function(graph, base, head, extra, owner_of)
     -- A mine-back base only goes to a mine-back head (see spoof)
     if base.mine_back ~= nil or head.mine_back ~= nil then
         return base.mine_back ~= nil and head.mine_back ~= nil
@@ -579,14 +593,27 @@ entity.validate = function(graph, base, head, extra)
     if base.friendly ~= nil or pairing == nil then
         return false
     end
-    -- An entity with an ordinary placer can also have a capture/trigger head.
-    -- Keep those heads from bypassing the no-thrown-buildings rule.
-    -- Existing capsule/ammo acquisitions can stay, but no new one may take a building.
-    if (base.acq_kind == "capsule" or base.acq_kind == "ammo") and key(base) ~= head.old_base then
+    local source_package = projectile_packages[base.projectile_package]
+    local traveler_package = projectile_packages[head.projectile_package]
+    if (source_package and source_package.locked) or (traveler_package and traveler_package.locked) then
+        return key(base) == head.old_base
+    end
+    if traveler_package ~= nil then
+        if source_package ~= nil then return true end
+        return base.acq_kind == "build" and traveler_package.impact ~= nil and not traveler_package.is_entity
+    end
+    if source_package ~= nil then
+        return head.acq_kind == "build" and source_package.building and not source_package.is_entity
+    end
+    -- A building's separate trigger identity must not bypass acquisition's loss of construction automation.
+    if (base.acq_kind == "capsule" or base.acq_kind == "ammo") and key(base) ~= head.old_base and head.acq_kind ~= "build" then
         local prototype = dutils.get_prot("entity", head_entity_name(graph, head))
-        if prototype ~= nil and lookups.buildables[key(prototype)] ~= nil then
-            return false
-        end
+        if prototype ~= nil and lookups.buildables[key(prototype)] ~= nil then return false end
+    end
+    if head.acq_kind == "build" and (base.acq_kind == "capsule" or base.acq_kind == "ammo") then
+        local owner = owner_of and owner_of(base) or gutils.get_owner(graph, base)
+        local made = base.trigger_spoof == nil and head_entity_name(graph, graph.nodes[base.old_head]) or nil
+        if not packages.single_creation(dutils.get_prot("item", owner.name), made) then return false end
     end
     -- A pairing that takes killing a carrier (a built entity carried by a slot's unit) needs a base that includes the kill, the slot's carrier base (see spoof), and only such pairings take a carrier base
     if (pairing.needs_kill ~= nil) ~= (base.carrier_spoof ~= nil) then
@@ -595,7 +622,7 @@ entity.validate = function(graph, base, head, extra)
     if base.carrier_spoof ~= nil then
         return head.friendly == nil
     end
-    local owner_type = gutils.get_owner(graph, base).type
+    local owner_type = (owner_of and owner_of(base) or gutils.get_owner(graph, base)).type
     if base.acq_kind == "build" then
         return owner_type == "item"
     end
@@ -737,47 +764,20 @@ end
 -- Units' placing slots start this way, since no item places them in vanilla
 local DETACHED = "detached"
 
--- Prefer changes that show up in the landscape: another planet, another kind of entity, and another deconstruction entry (planet copies share their original's entry).
--- These are preferences among admissible bases; they never relax the safety checks.
-local function autoplace_priority(graph, slot, base_key)
-    local base = graph.nodes[base_key]
-    if base.acq_kind ~= "autoplace" then
-        return 0
-    end
-    if slot.kind ~= "autoplace" then
-        return 0
-    end
-    local own_base = graph.nodes[slot.own_base_key]
-    local prototype = dutils.get_prot("entity", slot.identity)
-    local other = dutils.get_prot("entity", base.entity)
-    if (prototype.deconstruction_alternative or prototype.name) == (other.deconstruction_alternative or other.name) then
-        return 0
-    end
-    local priority = 1
-    local own_room = gutils.get_owner(graph, own_base).name
-    local other_room = gutils.get_owner(graph, base).name
-    if own_room ~= other_room then
-        priority = priority + 4
-    end
-    local own_planet = data.raw.planet[lookups.rooms[own_room].name]
-    local other_planet = data.raw.planet[lookups.rooms[other_room].name]
-    -- Crossing between copies of the same planet changes less than crossing between originals (dupe.prototype records orig_name).
-    if (own_planet.orig_name or own_planet.name) ~= (other_planet.orig_name or other_planet.name) then
-        priority = priority + 8
-    end
-    if prototype.type ~= other.type then
-        priority = priority + 2
-    end
-    return priority
-end
-
--- Matches bases to heads one to one, which the generic search can't guarantee (its fallback can reuse a base).
--- Taking bases greedily strands heads, since many (like assembling machines, needed isolated and automated on every planet) can only use their own base, and it's hard to tell ahead of time which.
--- Instead this starts from every head keeping its own base (always valid, since promotion guarantees vanilla bases), takes a random matching of heads to admissible bases, and applies it a group at a time.
--- A group is a cycle of heads taking each other's bases, or a chain of them ending at a head that takes a spoof placer, salvages from the wild, is carried by a biter, is made by a trigger slot, or is detached.
--- Each group is committed as a whole only if promotion can still establish everything promised (try_rewires), so the matching stays valid and one to one throughout and this can't fail.
-local function matched_search(params)
+-- Search each head's shuffled prerequisite pool in dependency order, like the generic handlers.
+-- The coin chooses a same-category or general search for each head. Occupied candidates
+-- start augmenting paths, whose displaced heads search their own pools recursively.
+local function prerequisite_search(params)
     local graph = params.random_graph
+    -- Promotion rewires its private graph; owners in this source graph stay fixed.
+    local owners = {}
+    local function owner_of(base)
+        if owners[base] == nil then owners[base] = gutils.get_owner(graph, base) end
+        return owners[base]
+    end
+    local function base_item_name(_, base)
+        return owner_of(base).name
+    end
     local prom = params.promotion
     if prom == nil then
         error("Entity randomization needs promotion (USE_PROMOTION in src/randomizations/unified/execute.lua)")
@@ -874,18 +874,7 @@ local function matched_search(params)
     end
 
     local rng_key = rng.key({id = "unified-entity"})
-    rng.shuffle(rng_key, slots)
 
-    -- Items that place nothing in vanilla (spoof bases, see spoof) can also be taken, and so can capsules thrown for an effect (maker bases)
-    local spoof_base_keys = {}
-    local maker_base_keys = {}
-    for _, base_key in pairs(params.shuffled_prereqs) do
-        if graph.nodes[base_key].build_spoof ~= nil then
-            table.insert(spoof_base_keys, base_key)
-        elseif graph.nodes[base_key].trigger_spoof ~= nil then
-            table.insert(maker_base_keys, base_key)
-        end
-    end
     -- A built entity carried by biters takes a spawn or spoil slot like a unit would (so the slot's unit moves elsewhere or stops), but connects to the slot's carrier base, which also needs killing the unit (see spoof)
     local carrier_base_of, slot_base_of = carrier_bases(graph)
     -- The base a slot's head connects to when it takes base_key, or nil if it can't (a spawn or spoil slot without a carrier base)
@@ -896,13 +885,6 @@ local function matched_search(params)
         end
         return base_key
     end
-    local slot_of_own_base = {}
-    for ind, slot in pairs(slots) do
-        if not slot.friendly then
-            slot_of_own_base[slot.own_base_key] = ind
-        end
-    end
-
     -- The own item of the entity a build slot builds (its identity's item in vanilla), its cost, and how many of it a base needs (acquisition.demand_tier)
     local own_item_name_of = {}
     for _, slot in pairs(slots) do
@@ -911,10 +893,20 @@ local function matched_search(params)
         end
     end
     local function own_item_of(slot)
-        return starting_item(own_item_name_of[slot.identity])
+        if slot.own_item == nil then slot.own_item = starting_item(own_item_name_of[slot.identity]) end
+        return slot.own_item
+    end
+    local entity_prototypes, original_entities = {}, {}
+    local function entity_prototype(name)
+        if entity_prototypes[name] == nil then entity_prototypes[name] = dutils.get_prot("entity", name) end
+        return entity_prototypes[name]
+    end
+    local function original_entity(name)
+        if original_entities[name] == nil then original_entities[name] = starting_entity(name) end
+        return original_entities[name]
     end
     local function tier_of(slot)
-        return acquisition.demand_tier(dutils.get_prot("entity", slot.identity).type, own_item_of(slot).stack_size)
+        return acquisition.demand_tier(entity_prototype(slot.identity).type, own_item_of(slot).stack_size)
     end
     -- Whether an item costs about as much as the own item of what a build slot builds (unknown costs pass, as items without costs are rare)
     local function costs_close_to_own(slot, item_name)
@@ -933,42 +925,62 @@ local function matched_search(params)
     end
     -- Salvaging also needs it to be minable, and to have no autoplace of its own (an entity has one autoplace, and one this handler didn't claim has to stay)
     local function salvageable(slot)
-        return movable_building(slot, "autoplace") and dutils.get_prot("entity", slot.identity).minable ~= nil and starting_entity(slot.identity).autoplace == nil
+        return movable_building(slot, "autoplace") and entity_prototype(slot.identity).minable ~= nil and original_entity(slot.identity).autoplace == nil
     end
     -- Being made by a trigger slot, or left behind as a wreck, also needs it to be minable, since placing its item somewhere else has to be undoable like it was
     local function triggerable(slot, slot_kind)
-        return movable_building(slot, slot_kind) and dutils.get_prot("entity", slot.identity).minable ~= nil
+        return movable_building(slot, slot_kind) and entity_prototype(slot.identity).minable ~= nil
     end
 
-    -- Whether a slot could take a base: a valid pairing, an item of similar cost or an entity that fits where the autoplace slot's entity was, that promotion can establish before the head wherever the head is promised
-    local function admissible(slot, base_key, contexts)
+    -- Physical compatibility and costs stay fixed for this entire search. Only
+    -- progression requirements/backings change when an assignment is committed.
+    local autoplace_layers
+    local function fits_autoplace_of(prototype, other, tolerance)
+        if autoplace_layers == nil then autoplace_layers = common.tile_layers() end
+        return common.fits_autoplace_of(prototype, other, tolerance, autoplace_layers)
+    end
+    local function physically_admissible(slot, base_key)
         local base = graph.nodes[base_key]
         local connect_key = connection_base(slot, base_key)
-        if connect_key == nil or not entity.validate(graph, graph.nodes[connect_key], slot.head) then
+        if connect_key == nil or not entity.validate(graph, graph.nodes[connect_key], slot.head, nil, owner_of) then
             return false
+        end
+        local package = projectile_packages[slot.head.projectile_package]
+        if package ~= nil then
+            local destination = projectile_packages[base.projectile_package]
+            if destination ~= nil and destination.id ~= package.id then
+                local cost, own_cost = item_cost(destination.owner), item_cost(package.owner)
+                if cost == nil or own_cost == nil or not costs_within(cost, own_cost) then return false end
+            end
+            if base.acq_kind == "build" then
+                local cost = item_cost(base_item_name(graph, base))
+                local own_cost = item_cost(package.owner)
+                if cost == nil or own_cost == nil or not costs_within(cost, own_cost) then return false end
+            end
+            return connect_key
         end
         if base.acq_kind == "build" and not slot.friendly and not costs_close_to_own(slot, base_item_name(graph, base)) then
             return false
         end
-        if base.acq_kind == "autoplace" and not common.fits_autoplace_of(dutils.get_prot("entity", slot.identity), dutils.get_prot("entity", base.entity), AUTOPLACE_AREA_TOLERANCE) then
+        if base.acq_kind == "autoplace" and not fits_autoplace_of(entity_prototype(slot.identity), entity_prototype(base.entity), AUTOPLACE_AREA_TOLERANCE) then
             return false
         end
         -- A carrier is its slot's unit (spawned, or hatched from an egg) with the entity's look as its run_animation, so the unit needs one, and has to be worth killing for the entity's item (acquisition.worth_carrying)
         if (base.acq_kind == "spawn" or base.acq_kind == "spoil") and slot.kind == "build" then
-            local unit = starting_entity(head_entity_name(graph, graph.nodes[base.old_head]))
+            local unit = original_entity(head_entity_name(graph, graph.nodes[base.old_head]))
             if unit.run_animation == nil or not acquisition.worth_carrying(unit.max_health or 1, item_cost(own_item_of(slot).name)) then
                 return false
             end
         end
         -- A wreck is left by killing an enemy, which has to be worth killing for the entity's item like a carrier, and it looks like the entity (common.wreck_of)
         if base.acq_kind == "dying" and slot.kind == "build" then
-            local dying = starting_entity(gutils.get_owner(graph, base).name)
-            if not acquisition.worth_carrying(dying.max_health or 1, item_cost(own_item_of(slot).name)) or common.entity_sprite(dutils.get_prot("entity", slot.identity), 1) == nil then
+            local dying = original_entity(gutils.get_owner(graph, base).name)
+            if not acquisition.worth_carrying(dying.max_health or 1, item_cost(own_item_of(slot).name)) or common.entity_sprite(entity_prototype(slot.identity), 1) == nil then
                 return false
             end
         end
         -- Salvage is never worth more than SALVAGE_COST_FACTOR times what mining the slot's entity gave, and needs both costs known to check that (acquisition.worth_salvaging)
-        if base.acq_kind == "autoplace" and slot.kind == "build" and not acquisition.worth_salvaging(item_cost(own_item_of(slot).name), mining_yield_cost(starting_entity(base.entity))) then
+        if base.acq_kind == "autoplace" and slot.kind == "build" and not acquisition.worth_salvaging(item_cost(own_item_of(slot).name), mining_yield_cost(original_entity(base.entity))) then
             return false
         end
         -- A built entity made by using an item costs about as much as that item, with both costs known, like loot and salvage
@@ -981,244 +993,54 @@ local function matched_search(params)
         end
         -- A built entity a captured spawner turns into takes the spawner's place, so it has to fit there
         if slot.kind == "build" and base.acq_kind == "capture" then
-            local spawner = dutils.get_prot("entity", gutils.get_owner(graph, base).name)
-            if not common.fits_autoplace_of(dutils.get_prot("entity", slot.identity), spawner, CAPTURE_AREA_TOLERANCE) then
+            local spawner = entity_prototype(gutils.get_owner(graph, base).name)
+            if not fits_autoplace_of(entity_prototype(slot.identity), spawner, CAPTURE_AREA_TOLERANCE) then
                 return false
             end
         end
-        return #contexts == 0 or prom.head_candidate_ok(slot.head_key, connect_key, contexts)
+        return connect_key
     end
 
-    -- The bases each slot could take besides its own
-    -- Autoplace, spawn, spoil and dying slots trade among their own kind, and trigger slots among each other; build slots take other items, and some take items that placed nothing, autoplace slots (salvage), spawn or spoil slots (carried by a biter), trigger slots, or dying slots (a wreck)
-    -- A unit's placing slot, if it takes anything, takes an item (a friendly biter)
-    -- This is worked out once, from the anchored state, to keep the matching cheap; try_rewires checks each change exactly before it's committed
-    local can_take = {}
-    local can_detach = {}
-    local num_pairs = 0
-    for ind, slot in pairs(slots) do
-        can_take[ind] = {}
-        local contexts = slot_contexts(slot)
-        local candidates = {}
-        if slot.friendly then
-            if rng.value(rng_key) < FRIENDLY_CHANCE then
-                for _, other in pairs(slots) do
-                    if other.kind == "build" and not other.friendly then
-                        table.insert(candidates, other.own_base_key)
-                    end
-                end
-                for _, base_key in pairs(spoof_base_keys) do
-                    table.insert(candidates, base_key)
-                end
+    -- Physical compatibility is independent of the category preference. These are the
+    -- acquisition conversions reflection supports; no per-conversion random gates.
+    local function compatible(slot, base_key)
+        local base = graph.nodes[base_key]
+        if slot.friendly then return base.acq_kind == "build" end
+        if slot.head.projectile_package ~= nil then return true end
+        if slot.kind == "build" then
+            if base.acq_kind == "build" then
+                return not first_pass_entities or base_key == slot.own_base_key or base.build_spoof ~= nil
+            elseif base.acq_kind == "autoplace" then
+                return salvageable(slot)
+            elseif base.acq_kind == "spawn" or base.acq_kind == "spoil" then
+                return movable_building(slot, base.acq_kind)
+            elseif base.acq_kind == "dying" or is_trigger_kind(base.acq_kind) then
+                return triggerable(slot, base.acq_kind)
             end
-        else
-            for _, other in pairs(slots) do
-                local same_kind = other.kind == slot.kind or (is_trigger_kind(other.kind) and is_trigger_kind(slot.kind))
-                if other ~= slot and same_kind and not other.friendly and not (slot.kind == "build" and first_pass_entities) then
-                    table.insert(candidates, other.own_base_key)
-                end
-            end
-            -- What a trigger slot makes can also be made by a capsule thrown for an effect
-            if is_trigger_kind(slot.kind) then
-                for _, base_key in pairs(maker_base_keys) do
-                    table.insert(candidates, base_key)
-                end
-            end
+            return false
         end
-        if slot.kind == "build" and not slot.friendly then
-            -- Only some slots can take spoof bases, since each one taken leaves an item placing nothing
-            if rng.value(rng_key) < SPOOF_CHANCE then
-                for _, base_key in pairs(spoof_base_keys) do
-                    table.insert(candidates, base_key)
-                end
-            end
-            -- Only some entities are salvaged, since each one takes the place of something found in the wild
-            if salvageable(slot) and rng.value(rng_key) < SALVAGE_CHANCE then
-                for _, other in pairs(slots) do
-                    if other.kind == "autoplace" then
-                        table.insert(candidates, other.own_base_key)
-                    end
-                end
-            end
-            -- Only some entities are carried by biters, since each one takes the place of a unit a spawner spawned or an egg hatched
-            if rng.value(rng_key) < CARRIER_CHANCE then
-                for _, other in pairs(slots) do
-                    if (other.kind == "spawn" or other.kind == "spoil") and movable_building(slot, other.kind) then
-                        table.insert(candidates, other.own_base_key)
-                    end
-                end
-            end
-            -- Only some entities are made by trigger slots, since each one takes the place of what the slot made (or a capsule's effect)
-            if rng.value(rng_key) < TRIGGER_CHANCE then
-                for _, other in pairs(slots) do
-                    if is_trigger_kind(other.kind) and triggerable(slot, other.kind) then
-                        table.insert(candidates, other.own_base_key)
-                    end
-                end
-                if triggerable(slot, "capsule") then
-                    for _, base_key in pairs(maker_base_keys) do
-                        table.insert(candidates, base_key)
-                    end
-                end
-            end
-            -- Only some entities are left behind as wrecks, since each one takes the place of what a dying enemy left
-            if rng.value(rng_key) < WRECK_CHANCE then
-                for _, other in pairs(slots) do
-                    if other.kind == "dying" and triggerable(slot, "dying") then
-                        table.insert(candidates, other.own_base_key)
-                    end
-                end
-            end
-        end
-        for _, base_key in pairs(candidates) do
-            if admissible(slot, base_key, contexts) then
-                table.insert(can_take[ind], base_key)
-                num_pairs = num_pairs + 1
-            end
-        end
-        -- An entity found in the wild, spawned, or made by a trigger, spoiling item or dying entity that nothing promised needs there can stop being acquired there, when another entity takes its slot
-        can_detach[ind] = slot.friendly or (slot.kind ~= "build" and #contexts == 0)
+        return base.acq_kind == slot.kind or (is_trigger_kind(base.acq_kind) and is_trigger_kind(slot.kind))
     end
 
-    -- Random matching of slots to bases (Kuhn's algorithm with candidates shuffled within preference tiers and each slot's own base tried last)
-    -- Every slot can keep its own base (or stay detached, for units' placing slots), so every slot always gets one, and a slot is only detached when its own base went to another slot
-    local taker_of = {}
-    local takes = {}
-    local function try(ind, visited)
-        local candidates = table.deepcopy(can_take[ind])
-        rng.shuffle(rng_key, candidates)
-        if slots[ind].kind == "autoplace" then
-            -- Cache priorities and preserve the shuffle within a tier (table.sort isn't stable).
-            local ranked = {}
-            for order, base_key in pairs(candidates) do
-                ranked[base_key] = {
-                    priority = autoplace_priority(graph, slots[ind], base_key),
-                    order = order,
-                }
-            end
-            table.sort(candidates, function(left, right)
-                if ranked[left].priority ~= ranked[right].priority then
-                    return ranked[left].priority > ranked[right].priority
-                end
-                return ranked[left].order < ranked[right].order
-            end)
-        end
-        if not slots[ind].friendly then
-            table.insert(candidates, slots[ind].own_base_key)
-        end
-        if can_detach[ind] then
-            table.insert(candidates, DETACHED)
-        end
-        for _, base_key in pairs(candidates) do
-            if base_key == DETACHED then
-                takes[ind] = DETACHED
-                return true
-            end
-            if visited[base_key] == nil then
-                visited[base_key] = true
-                if taker_of[base_key] == nil or try(taker_of[base_key], visited) then
-                    taker_of[base_key] = ind
-                    takes[ind] = base_key
-                    return true
-                end
-            end
-        end
-        return false
-    end
-    local order = {}
-    for ind, _ in pairs(slots) do
-        table.insert(order, ind)
-    end
-    rng.shuffle(rng_key, order)
-    for _, ind in pairs(order) do
-        if not try(ind, {}) then
-            error("Randomization assertion failed! Entity slot matching failed although every slot can keep its own base")
+    local pool, in_pool = {}, {}
+    local function add_base(base_key)
+        local base = graph.nodes[base_key]
+        if base ~= nil and base.mine_back == nil and base.carrier_spoof == nil and base.friendly == nil and in_pool[base_key] == nil then
+            in_pool[base_key] = true
+            table.insert(pool, base_key)
         end
     end
-
-    -- A slot taking another slot's own base only works if that slot takes something else, so the matching splits into cycles, and chains that end at a slot taking a spoof base, an autoplace or spawn base, or nothing (detached)
-    -- A chain starts at a slot whose own base nobody took: an item that places nothing now (a Vestige), a slot nothing is autoplaced or spawned in anymore, or a unit's placing slot (friendly)
-    local function next_slot(ind)
-        if takes[ind] == DETACHED then
-            return nil
-        end
-        local other = slot_of_own_base[takes[ind]]
-        if other == ind then
-            return nil
-        end
-        return other
+    for _, base_key in pairs(params.shuffled_prereqs) do add_base(base_key) end
+    for _, slot in pairs(slots) do
+        if not slot.friendly then add_base(slot.own_base_key) end
     end
-    local components = {}
-    local in_component = {}
-    for ind, slot in pairs(slots) do
-        if takes[ind] ~= slot.own_base_key and (slot.friendly or taker_of[slot.own_base_key] == nil) then
-            local chain = {}
-            local curr = ind
-            while curr ~= nil do
-                in_component[curr] = true
-                table.insert(chain, curr)
-                curr = next_slot(curr)
-            end
-            table.insert(components, chain)
-        end
+    rng.shuffle(rng_key, pool)
+    local pools_by_kind = {}
+    for _, base_key in pairs(pool) do
+        local kind = graph.nodes[base_key].acq_kind or false
+        pools_by_kind[kind] = pools_by_kind[kind] or {}
+        table.insert(pools_by_kind[kind], base_key)
     end
-    for ind, slot in pairs(slots) do
-        if in_component[ind] == nil and takes[ind] ~= slot.own_base_key then
-            local cycle = {}
-            local curr = ind
-            while in_component[curr] == nil do
-                in_component[curr] = true
-                table.insert(cycle, curr)
-                curr = next_slot(curr)
-            end
-            table.insert(components, cycle)
-        end
-    end
-
-    -- The mine-back changes that go with a group's build slot changes: an item a build slot takes is mined back from that slot's entity now (from nothing if the entity isn't mined back into it, like a unit)
-    -- An item whose placing nothing takes anymore (a Vestige) is mined back from nothing
-    -- Items that placed nothing in vanilla (spoof placers) have no mine-back head, since nothing was mined into them; the model just doesn't count that mining gives them now
-    local function mine_back_changes(component)
-        local changes = {}
-        local function set_mine_base(item_name, base_key)
-            local head_key = mine_head_of_item[item_name]
-            if head_key == nil or mine_base_now[head_key] == base_key then
-                return
-            end
-            local remove = {}
-            if mine_base_now[head_key] ~= DETACHED then
-                table.insert(remove, mine_base_now[head_key])
-            end
-            if base_key == DETACHED then
-                table.insert(changes, {
-                    node_key = head_key,
-                    remove = remove,
-                    detach = true,
-                })
-            else
-                table.insert(changes, {
-                    node_key = head_key,
-                    remove = remove,
-                    add = base_key,
-                })
-            end
-        end
-        for _, ind in pairs(component) do
-            local slot = slots[ind]
-            if slot.kind == "build" then
-                local taken = takes[ind]
-                if taken ~= DETACHED and graph.nodes[taken].acq_kind == "build" and graph.nodes[taken].build_spoof == nil then
-                    set_mine_base(base_item_name(graph, graph.nodes[taken]), mine_base_of_entity[slot.identity] or DETACHED)
-                end
-                if not slot.friendly and taker_of[slot.own_base_key] == nil then
-                    set_mine_base(base_item_name(graph, graph.nodes[slot.own_base_key]), DETACHED)
-                end
-            end
-        end
-        return changes
-    end
-
-    -- Commit each as a whole, only if promotion can still establish everything promised (the admissibility above was worked out once, so isn't exact)
     local counts = {
         moved = 0,
         spoofs = 0,
@@ -1230,65 +1052,185 @@ local function matched_search(params)
         friendly = 0,
         detached = 0,
     }
-    for _, component in pairs(components) do
-        local changes = {}
-        for _, ind in pairs(component) do
-            local remove = {}
-            if slots[ind].base_key ~= DETACHED then
-                table.insert(remove, slots[ind].base_key)
-            end
-            if takes[ind] == DETACHED then
-                table.insert(changes, {
-                    node_key = slots[ind].head_key,
-                    remove = remove,
-                    detach = true,
-                })
-            else
-                table.insert(changes, {
-                    node_key = slots[ind].head_key,
-                    remove = remove,
-                    add = connection_base(slots[ind], takes[ind]),
-                })
+    local checked, refused, same_category = 0, 0, 0
+
+    -- Mining returns for every affected item position move with the augmenting path.
+    local function mine_change(item_name, new_base)
+        local head_key = mine_head_of_item[item_name]
+        if head_key == nil or mine_base_now[head_key] == new_base then return nil end
+        local remove = {}
+        if mine_base_now[head_key] ~= DETACHED then table.insert(remove, mine_base_now[head_key]) end
+        return {
+            node_key = head_key,
+            remove = remove,
+            add = new_base ~= DETACHED and new_base or nil,
+            detach = new_base == DETACHED,
+        }
+    end
+    local function keep_mine(change)
+        if change ~= nil then mine_base_now[change.node_key] = change.add or DETACHED end
+    end
+    local candidate_pools, own_pair_allowed, physical_pairs = {}, {}, {}
+    for _, slot in pairs(slots) do
+        local within_category = rng.value(rng_key) < 0.5
+        if within_category then same_category = same_category + 1 end
+        local candidates = {}
+        local category_pool = within_category and (pools_by_kind[slot.kind or false] or {}) or pool
+        for _, base_key in pairs(category_pool) do
+            table.insert(candidates, base_key)
+        end
+        rng.shuffle(rng_key, candidates)
+        -- Filter only after shuffling so the random stream and surviving order
+        -- stay identical. Static failures can never become useful during an
+        -- augmentation; keeping them in every repeated search wastes work.
+        local possible = {}
+        for _, base_key in pairs(candidates) do
+            local allowed = compatible(slot, base_key)
+            if base_key == slot.own_base_key then own_pair_allowed[slot] = allowed end
+            if base_key == slot.own_base_key or allowed then
+                table.insert(possible, base_key)
             end
         end
-        local mine_changes = mine_back_changes(component)
-        for _, change in pairs(mine_changes) do
-            table.insert(changes, change)
+        candidate_pools[slot] = possible
+        physical_pairs[slot] = {}
+    end
+    -- Context requirements are stable until a path commits. A refused trial can
+    -- expose a mine-back obligation that wasn't part of the entity head's needs;
+    -- learn that obligation, rather than treating the whole path as a bad edge.
+    local contexts_now, mine_needs = {}, {}
+    local has_mine_needs = false
+    local slot_of_head = {}
+    for _, slot in pairs(slots) do slot_of_head[slot.head_key] = slot end
+    local function contexts_of(slot)
+        if contexts_now[slot] == nil then contexts_now[slot] = slot_contexts(slot) end
+        return contexts_now[slot]
+    end
+    local function mine_head_at(base_key)
+        local base = graph.nodes[base_key]
+        if base == nil or base.acq_kind ~= "build" then return nil end
+        return mine_head_of_item[base_item_name(graph, base)]
+    end
+    local function mine_pair_ok(slot, base_key)
+        local mine_head = mine_head_at(base_key)
+        local needs = mine_needs[mine_head]
+        if needs == nil then return true end
+        local mine_base
+        if slot.kind == "build" and not slot.friendly then mine_base = mine_base_of_entity[slot.identity] end
+        return mine_base ~= nil and prom.head_candidate_ok(mine_head, mine_base, needs)
+    end
+    local function add_context(contexts, context)
+        for _, existing in pairs(contexts) do
+            if existing == context then return 0 end
         end
-        if prom.try_rewires(changes, true) then
-            for _, change in pairs(mine_changes) do
-                if change.detach then
-                    mine_base_now[change.node_key] = DETACHED
-                else
-                    mine_base_now[change.node_key] = change.add
+        table.insert(contexts, context)
+        return 1
+    end
+    local longest_path, refinements = 0, 0
+    local matcher = augmenting_search.new({
+        heads = slots,
+        detached = DETACHED,
+        initial = function(slot) return slot.own_base_key end,
+        candidates = function(slot) return candidate_pools[slot] end,
+        begin = function()
+            contexts_now, mine_needs = {}, {}
+            has_mine_needs = false
+        end,
+        allowed = function(slot, base_key)
+            if base_key == slot.own_base_key and own_pair_allowed[slot] == false then return false end
+            local physical = physical_pairs[slot]
+            if physical[base_key] == nil then physical[base_key] = physically_admissible(slot, base_key) end
+            if not physical[base_key] then return false end
+            local contexts = contexts_of(slot)
+            return (#contexts == 0 or prom.head_candidate_ok(slot.head_key, physical[base_key], contexts)) and (not has_mine_needs or mine_pair_ok(slot, base_key))
+        end,
+        can_end = function(_, freed)
+            -- An open path empties the root's old physical position. Once a
+            -- promised mining return needs that position, the path must close.
+            return mine_needs[mine_head_at(freed)] == nil
+        end,
+        refine = function(_, failure)
+            if failure == nil then return 0 end
+            local slot = slot_of_head[failure.node_key]
+            if slot ~= nil then return add_context(contexts_of(slot), failure.context) end
+            if mine_base_now[failure.node_key] ~= nil then
+                has_mine_needs = true
+                mine_needs[failure.node_key] = mine_needs[failure.node_key] or {}
+                return add_context(mine_needs[failure.node_key], failure.context)
+            end
+            return 0
+        end,
+        can_detach = function(slot)
+            return slot.friendly or (slot.kind ~= "build" and slot.head.projectile_package == nil and #contexts_of(slot) == 0)
+        end,
+        commit = function(path)
+            local changes, mining = {}, {}
+            local affected, new_occupants = {}, {}
+            for _, move in pairs(path) do
+                local slot = move.head
+                local previous = slot_base_of[slot.base_key] or slot.base_key
+                if previous ~= DETACHED then affected[previous] = true end
+                if move.base ~= DETACHED then
+                    affected[move.base] = true
+                    new_occupants[move.base] = slot
+                end
+                table.insert(changes, {
+                    node_key = slot.head_key,
+                    remove = slot.base_key ~= DETACHED and {slot.base_key} or {},
+                    add = move.base ~= DETACHED and connection_base(slot, move.base) or nil,
+                    detach = move.base == DETACHED,
+                })
+            end
+            -- Traverse the stable pool order, rather than iterating table-keyed heads.
+            for _, physical_base in pairs(pool) do
+                if affected[physical_base] ~= nil and graph.nodes[physical_base].acq_kind == "build" then
+                    local target = new_occupants[physical_base]
+                    local mine_base = target ~= nil and target.kind == "build" and not target.friendly and mine_base_of_entity[target.identity] or DETACHED
+                    local change = mine_change(base_item_name(graph, graph.nodes[physical_base]), mine_base or DETACHED)
+                    if change ~= nil then
+                        table.insert(changes, change)
+                        table.insert(mining, change)
+                    end
                 end
             end
-            for _, ind in pairs(component) do
-                local slot = slots[ind]
-                slot.base_key = connection_base(slot, takes[ind])
-                counts.moved = counts.moved + 1
-                if takes[ind] == DETACHED then
-                    counts.detached = counts.detached + 1
-                elseif slot.friendly then
-                    counts.friendly = counts.friendly + 1
-                elseif graph.nodes[takes[ind]].build_spoof ~= nil then
-                    counts.spoofs = counts.spoofs + 1
-                elseif slot.kind == "build" and graph.nodes[takes[ind]].acq_kind == "autoplace" then
-                    counts.salvaged = counts.salvaged + 1
-                elseif slot.kind == "build" and graph.nodes[takes[ind]].acq_kind == "spawn" then
-                    counts.carried = counts.carried + 1
-                elseif slot.kind == "build" and graph.nodes[takes[ind]].acq_kind == "spoil" then
-                    counts.hatched = counts.hatched + 1
-                elseif slot.kind == "build" and graph.nodes[takes[ind]].acq_kind == "dying" then
-                    counts.wrecked = counts.wrecked + 1
-                elseif slot.kind == "build" and is_trigger_kind(graph.nodes[takes[ind]].acq_kind) then
-                    counts.triggered = counts.triggered + 1
-                end
+            checked = checked + 1
+            local ok, failure = prom.try_rewires(changes, true)
+            if not ok then
+                refused = refused + 1
+                return false, failure
             end
-        else
-            log("Entity randomization: promotion rejected a group of " .. #component .. " slots; they keep their own bases")
+            longest_path = math.max(longest_path, #path)
+            for _, change in pairs(mining) do keep_mine(change) end
+            for _, move in pairs(path) do
+                move.head.base_key = move.base ~= DETACHED and connection_base(move.head, move.base) or DETACHED
+            end
+            return true
+        end,
+    })
+    prom.cache_rewires(true)
+    for _, slot in pairs(slots) do
+        local _, stats = matcher.try(slot)
+        refinements = refinements + stats.refinements
+    end
+    prom.cache_rewires(false)
+    -- Later augmentations can reroute earlier heads, so summarize only the final assignment.
+    for _, slot in pairs(slots) do
+        local chosen = matcher.assigned[slot]
+        if slot.base_key ~= slot.own_base_key then
+            counts.moved = counts.moved + 1
+            local base = graph.nodes[chosen]
+            if chosen == DETACHED then counts.detached = counts.detached + 1
+            elseif slot.friendly then counts.friendly = counts.friendly + 1
+            elseif base.build_spoof ~= nil then counts.spoofs = counts.spoofs + 1
+            elseif slot.kind == "build" then
+                if base.acq_kind == "autoplace" then counts.salvaged = counts.salvaged + 1
+                elseif base.acq_kind == "spawn" then counts.carried = counts.carried + 1
+                elseif base.acq_kind == "spoil" then counts.hatched = counts.hatched + 1
+                elseif base.acq_kind == "dying" then counts.wrecked = counts.wrecked + 1
+                elseif is_trigger_kind(base.acq_kind) then counts.triggered = counts.triggered + 1 end
+            end
         end
     end
+    log("Entity prerequisite search: " .. same_category .. " same-category searches, " .. (#slots - same_category) .. " general searches; " .. checked .. " augmenting paths checked, " .. refused .. " refused; " .. refinements .. " refinements; longest accepted path " .. longest_path)
 
     -- Mine-back heads get the base they follow now, and ones mined back from nothing get none (detached)
     for head_key, base_key in pairs(mine_base_now) do
@@ -1334,7 +1276,7 @@ local function matched_search(params)
             end
         end
     end
-    log("Entity randomization: " .. counts.moved .. " of " .. #slots .. " slots changed; " .. counts.spoofs .. " to an item that placed nothing, " .. counts.salvaged .. " to salvage from the wild, " .. counts.carried .. " to biter carriers, " .. counts.hatched .. " to carriers hatching from eggs, " .. counts.triggered .. " to trigger slots, " .. counts.wrecked .. " to wrecks, " .. counts.friendly .. " friendly biters, " .. counts.detached .. " detached (" .. num_pairs .. " possible pairs)")
+    log("Entity randomization: " .. counts.moved .. " of " .. #slots .. " slots changed; " .. counts.spoofs .. " to an item that placed nothing, " .. counts.salvaged .. " to salvage from the wild, " .. counts.carried .. " to biter carriers, " .. counts.hatched .. " to carriers hatching from eggs, " .. counts.triggered .. " to trigger slots, " .. counts.wrecked .. " to wrecks, " .. counts.friendly .. " friendly biters, " .. counts.detached .. " detached")
 
     local wild_counts = {
         total = 0,
@@ -1495,6 +1437,19 @@ entity.first_pass_rules = function(graph)
 
     -- Whether a position can take an identity
     local function pair_allowed(position, identity)
+        local source_package = projectile_packages[position.head.projectile_package]
+        local traveler_package = projectile_packages[identity.head.projectile_package]
+        if (source_package and source_package.locked) or (traveler_package and traveler_package.locked) then return position.key == identity.key end
+        if traveler_package ~= nil then
+            if source_package ~= nil then
+                if source_package.id == traveler_package.id then return true end
+                local cost, own_cost = item_cost(source_package.owner), item_cost(traveler_package.owner)
+                return cost ~= nil and own_cost ~= nil and costs_within(cost, own_cost)
+            end
+            if position.kind ~= "build" or traveler_package.impact == nil or traveler_package.is_entity or not may[identity.key].spoof then return false end
+            local cost, own_cost = item_cost(base_item_name(graph, position.base)), item_cost(traveler_package.owner)
+            return cost ~= nil and own_cost ~= nil and costs_within(cost, own_cost)
+        end
         -- A position can end up with nothing (an item placing nothing, a spot in the wild or slot where nothing comes from anymore)
         if identity.nothing then
             return true
@@ -1749,12 +1704,12 @@ local function first_pass_search(params)
     return true
 end
 
--- The search: with first pass entity positions (constants.entity_first_pass), reflecting first pass's matching, and otherwise matching this handler's slots itself
+-- With experimental first pass entity positions, reflect those positions; otherwise search prerequisites sequentially.
 entity.custom_prereq_search = function(params)
     if constants.entity_first_pass then
         return first_pass_search(params)
     end
-    return matched_search(params)
+    return prerequisite_search(params)
 end
 
 -- Item names that mining the entity can give
@@ -1832,8 +1787,12 @@ local function with_description_line(prototype, description_key, line)
 end
 
 entity.reflect = function(graph, head_to_base, head_to_handler)
+    packages.refresh(projectile_packages)
     -- item --> entity it now places, entity --> items that now place it, entity --> items that placed it in vanilla (only claimed ones)
     local item_to_entity = {}
+    local package_places = {}
+    local package_assignments = {}
+    local package_claimed = {}
     local entity_to_items = {}
     local entity_to_old_items = {}
     -- item that placed it in vanilla --> build slot (head key), and the items that placed nothing in vanilla (spoof placers)
@@ -1873,7 +1832,17 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
         if handler.id == entity.id and parent.spoof == nil and head.mine_back == nil then
             local entity_name = parent.name
             local base_key = head_to_base[head_key]
-            if head.friendly ~= nil then
+            if head.projectile_package ~= nil then
+                package_claimed[head.projectile_package] = true
+                if base_key ~= nil then
+                    local base = graph.nodes[base_key]
+                    if base.acq_kind == "build" then
+                        package_places[base_item_name(graph, base)] = projectile_packages[head.projectile_package]
+                    elseif base.projectile_package ~= nil then
+                        package_assignments[base.projectile_package] = projectile_packages[head.projectile_package]
+                    end
+                end
+            elseif head.friendly ~= nil then
                 -- A unit's placing slot, which an item may have taken (a friendly biter)
                 if base_key ~= nil then
                     local item_name = base_item_name(graph, graph.nodes[base_key])
@@ -2310,7 +2279,10 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
         if occupant ~= made_before then
             local occupant_prot = dutils.get_prot("entity", occupant)
             local occupant_line = {"propertyrandomizer-entity.occupant", "[entity=" .. occupant .. "]", locale.find_localised_name(occupant_prot)}
-            if base.trigger_spoof ~= nil then
+            if base.projectile_package ~= nil then
+                packages.replace_with_building(projectile_packages[base.projectile_package], occupant, "propertyrandomizer-package-building-" .. base.projectile_package)
+                package_assignments[base.projectile_package] = false
+            elseif base.trigger_spoof ~= nil then
                 -- A capsule thrown for an effect makes this where it's thrown instead (below)
                 maker_occupants[owner_name] = {
                     base_key = base_key,
@@ -2492,7 +2464,7 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
     local impact_actions = {}
     local placement_names = {}
     for item_name, item in pairs(dutils.get_all_prots("item")) do
-        local unused = item_to_entity[item_name] == nil and (vestige_place_changes[item_name] ~= nil or not common.places_something(item))
+        local unused = package_places[item_name] == nil and item_to_entity[item_name] == nil and (vestige_place_changes[item_name] ~= nil or not common.places_something(item))
         if unused and claimable_item(item) and not deposit_copies.is_copy(item) and graph.nodes[key("item", item_name)] ~= nil and graph_customization.selected("entity", {
             type = "item",
             name = item_name,
@@ -2547,7 +2519,7 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
     local swapped = {}
     local effect_capsule_names = {}
     for _, item in pairs(dutils.get_all_prots("item")) do
-        if effect_capsule(item) and maker_occupants[item.name] == nil and capsule_effect[item.name] == nil and holder_retargets["capsule:" .. item.name] == nil then
+        if fixed_effects[item.name] == nil and projectile_packages["item-" .. item.name] == nil and effect_capsule(item) and maker_occupants[item.name] == nil and capsule_effect[item.name] == nil and holder_retargets["capsule:" .. item.name] == nil then
             table.insert(effect_capsule_names, item.name)
         end
     end
@@ -2640,6 +2612,26 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
             })
         end
         log("Entity randomization: placing " .. item_name .. " directly runs the impact of " .. from_name)
+    end
+
+    -- Package placements override any deferred Vestige clearing of the slot they took.
+    for item_name, package in pairs(package_places) do packages.place(item_name, package, vestige_place_changes[item_name] ~= nil) end
+    local package_ids = {}
+    for id, _ in pairs(projectile_packages) do table.insert(package_ids, id) end
+    table.sort(package_ids)
+    for _, id in pairs(package_ids) do
+        local destination = projectile_packages[id]
+        local donor = package_assignments[id]
+        -- Enemy attacks borrow a private package copy, without removing a player's damage source.
+        if destination.is_entity and rng.value(effect_rng_key) < EFFECT_SWAP_CHANCE then
+            donor = projectile_packages[package_ids[rng.int(effect_rng_key, #package_ids)]]
+        end
+        if donor ~= nil and donor ~= false and donor.id ~= id then
+            packages.install(destination, donor, "propertyrandomizer-package-" .. id)
+            log("Entity randomization: projectile package " .. donor.id .. " now fires from " .. id)
+        elseif donor == nil and package_claimed[id] ~= nil then
+            packages.clear(destination)
+        end
     end
 
     -- Spawners spawn whatever took their spawn slots, at those slots' spawn points

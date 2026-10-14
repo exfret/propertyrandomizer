@@ -19,6 +19,9 @@ local rng = require("src/lib/random/rng")
 local logic = require("src/logic/init")
 local protection = require("src/randomizations/unified/skeleton/protection")
 
+local bipartite = require("src/lib/graph/bipartite-matching")
+local refinement = require("src/lib/graph/matching-refinement")
+
 local key = gutils.key
 
 local matching = {}
@@ -629,47 +632,25 @@ local function random_matching(params, graph, sort_info, needs, requires_launcha
         end
     end
 
-    -- Kuhn's algorithm around the prefilled pairs, which stay fixed; nil if some trav can't be matched
+    -- Keep ordering and random draws here; the shared matcher only follows candidates.
+    local function copy_list(list)
+        local copy = {}
+        for i, value in pairs(list) do copy[i] = value end
+        return copy
+    end
     local function complete(prefilled)
-        local slot_match = {}
-        local is_fixed = {}
-        local is_matched = {}
-        for slot_key, trav_key in pairs(prefilled) do
-            slot_match[slot_key] = trav_key
-            is_fixed[slot_key] = true
-            is_matched[trav_key] = true
-        end
-        -- Lists of keys, so a plain copy is a deep one
-        local function copy_list(list)
-            local copy = {}
-            for i, value in pairs(list) do
-                copy[i] = value
-            end
-            return copy
-        end
-        local function try(trav_key, visited)
-            local candidates = copy_list(admissible[trav_key])
-            rng.shuffle(rng_key, candidates)
-            table.insert(candidates, current_slot[trav_key])
-            for _, slot_key in pairs(candidates) do
-                if not visited[slot_key] and not is_fixed[slot_key] then
-                    visited[slot_key] = true
-                    if slot_match[slot_key] == nil or try(slot_match[slot_key], visited) then
-                        slot_match[slot_key] = trav_key
-                        return true
-                    end
-                end
-            end
-            return false
-        end
         local order = copy_list(travs)
         rng.shuffle(rng_key, order)
-        for _, trav_key in pairs(order) do
-            if not is_matched[trav_key] and not try(trav_key, {}) then
-                return nil
-            end
-        end
-        return slot_match
+        return bipartite.complete({
+            order = order,
+            fixed = prefilled,
+            candidates = function(trav_key)
+                local candidates = copy_list(admissible[trav_key])
+                rng.shuffle(rng_key, candidates)
+                table.insert(candidates, current_slot[trav_key])
+                return candidates
+            end,
+        })
     end
 
     local resource_slots = {}
@@ -969,41 +950,36 @@ matching.run = function(params)
             log("Monotone matching: round " .. round .. " couldn't prove " .. #failed .. " hard pebbles in its own sort")
         end
         local needs, requires_launchable = needs_from_proof(graph, sort_info, closure, support, assignment, chain_of)
-        local num_refinements = 0
-        local new_assignment
-        local new_graph
-        local new_sort
-        local round_failed = false
-        while true do
-            new_assignment = random_matching(params, graph, sort_info, needs, requires_launchable, assignment, rng.key({ id = "monotone-matching-" .. round .. "-" .. num_refinements }))
-            new_assignment = realize(params, new_assignment)
-            new_graph = connect(table.deepcopy(params.unconnected_graph), params, new_assignment)
-            new_sort = complex_sort(new_graph)
-            local lost = lost_pebbles(exact, recipes, new_sort)
-            if #lost == 0 then
-                break
-            end
-            local blocked = blocked_travs(params, graph, sort_info, assignment, lost, new_assignment, new_sort)
-            local num_added = 0
-            for _, q in pairs(blocked) do
-                needs[q.node_key] = needs[q.node_key] or {}
-                if needs[q.node_key][q.context] == nil then
-                    needs[q.node_key][q.context] = true
-                    num_added = num_added + 1
+        local new_assignment, result, stats = refinement.run({
+            current = assignment,
+            current_result = {graph = graph, sort = sort_info},
+            max_refinements = 10,
+            propose = function(num_refinements)
+                return realize(params, random_matching(params, graph, sort_info, needs, requires_launchable, assignment, rng.key({ id = "monotone-matching-" .. round .. "-" .. num_refinements })))
+            end,
+            validate = function(candidate)
+                local candidate_graph = connect(table.deepcopy(params.unconnected_graph), params, candidate)
+                local candidate_sort = complex_sort(candidate_graph)
+                local lost = lost_pebbles(exact, recipes, candidate_sort)
+                return #lost == 0, {graph = candidate_graph, sort = candidate_sort, lost = lost}
+            end,
+            refine = function(candidate, trial)
+                local blocked = blocked_travs(params, graph, sort_info, assignment, trial.lost, candidate, trial.sort)
+                local num_added = 0
+                for _, q in pairs(blocked) do
+                    needs[q.node_key] = needs[q.node_key] or {}
+                    if needs[q.node_key][q.context] == nil then
+                        needs[q.node_key][q.context] = true
+                        num_added = num_added + 1
+                    end
                 end
-            end
-            num_refinements = num_refinements + 1
-            local example = lost[1]
-            log("Monotone matching: round " .. round .. " lost " .. #lost .. " hard pebbles (e.g. " .. example.node_key .. " @ " .. top.context_name(example.context) .. "); added " .. num_added .. " needs")
-            if num_added == 0 or num_refinements >= 10 then
-                -- Nothing left to refine, so keep the previous matching (always valid)
-                new_assignment = assignment
-                new_graph = graph
-                new_sort = sort_info
-                round_failed = true
-                break
-            end
-        end
+                local example = trial.lost[1]
+                log("Monotone matching: round " .. round .. " lost " .. #trial.lost .. " hard pebbles (e.g. " .. example.node_key .. " @ " .. top.context_name(example.context) .. "); added " .. num_added .. " needs")
+                return num_added
+            end,
+        })
+        local new_graph, new_sort = result.graph, result.sort
+        local num_refinements, round_failed = stats.refinements, not stats.accepted
         local num_moved = 0
         for slot_key, trav_key in pairs(new_assignment) do
             if params.unconnected_graph.nodes[trav_key].old_slot ~= slot_key then

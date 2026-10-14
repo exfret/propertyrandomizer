@@ -274,11 +274,71 @@ promotion.new = function(params)
     -- The same for solvency (debt mode)
     local memo_solvent = {}
     local support_solvent = {}
+    local backing_bounds = {}
+    local cache_rewires = false
+    local connection_ranks = {}
+    local proof_parents = {}
+    local proving
     local function clear_cache()
         memo = {}
         support = {}
         memo_solvent = {}
         support_solvent = {}
+        backing_bounds = {}
+        proof_parents = {}
+    end
+
+    -- During a series of rewires, record every proof query, including failed
+    -- alternatives and queries satisfied by a promise. Either can affect a
+    -- cached parent's result after the queried node changes.
+    local function watch_proof(ind)
+        if proving ~= nil and proving ~= ind then
+            local parents = proof_parents[ind]
+            if parents == nil then
+                parents = {}
+                proof_parents[ind] = parents
+            end
+            parents[proving] = true
+        end
+    end
+
+    local function clear_rewired(changes)
+        if not cache_rewires then
+            clear_cache()
+            return
+        end
+        local pending, seen = {}, {}
+        local function invalidate_node(node_key)
+            for _, ind in pairs(nci[node_key] or {}) do
+                backing_bounds[ind] = nil
+                if not seen[ind] then
+                    seen[ind] = true
+                    table.insert(pending, ind)
+                end
+            end
+        end
+        for _, change in pairs(changes) do
+            invalidate_node(change.node_key)
+            -- Changing a head's outgoing edge can also change its backing bound.
+            for _, pre_key in pairs(change.remove or {}) do
+                if graph.nodes[pre_key].type == "head" then invalidate_node(pre_key) end
+            end
+            if change.add ~= nil and graph.nodes[change.add].type == "head" then invalidate_node(change.add) end
+        end
+        local next_ind = 1
+        while next_ind <= #pending do
+            local ind = pending[next_ind]
+            next_ind = next_ind + 1
+            memo[ind], support[ind] = nil, nil
+            memo_solvent[ind], support_solvent[ind] = nil, nil
+            for parent, _ in pairs(proof_parents[ind] or {}) do
+                if not seen[parent] then
+                    seen[parent] = true
+                    table.insert(pending, parent)
+                end
+            end
+            proof_parents[ind] = nil
+        end
     end
 
     -- Ranks of the pebbles of prereq pre that get context to its dependent, earliest first
@@ -313,7 +373,8 @@ promotion.new = function(params)
 
     -- Rank of a node's own pebble in context (for heads, which have no edge abilities)
     local function node_ind(node_key, context)
-        return pre_ind({ key = node_key }, context)
+        local context_inds = nci[node_key]
+        return context_inds ~= nil and context_inds[context] or nil
     end
 
     -- The prereq an ingredient owner stands for in a recipe: the owner itself, adding automatability when the recipe makes more of it than it takes (a positive loop, src/prototypes/recipes/recipe-loops.lua), since the recipe then keeps itself going once started
@@ -330,20 +391,19 @@ promotion.new = function(params)
     -- Its own rank only reflects its vanilla base: a head whose vanilla base is free (like a resource that needs no mining fluid) sorts near the start however late its dependent comes, so no later base could ever pass
     -- Ranks still strictly decrease along backings if the head's pebble counts as ranked just before its dependent's; a dependent that changes contexts keeps the head's own rank
     local function backing_bound(ind)
+        if backing_bounds[ind] ~= nil then return backing_bounds[ind] end
         local pebble_key, pebble_context = pebble_keys[ind], pebble_contexts[ind]
         local node = graph.nodes[pebble_key]
         if node.type ~= "head" then
             return ind
         end
+        local bound = ind
         local dep = gutils.unique_depnode(graph, node)
-        if dep == nil or logic.type_info[dep.type].context ~= nil then
-            return ind
+        if dep ~= nil and logic.type_info[dep.type].context == nil then
+            bound = math.max(ind, node_ind(key(dep), pebble_context) or ind)
         end
-        local dep_ind = node_ind(key(dep), pebble_context)
-        if dep_ind == nil or dep_ind < ind then
-            return ind
-        end
-        return dep_ind
+        backing_bounds[ind] = bound
+        return bound
     end
 
     -- A base as a prereq of a head, carrying the abilities of the edge connecting them
@@ -430,6 +490,27 @@ promotion.new = function(params)
         end
     end
 
+    -- Transmission depends on the node's kind and the fixed sort contexts, not
+    -- on its changing prerequisites. Keep this part across proof-cache resets;
+    -- whether any incoming context has an earlier backing is still recomputed.
+    local transmitting_contexts = {}
+    local function incoming_contexts(ind, node, outgoing_context)
+        if not complex and sort_info.home_sets == nil then return sort_info.contexts end
+        if transmitting_contexts[ind] == nil then
+            local incoming = {}
+            for _, context in pairs(sort_info.contexts) do
+                for _, outgoing in pairs(top.node_transmit(sort_info, node, context)) do
+                    if outgoing == outgoing_context then
+                        table.insert(incoming, context)
+                        break
+                    end
+                end
+            end
+            transmitting_contexts[ind] = incoming
+        end
+        return transmitting_contexts[ind]
+    end
+
     -- A backing for pebble ind in the current graph, or nil; with solvent (debt mode), one without debt edges
     local function compute_support(ind, solvent)
         local pebble_key, pebble_context = pebble_keys[ind], pebble_contexts[ind]
@@ -470,19 +551,9 @@ promotion.new = function(params)
         -- Forgetters and emitters can send out this pebble's context from other incoming contexts (see top.node_transmit)
         -- Try those incoming contexts in order of how early their prereqs are (mirrors top.path)
         local contexts = {}
-        for _, context in pairs(sort_info.contexts) do
-            -- Only plain room contexts send every context to forgetters and emitters
-            local transmits = not complex and sort_info.home_sets == nil
-            if not transmits then
-                for _, outgoing in pairs(top.node_transmit(sort_info, node, context)) do
-                    if outgoing == pebble_context then
-                        transmits = true
-                        break
-                    end
-                end
-            end
+        for _, context in pairs(incoming_contexts(ind, node, pebble_context)) do
             local score
-            for _, pre in pairs(transmits and pres or {}) do
+            for _, pre in pairs(pres) do
                 local i = pre_ind(pre, context)
                 if node.op == "AND" then
                     if i == nil then
@@ -532,6 +603,7 @@ promotion.new = function(params)
     end
 
     establish = function(ind)
+        if cache_rewires and proving ~= nil then watch_proof(ind) end
         if state.is_promised[ind] then
             return true
         end
@@ -540,7 +612,10 @@ promotion.new = function(params)
         end
         -- Ranks strictly decrease along backings, so there are no cycles; this is just a guard
         memo[ind] = false
+        local previous = proving
+        if cache_rewires then proving = ind end
         local inds = compute_support(ind)
+        proving = previous
         if inds ~= nil then
             memo[ind] = true
             support[ind] = inds
@@ -551,6 +626,7 @@ promotion.new = function(params)
     -- Whether pebble ind has a solvent backing (debt mode), stopping at solvent promises the way establish stops at promises
     -- Without debt, every backing is solvent
     establish_solvent = function(ind)
+        if cache_rewires and proving ~= nil then watch_proof(ind) end
         if debt == nil then
             return establish(ind)
         end
@@ -561,7 +637,10 @@ promotion.new = function(params)
             return memo_solvent[ind]
         end
         memo_solvent[ind] = false
+        local previous = proving
+        if cache_rewires then proving = ind end
         local inds = compute_support(ind, true)
+        proving = previous
         if inds ~= nil then
             memo_solvent[ind] = true
             support_solvent[ind] = inds
@@ -1223,7 +1302,22 @@ promotion.new = function(params)
         end
         local bound = backing_bound(head_ind)
         local est = solvent and establish_solvent or establish
-        for _, i in pairs(pre_inds(base_pre(base_key, head_key), context)) do
+        local inds
+        if cache_rewires then
+            local by_base = connection_ranks[head_ind]
+            if by_base == nil then
+                by_base = {}
+                connection_ranks[head_ind] = by_base
+            end
+            inds = by_base[base_key]
+            if inds == nil then
+                inds = pre_inds(base_pre(base_key, head_key), context)
+                by_base[base_key] = inds
+            end
+        else
+            inds = pre_inds(base_pre(base_key, head_key), context)
+        end
+        for _, i in pairs(inds) do
             if i < bound and est(i) then
                 return i
             end
@@ -1233,8 +1327,9 @@ promotion.new = function(params)
 
     -- Whether the head is solvent in context now (debt mode), so its new base must be too
     local function head_is_solvent(head_key, context)
+        if debt == nil then return false end
         local head_ind = node_ind(head_key, context)
-        return debt ~= nil and head_ind ~= nil and establish_solvent(head_ind)
+        return head_ind ~= nil and establish_solvent(head_ind)
     end
 
     -- Chunk boundaries for a generic handler head (debt mode): the contexts among required_contexts where the head's dependent owes something (it has no solvent backing) and this head isn't solvent there yet, so a solvent base pays this head's part of it
@@ -1285,7 +1380,7 @@ promotion.new = function(params)
             if base_backing(base_key, head_key, context) == nil then
                 return false
             end
-            if head_is_solvent(head_key, context) and base_backing(base_key, head_key, context, true) == nil then
+            if debt ~= nil and head_is_solvent(head_key, context) and base_backing(base_key, head_key, context, true) == nil then
                 return false
             end
         end
@@ -1353,12 +1448,24 @@ promotion.new = function(params)
         return pre_keys
     end
 
+    -- Opt in while a handler makes a series of atomic rewires. Start with a
+    -- fresh cache so every retained proof has its dependencies recorded. Other
+    -- operations still clear the whole proof cache, as does leaving the series.
+    -- Node metadata and connection abilities must stay fixed within the series:
+    -- their candidate ranks are retained, while reachability is checked anew.
+    state.cache_rewires = function(enabled)
+        clear_cache()
+        connection_ranks = {}
+        cache_rewires = enabled
+    end
+
     -- Try rewiring edges and check that every promised pebble of each rewired node can still be established
     -- changes is a list of { node_key, remove = list of prereq keys whose edges to node_key are removed, add = prereq key or nil, detach = whether a head is left without a base }
     -- A detached head is unreachable, like an entity no longer found in the wild; only a head that's detached can have no base
     -- With should_commit, a successful rewire is kept and the new backings are promised; otherwise (or on failure) everything is reverted
     -- This is for choices that aren't recipe ingredients or generic handler heads, like first pass's slot/trav assignments
     -- validate(graph), when supplied, checks the complete trial before anything is committed; refusal uses the same rollback as a failed promise.
+    -- On a failed promise, the second return names its node/context (and solvent obligation).
     state.try_rewires = function(changes, should_commit, validate)
         local removed_edges = {}
         local added_edges = {}
@@ -1379,7 +1486,12 @@ promotion.new = function(params)
                     stop = change.node_key,
                 })
                 if graph.edges[edge_key] ~= nil then
-                    table.insert(removed_edges, table.deepcopy(graph.edges[edge_key]))
+                    -- Removal updates graph indexes, not the edge object. In a
+                    -- metadata-stable series without an external validator,
+                    -- retain that object for rollback instead of copying it.
+                    local removed = graph.edges[edge_key]
+                    if not cache_rewires or validate ~= nil then removed = table.deepcopy(removed) end
+                    table.insert(removed_edges, removed)
                     gutils.remove_edge(graph, edge_key)
                 end
             end
@@ -1409,18 +1521,20 @@ promotion.new = function(params)
                 end
             end
         end
-        clear_cache()
+        clear_rewired(changes)
 
-        local ok = true
+        local ok, failure = true, nil
         for _, ind in pairs(unpromised) do
             if not establish(ind) then
                 ok = false
+                failure = {node_key = pebble_keys[ind], context = pebble_contexts[ind]}
                 break
             end
         end
         for _, ind in pairs(ok and unsolvent or {}) do
             if not establish_solvent(ind) then
                 ok = false
+                failure = {node_key = pebble_keys[ind], context = pebble_contexts[ind], solvent = true}
                 break
             end
         end
@@ -1464,11 +1578,14 @@ promotion.new = function(params)
                 gutils.add_edge(graph, edge.start, edge.stop, edge)
             end
         end
-        clear_cache()
+        -- Committing only promises proofs already established in this trial;
+        -- its graph and proof results stay valid. A rollback changes the graph
+        -- again and must invalidate the trial's results.
+        if not (ok and should_commit and cache_rewires) then clear_rewired(changes) end
         if ok and should_commit then
             collect_payments()
         end
-        return ok
+        return ok, failure
     end
 
     -- Whether every recipe among the dependents of these pebbles (of one recipe, no longer establishable at their ranks) keeps some context it can be established in, following dependents whose pebbles can't be established either: a rewire must never leave a recipe reachable nowhere, which would fail the attempt when the recipe is anchored (required_contexts)
