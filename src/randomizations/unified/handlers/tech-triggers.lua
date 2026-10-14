@@ -831,4 +831,7 @@ tech_triggers.reflect = function(graph, head_to_base, head_to_handler)
     end
 end
 
+-- This claim function is pure; preflight can use it without consuming entries or randomness.
+tech_triggers.may_claim = tech_triggers.claim
+
 return tech_triggers

@@ -56,4 +56,9 @@ tech_science_packs.reflect = function(graph, head_to_base, head_to_handler)
     end
 end
 
+-- Conservative pure preflight: false proves claim has no effect; true still needs ordinary claiming.
+tech_science_packs.may_claim = function(graph, prereq, dep, edge)
+    return dep.type == "technology"
+end
+
 return tech_science_packs

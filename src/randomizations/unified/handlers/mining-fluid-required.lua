@@ -377,4 +377,7 @@ mining_fluid_required.reflect = function(graph, head_to_base, head_to_handler)
     end
 end
 
+-- This claim function is pure; preflight can use it without consuming entries or randomness.
+mining_fluid_required.may_claim = mining_fluid_required.claim
+
 return mining_fluid_required

@@ -32,9 +32,13 @@ local num_times_to_include = {
     ["energy-source-heat"] = 5,
 }
 entity_energy_source.claim = function(graph, prereq, dep, edge)
+    -- Most edges are unrelated; reject them before searching prototype categories, including in preflight.
+    if not is_energy_source_node[prereq.type] or dep.type ~= "entity-operate" then
+        return nil
+    end
     local entity = dutils.get_prot("entity", dep.name)
 
-    if is_energy_source_node[prereq.type] and dep.type == "entity-operate" and categories.energy_sources_any[entity.type] then
+    if categories.energy_sources_any[entity.type] then
         if entity.energy_source ~= nil and entity.energy_source.type == "burner" then
             if entity.energy_source.fuel_categories ~= nil then
                 -- Exclude things without the chemical category at all
@@ -126,5 +130,8 @@ entity_energy_source.reflect = function(graph, head_to_base, head_to_handler)
         end
     end
 end
+
+-- This claim function is pure; preflight can use it without consuming entries or randomness.
+entity_energy_source.may_claim = entity_energy_source.claim
 
 return entity_energy_source

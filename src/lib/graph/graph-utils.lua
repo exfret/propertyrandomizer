@@ -441,7 +441,8 @@ gutils.make_orand = function(graph, edge_key)
     return orand
 end
 
-gutils.make_orands = function(graph)
+-- needs_connector is a pure precheck; nil preserves full expansion for existing callers.
+gutils.make_orands = function(graph, needs_connector)
     local edges_to_subdivide = {}
     graph.node_to_orands = {}
     graph.orand_to_parent = {}
@@ -452,7 +453,9 @@ gutils.make_orands = function(graph)
             -- Fixed alternatives need no claimable AND connector; their original edge abilities still apply.
             if node.fixed_inputs ~= true then
                 for pre, _ in pairs(node.pre) do
-                    table.insert(edges_to_subdivide, pre)
+                    if needs_connector == nil or needs_connector(graph, graph.edges[pre]) then
+                        table.insert(edges_to_subdivide, pre)
+                    end
                 end
             end
         else
@@ -554,7 +557,9 @@ gutils.subdivide_ands = function(graph)
     for _, node in pairs(graph.nodes) do
         if node.op == "AND" then
             for pre, _ in pairs(node.pre) do
-                table.insert(edges_to_subdivide, pre)
+                if needs_connector == nil or needs_connector(graph, graph.edges[pre]) then
+                        table.insert(edges_to_subdivide, pre)
+                    end
             end
         end
         graph.old_pres[gutils.key(node)] = {}

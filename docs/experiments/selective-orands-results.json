@@ -1,0 +1,1499 @@
+{
+  "source_head": "6e153a9dada446af279b02fdf6da38eb36a4fad4",
+  "scope": "Scratch prototype, production source unchanged. Pure conservative claim preflight before OR expansion. Production/crafting options, research/context relays and all potentially claimable branches stay explicit.",
+  "scratch": {
+    "root": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/selective-orands-6pnyg_2d",
+    "baseline": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/selective-orands-6pnyg_2d/baseline",
+    "candidate": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/selective-orands-6pnyg_2d/candidate",
+    "head": "6e153a9dada446af279b02fdf6da38eb36a4fad4",
+    "probe": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/selective-orands-6pnyg_2d/probe",
+    "configs": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/selective-orands-6pnyg_2d/configs.txt"
+  },
+  "controlled": {
+    "log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/selective-orands-6pnyg_2d/probe-runs/run-20261014-005231-4t47rlqb/runs/sa--selective-orands@1/create.log",
+    "controlled_complete": true,
+    "construction_complete": false,
+    "never_created": 8225,
+    "contexts": {
+      "lost": 0,
+      "gained": 0
+    },
+    "measurements": [
+      {
+        "phase": "construction",
+        "variant": "before",
+        "round": 1,
+        "begin": {
+          "seconds": 158.865,
+          "kb": 1065698.6240234,
+          "samples": 5583.0
+        },
+        "end": {
+          "seconds": 159.241,
+          "kb": 1141077.2480469,
+          "samples": 5592.0
+        },
+        "result": {
+          "seconds": 160.266,
+          "live_delta_kb": 58620.000976563,
+          "stored": 0.0,
+          "nodes": 26411.0,
+          "instructions": 9000000.0
+        },
+        "instructions": 9000000.0,
+        "seconds": 0.3760000000000048,
+        "retained_mib": 57.24609470367481
+      },
+      {
+        "phase": "construction",
+        "variant": "after",
+        "round": 1,
+        "begin": {
+          "seconds": 161.472,
+          "kb": 1065699.6298828,
+          "samples": 5601.0
+        },
+        "end": {
+          "seconds": 161.904,
+          "kb": 1104535.9121094,
+          "samples": 5623.0
+        },
+        "result": {
+          "seconds": 162.7,
+          "live_delta_kb": 29656.543945313,
+          "stored": 0.0,
+          "nodes": 18186.0,
+          "instructions": 22000000.0
+        },
+        "instructions": 22000000.0,
+        "seconds": 0.43199999999998795,
+        "retained_mib": 28.961468696594725
+      },
+      {
+        "phase": "construction",
+        "variant": "after",
+        "round": 2,
+        "begin": {
+          "seconds": 164.015,
+          "kb": 1067276.8984375,
+          "samples": 5632.0
+        },
+        "end": {
+          "seconds": 164.487,
+          "kb": 1104146.4775391,
+          "samples": 5654.0
+        },
+        "result": {
+          "seconds": 165.869,
+          "live_delta_kb": 28080.131835938,
+          "stored": 0.0,
+          "nodes": 18186.0,
+          "instructions": 22000000.0
+        },
+        "instructions": 22000000.0,
+        "seconds": 0.4720000000000084,
+        "retained_mib": 27.4220037460332
+      },
+      {
+        "phase": "construction",
+        "variant": "before",
+        "round": 2,
+        "begin": {
+          "seconds": 167.241,
+          "kb": 1067277.7519531,
+          "samples": 5663.0
+        },
+        "end": {
+          "seconds": 167.61,
+          "kb": 1142641.7421875,
+          "samples": 5671.0
+        },
+        "result": {
+          "seconds": 168.471,
+          "live_delta_kb": 58619.465820313,
+          "stored": 0.0,
+          "nodes": 26411.0,
+          "instructions": 8000000.0
+        },
+        "instructions": 8000000.0,
+        "seconds": 0.3689999999999998,
+        "retained_mib": 57.245572090149416
+      },
+      {
+        "phase": "construction",
+        "variant": "before",
+        "round": 3,
+        "begin": {
+          "seconds": 170.097,
+          "kb": 1067278.0957031,
+          "samples": 5681.0
+        },
+        "end": {
+          "seconds": 170.513,
+          "kb": 1142644.5087891,
+          "samples": 5689.0
+        },
+        "result": {
+          "seconds": 172.15,
+          "live_delta_kb": 58619.53515625,
+          "stored": 0.0,
+          "nodes": 26411.0,
+          "instructions": 8000000.0
+        },
+        "instructions": 8000000.0,
+        "seconds": 0.4159999999999968,
+        "retained_mib": 57.24563980102539
+      },
+      {
+        "phase": "construction",
+        "variant": "after",
+        "round": 3,
+        "begin": {
+          "seconds": 174.03,
+          "kb": 1067278.5722656,
+          "samples": 5698.0
+        },
+        "end": {
+          "seconds": 174.577,
+          "kb": 1104142.4013672,
+          "samples": 5720.0
+        },
+        "result": {
+          "seconds": 175.897,
+          "live_delta_kb": 28079.669921875,
+          "stored": 0.0,
+          "nodes": 18186.0,
+          "instructions": 22000000.0
+        },
+        "instructions": 22000000.0,
+        "seconds": 0.546999999999997,
+        "retained_mib": 27.421552658081055
+      },
+      {
+        "phase": "sort",
+        "variant": "before",
+        "round": 1,
+        "begin": {
+          "seconds": 219.752,
+          "kb": 1787094.5371094,
+          "samples": 6516.0
+        },
+        "end": {
+          "seconds": 231.605,
+          "kb": 2198888.9765625,
+          "samples": 6729.0
+        },
+        "result": {
+          "seconds": 234.56,
+          "live_delta_kb": 145631.28417969,
+          "stored": 485046.0,
+          "nodes": 35643.0,
+          "instructions": 213000000.0
+        },
+        "instructions": 213000000.0,
+        "seconds": 11.85299999999998,
+        "retained_mib": 142.21805095672852
+      },
+      {
+        "phase": "sort",
+        "variant": "after",
+        "round": 1,
+        "begin": {
+          "seconds": 237.32,
+          "kb": 1787102.5712891,
+          "samples": 6729.0
+        },
+        "end": {
+          "seconds": 246.41,
+          "kb": 2146467.4990234,
+          "samples": 6920.0
+        },
+        "result": {
+          "seconds": 248.881,
+          "live_delta_kb": 127557.94921875,
+          "stored": 407914.0,
+          "nodes": 27418.0,
+          "instructions": 191000000.0
+        },
+        "instructions": 191000000.0,
+        "seconds": 9.090000000000003,
+        "retained_mib": 124.56830978393555
+      },
+      {
+        "phase": "sort",
+        "variant": "after",
+        "round": 2,
+        "begin": {
+          "seconds": 250.485,
+          "kb": 1787105.6142578,
+          "samples": 6920.0
+        },
+        "end": {
+          "seconds": 257.051,
+          "kb": 2139543.0458984,
+          "samples": 7112.0
+        },
+        "result": {
+          "seconds": 259.265,
+          "live_delta_kb": 127565.68066406,
+          "stored": 408938.0,
+          "nodes": 27418.0,
+          "instructions": 193000000.0
+        },
+        "instructions": 192000000.0,
+        "seconds": 6.565999999999974,
+        "retained_mib": 124.57586002349609
+      },
+      {
+        "phase": "sort",
+        "variant": "before",
+        "round": 2,
+        "begin": {
+          "seconds": 260.615,
+          "kb": 1787106.9824219,
+          "samples": 7113.0
+        },
+        "end": {
+          "seconds": 267.564,
+          "kb": 2148046.6542969,
+          "samples": 7328.0
+        },
+        "result": {
+          "seconds": 269.54,
+          "live_delta_kb": 145615.40136719,
+          "stored": 486558.0,
+          "nodes": 35643.0,
+          "instructions": 215000000.0
+        },
+        "instructions": 215000000.0,
+        "seconds": 6.949000000000012,
+        "retained_mib": 142.2025403976465
+      },
+      {
+        "phase": "sort",
+        "variant": "before",
+        "round": 3,
+        "begin": {
+          "seconds": 271.842,
+          "kb": 1787108.9228516,
+          "samples": 7328.0
+        },
+        "end": {
+          "seconds": 278.059,
+          "kb": 2186403.796875,
+          "samples": 7540.0
+        },
+        "result": {
+          "seconds": 280.013,
+          "live_delta_kb": 145607.234375,
+          "stored": 481160.0,
+          "nodes": 35643.0,
+          "instructions": 212000000.0
+        },
+        "instructions": 212000000.0,
+        "seconds": 6.217000000000041,
+        "retained_mib": 142.19456481933594
+      },
+      {
+        "phase": "sort",
+        "variant": "after",
+        "round": 3,
+        "begin": {
+          "seconds": 281.021,
+          "kb": 1787109.8603516,
+          "samples": 7540.0
+        },
+        "end": {
+          "seconds": 286.438,
+          "kb": 2151244.4091797,
+          "samples": 7732.0
+        },
+        "result": {
+          "seconds": 289.405,
+          "live_delta_kb": 127550.48144531,
+          "stored": 410605.0,
+          "nodes": 27418.0,
+          "instructions": 192000000.0
+        },
+        "instructions": 192000000.0,
+        "seconds": 5.416999999999973,
+        "retained_mib": 124.56101703643554
+      }
+    ],
+    "summary": {
+      "construction": {
+        "before": {
+          "instructions": 8000000.0,
+          "seconds": 0.3760000000000048,
+          "retained_mib": 57.24563980102539,
+          "nodes": 26411.0,
+          "stored": 0.0
+        },
+        "after": {
+          "instructions": 22000000.0,
+          "seconds": 0.4720000000000084,
+          "retained_mib": 27.4220037460332,
+          "nodes": 18186.0,
+          "stored": 0.0
+        },
+        "reduction_percent": {
+          "instructions": -175.0,
+          "retained_mib": 52.09765522518972,
+          "nodes": 31.14232706069441
+        }
+      },
+      "sort": {
+        "before": {
+          "instructions": 213000000.0,
+          "seconds": 6.949000000000012,
+          "retained_mib": 142.2025403976465,
+          "nodes": 35643.0,
+          "stored": 485046.0
+        },
+        "after": {
+          "instructions": 192000000.0,
+          "seconds": 6.565999999999974,
+          "retained_mib": 124.56830978393555,
+          "nodes": 27418.0,
+          "stored": 408938.0
+        },
+        "reduction_percent": {
+          "instructions": 9.859154929577462,
+          "retained_mib": 12.400784517913433,
+          "nodes": 23.076059815391524,
+          "stored": 15.690882926567784
+        }
+      }
+    }
+  },
+  "final_construction": {
+    "log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/selective-orands-6pnyg_2d/probe-runs/run-20261014-005838-dv7ot44z/runs/sa--selective-orands@1/create.log",
+    "controlled_complete": false,
+    "construction_complete": true,
+    "never_created": 8225,
+    "contexts": null,
+    "measurements": [
+      {
+        "phase": "construction",
+        "variant": "before",
+        "round": 1,
+        "begin": {
+          "seconds": 77.217,
+          "kb": 1065603.4277344,
+          "samples": 5583.0
+        },
+        "end": {
+          "seconds": 77.449,
+          "kb": 1140982.0517578,
+          "samples": 5592.0
+        },
+        "result": {
+          "seconds": 77.994,
+          "live_delta_kb": 58620.000976563,
+          "stored": 0.0,
+          "nodes": 26411.0,
+          "instructions": 9000000.0
+        },
+        "instructions": 9000000.0,
+        "seconds": 0.23199999999999932,
+        "retained_mib": 57.24609470367481
+      },
+      {
+        "phase": "construction",
+        "variant": "after",
+        "round": 1,
+        "begin": {
+          "seconds": 78.724,
+          "kb": 1065604.4335938,
+          "samples": 5601.0
+        },
+        "end": {
+          "seconds": 78.903,
+          "kb": 1104334.8447266,
+          "samples": 5612.0
+        },
+        "result": {
+          "seconds": 79.402,
+          "live_delta_kb": 29655.834960938,
+          "stored": 0.0,
+          "nodes": 18186.0,
+          "instructions": 11000000.0
+        },
+        "instructions": 11000000.0,
+        "seconds": 0.17900000000000205,
+        "retained_mib": 28.960776329041014
+      },
+      {
+        "phase": "construction",
+        "variant": "after",
+        "round": 2,
+        "begin": {
+          "seconds": 80.122,
+          "kb": 1067180.9912109,
+          "samples": 5621.0
+        },
+        "end": {
+          "seconds": 80.291,
+          "kb": 1103944.9482422,
+          "samples": 5632.0
+        },
+        "result": {
+          "seconds": 80.816,
+          "live_delta_kb": 28080.184570313,
+          "stored": 0.0,
+          "nodes": 18186.0,
+          "instructions": 11000000.0
+        },
+        "instructions": 11000000.0,
+        "seconds": 0.16899999999999693,
+        "retained_mib": 27.422055244446288
+      },
+      {
+        "phase": "construction",
+        "variant": "before",
+        "round": 2,
+        "begin": {
+          "seconds": 81.511,
+          "kb": 1067181.9023438,
+          "samples": 5641.0
+        },
+        "end": {
+          "seconds": 81.739,
+          "kb": 1142545.3916016,
+          "samples": 5649.0
+        },
+        "result": {
+          "seconds": 82.271,
+          "live_delta_kb": 58619.732421875,
+          "stored": 0.0,
+          "nodes": 26411.0,
+          "instructions": 8000000.0
+        },
+        "instructions": 8000000.0,
+        "seconds": 0.22800000000000864,
+        "retained_mib": 57.245832443237305
+      },
+      {
+        "phase": "construction",
+        "variant": "before",
+        "round": 3,
+        "begin": {
+          "seconds": 83.004,
+          "kb": 1067182.5673828,
+          "samples": 5658.0
+        },
+        "end": {
+          "seconds": 83.238,
+          "kb": 1142556.5058594,
+          "samples": 5667.0
+        },
+        "result": {
+          "seconds": 83.768,
+          "live_delta_kb": 58619.473632813,
+          "stored": 0.0,
+          "nodes": 26411.0,
+          "instructions": 9000000.0
+        },
+        "instructions": 9000000.0,
+        "seconds": 0.23399999999999466,
+        "retained_mib": 57.24557971954395
+      },
+      {
+        "phase": "construction",
+        "variant": "after",
+        "round": 3,
+        "begin": {
+          "seconds": 84.497,
+          "kb": 1067182.9199219,
+          "samples": 5676.0
+        },
+        "end": {
+          "seconds": 84.688,
+          "kb": 1103941.4404297,
+          "samples": 5686.0
+        },
+        "result": {
+          "seconds": 85.219,
+          "live_delta_kb": 28080.125,
+          "stored": 0.0,
+          "nodes": 18186.0,
+          "instructions": 10000000.0
+        },
+        "instructions": 10000000.0,
+        "seconds": 0.1910000000000025,
+        "retained_mib": 27.4219970703125
+      }
+    ],
+    "summary": {
+      "construction": {
+        "before": {
+          "instructions": 9000000.0,
+          "seconds": 0.23199999999999932,
+          "retained_mib": 57.245832443237305,
+          "nodes": 26411.0,
+          "stored": 0.0
+        },
+        "after": {
+          "instructions": 11000000.0,
+          "seconds": 0.17900000000000205,
+          "retained_mib": 27.422055244446288,
+          "nodes": 18186.0,
+          "stored": 0.0
+        },
+        "reduction_percent": {
+          "instructions": -22.222222222222232,
+          "retained_mib": 52.0977264648271,
+          "nodes": 31.14232706069441
+        }
+      }
+    }
+  },
+  "probe_runs": [
+    {
+      "log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/selective-orands-6pnyg_2d/probe-runs/run-20261014-004822-p8qy66b0/runs/sa--selective-orands@1/create.log",
+      "controlled_complete": false,
+      "construction_complete": false,
+      "never_created": 8225,
+      "contexts": null,
+      "measurements": [
+        {
+          "phase": "construction",
+          "variant": "before",
+          "round": 1,
+          "begin": {
+            "seconds": 151.402,
+            "kb": 1065587.3740234,
+            "samples": 5583.0
+          },
+          "end": {
+            "seconds": 151.775,
+            "kb": 1140965.9980469,
+            "samples": 5592.0
+          },
+          "result": {
+            "seconds": 152.605,
+            "live_delta_kb": 58620.000976563,
+            "stored": 0.0,
+            "nodes": 26411.0,
+            "instructions": 9000000.0
+          },
+          "instructions": 9000000.0,
+          "seconds": 0.37300000000001887,
+          "retained_mib": 57.24609470367481
+        },
+        {
+          "phase": "construction",
+          "variant": "after",
+          "round": 1,
+          "begin": {
+            "seconds": 153.888,
+            "kb": 1065588.3798828,
+            "samples": 5601.0
+          },
+          "end": {
+            "seconds": 154.322,
+            "kb": 1104424.6621094,
+            "samples": 5623.0
+          },
+          "result": {
+            "seconds": 155.044,
+            "live_delta_kb": 29656.543945313,
+            "stored": 0.0,
+            "nodes": 18186.0,
+            "instructions": 22000000.0
+          },
+          "instructions": 22000000.0,
+          "seconds": 0.4339999999999975,
+          "retained_mib": 28.961468696594725
+        },
+        {
+          "phase": "construction",
+          "variant": "after",
+          "round": 2,
+          "begin": {
+            "seconds": 156.02,
+            "kb": 1067165.6484375,
+            "samples": 5632.0
+          },
+          "end": {
+            "seconds": 156.366,
+            "kb": 1104035.2275391,
+            "samples": 5654.0
+          },
+          "result": {
+            "seconds": 157.045,
+            "live_delta_kb": 28080.131835938,
+            "stored": 0.0,
+            "nodes": 18186.0,
+            "instructions": 22000000.0
+          },
+          "instructions": 22000000.0,
+          "seconds": 0.34600000000000364,
+          "retained_mib": 27.4220037460332
+        },
+        {
+          "phase": "construction",
+          "variant": "before",
+          "round": 2,
+          "begin": {
+            "seconds": 157.892,
+            "kb": 1067166.5019531,
+            "samples": 5663.0
+          },
+          "end": {
+            "seconds": 158.21,
+            "kb": 1142530.4921875,
+            "samples": 5671.0
+          },
+          "result": {
+            "seconds": 159.289,
+            "live_delta_kb": 58619.465820313,
+            "stored": 0.0,
+            "nodes": 26411.0,
+            "instructions": 8000000.0
+          },
+          "instructions": 8000000.0,
+          "seconds": 0.31800000000001205,
+          "retained_mib": 57.245572090149416
+        },
+        {
+          "phase": "construction",
+          "variant": "before",
+          "round": 3,
+          "begin": {
+            "seconds": 160.63,
+            "kb": 1067166.8457031,
+            "samples": 5681.0
+          },
+          "end": {
+            "seconds": 160.965,
+            "kb": 1142533.2587891,
+            "samples": 5689.0
+          },
+          "result": {
+            "seconds": 161.841,
+            "live_delta_kb": 58619.53515625,
+            "stored": 0.0,
+            "nodes": 26411.0,
+            "instructions": 8000000.0
+          },
+          "instructions": 8000000.0,
+          "seconds": 0.33500000000000796,
+          "retained_mib": 57.24563980102539
+        },
+        {
+          "phase": "construction",
+          "variant": "after",
+          "round": 3,
+          "begin": {
+            "seconds": 162.683,
+            "kb": 1067167.3222656,
+            "samples": 5698.0
+          },
+          "end": {
+            "seconds": 163.041,
+            "kb": 1104031.1513672,
+            "samples": 5720.0
+          },
+          "result": {
+            "seconds": 163.64,
+            "live_delta_kb": 28079.669921875,
+            "stored": 0.0,
+            "nodes": 18186.0,
+            "instructions": 22000000.0
+          },
+          "instructions": 22000000.0,
+          "seconds": 0.3580000000000041,
+          "retained_mib": 27.421552658081055
+        }
+      ],
+      "summary": {
+        "construction": {
+          "before": {
+            "instructions": 8000000.0,
+            "seconds": 0.33500000000000796,
+            "retained_mib": 57.24563980102539,
+            "nodes": 26411.0,
+            "stored": 0.0
+          },
+          "after": {
+            "instructions": 22000000.0,
+            "seconds": 0.3580000000000041,
+            "retained_mib": 27.4220037460332,
+            "nodes": 18186.0,
+            "stored": 0.0
+          },
+          "reduction_percent": {
+            "instructions": -175.0,
+            "retained_mib": 52.09765522518972,
+            "nodes": 31.14232706069441
+          }
+        }
+      }
+    },
+    {
+      "log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/selective-orands-6pnyg_2d/probe-runs/run-20261014-005231-4t47rlqb/runs/sa--selective-orands@1/create.log",
+      "controlled_complete": true,
+      "construction_complete": false,
+      "never_created": 8225,
+      "contexts": {
+        "lost": 0,
+        "gained": 0
+      },
+      "measurements": [
+        {
+          "phase": "construction",
+          "variant": "before",
+          "round": 1,
+          "begin": {
+            "seconds": 158.865,
+            "kb": 1065698.6240234,
+            "samples": 5583.0
+          },
+          "end": {
+            "seconds": 159.241,
+            "kb": 1141077.2480469,
+            "samples": 5592.0
+          },
+          "result": {
+            "seconds": 160.266,
+            "live_delta_kb": 58620.000976563,
+            "stored": 0.0,
+            "nodes": 26411.0,
+            "instructions": 9000000.0
+          },
+          "instructions": 9000000.0,
+          "seconds": 0.3760000000000048,
+          "retained_mib": 57.24609470367481
+        },
+        {
+          "phase": "construction",
+          "variant": "after",
+          "round": 1,
+          "begin": {
+            "seconds": 161.472,
+            "kb": 1065699.6298828,
+            "samples": 5601.0
+          },
+          "end": {
+            "seconds": 161.904,
+            "kb": 1104535.9121094,
+            "samples": 5623.0
+          },
+          "result": {
+            "seconds": 162.7,
+            "live_delta_kb": 29656.543945313,
+            "stored": 0.0,
+            "nodes": 18186.0,
+            "instructions": 22000000.0
+          },
+          "instructions": 22000000.0,
+          "seconds": 0.43199999999998795,
+          "retained_mib": 28.961468696594725
+        },
+        {
+          "phase": "construction",
+          "variant": "after",
+          "round": 2,
+          "begin": {
+            "seconds": 164.015,
+            "kb": 1067276.8984375,
+            "samples": 5632.0
+          },
+          "end": {
+            "seconds": 164.487,
+            "kb": 1104146.4775391,
+            "samples": 5654.0
+          },
+          "result": {
+            "seconds": 165.869,
+            "live_delta_kb": 28080.131835938,
+            "stored": 0.0,
+            "nodes": 18186.0,
+            "instructions": 22000000.0
+          },
+          "instructions": 22000000.0,
+          "seconds": 0.4720000000000084,
+          "retained_mib": 27.4220037460332
+        },
+        {
+          "phase": "construction",
+          "variant": "before",
+          "round": 2,
+          "begin": {
+            "seconds": 167.241,
+            "kb": 1067277.7519531,
+            "samples": 5663.0
+          },
+          "end": {
+            "seconds": 167.61,
+            "kb": 1142641.7421875,
+            "samples": 5671.0
+          },
+          "result": {
+            "seconds": 168.471,
+            "live_delta_kb": 58619.465820313,
+            "stored": 0.0,
+            "nodes": 26411.0,
+            "instructions": 8000000.0
+          },
+          "instructions": 8000000.0,
+          "seconds": 0.3689999999999998,
+          "retained_mib": 57.245572090149416
+        },
+        {
+          "phase": "construction",
+          "variant": "before",
+          "round": 3,
+          "begin": {
+            "seconds": 170.097,
+            "kb": 1067278.0957031,
+            "samples": 5681.0
+          },
+          "end": {
+            "seconds": 170.513,
+            "kb": 1142644.5087891,
+            "samples": 5689.0
+          },
+          "result": {
+            "seconds": 172.15,
+            "live_delta_kb": 58619.53515625,
+            "stored": 0.0,
+            "nodes": 26411.0,
+            "instructions": 8000000.0
+          },
+          "instructions": 8000000.0,
+          "seconds": 0.4159999999999968,
+          "retained_mib": 57.24563980102539
+        },
+        {
+          "phase": "construction",
+          "variant": "after",
+          "round": 3,
+          "begin": {
+            "seconds": 174.03,
+            "kb": 1067278.5722656,
+            "samples": 5698.0
+          },
+          "end": {
+            "seconds": 174.577,
+            "kb": 1104142.4013672,
+            "samples": 5720.0
+          },
+          "result": {
+            "seconds": 175.897,
+            "live_delta_kb": 28079.669921875,
+            "stored": 0.0,
+            "nodes": 18186.0,
+            "instructions": 22000000.0
+          },
+          "instructions": 22000000.0,
+          "seconds": 0.546999999999997,
+          "retained_mib": 27.421552658081055
+        },
+        {
+          "phase": "sort",
+          "variant": "before",
+          "round": 1,
+          "begin": {
+            "seconds": 219.752,
+            "kb": 1787094.5371094,
+            "samples": 6516.0
+          },
+          "end": {
+            "seconds": 231.605,
+            "kb": 2198888.9765625,
+            "samples": 6729.0
+          },
+          "result": {
+            "seconds": 234.56,
+            "live_delta_kb": 145631.28417969,
+            "stored": 485046.0,
+            "nodes": 35643.0,
+            "instructions": 213000000.0
+          },
+          "instructions": 213000000.0,
+          "seconds": 11.85299999999998,
+          "retained_mib": 142.21805095672852
+        },
+        {
+          "phase": "sort",
+          "variant": "after",
+          "round": 1,
+          "begin": {
+            "seconds": 237.32,
+            "kb": 1787102.5712891,
+            "samples": 6729.0
+          },
+          "end": {
+            "seconds": 246.41,
+            "kb": 2146467.4990234,
+            "samples": 6920.0
+          },
+          "result": {
+            "seconds": 248.881,
+            "live_delta_kb": 127557.94921875,
+            "stored": 407914.0,
+            "nodes": 27418.0,
+            "instructions": 191000000.0
+          },
+          "instructions": 191000000.0,
+          "seconds": 9.090000000000003,
+          "retained_mib": 124.56830978393555
+        },
+        {
+          "phase": "sort",
+          "variant": "after",
+          "round": 2,
+          "begin": {
+            "seconds": 250.485,
+            "kb": 1787105.6142578,
+            "samples": 6920.0
+          },
+          "end": {
+            "seconds": 257.051,
+            "kb": 2139543.0458984,
+            "samples": 7112.0
+          },
+          "result": {
+            "seconds": 259.265,
+            "live_delta_kb": 127565.68066406,
+            "stored": 408938.0,
+            "nodes": 27418.0,
+            "instructions": 193000000.0
+          },
+          "instructions": 192000000.0,
+          "seconds": 6.565999999999974,
+          "retained_mib": 124.57586002349609
+        },
+        {
+          "phase": "sort",
+          "variant": "before",
+          "round": 2,
+          "begin": {
+            "seconds": 260.615,
+            "kb": 1787106.9824219,
+            "samples": 7113.0
+          },
+          "end": {
+            "seconds": 267.564,
+            "kb": 2148046.6542969,
+            "samples": 7328.0
+          },
+          "result": {
+            "seconds": 269.54,
+            "live_delta_kb": 145615.40136719,
+            "stored": 486558.0,
+            "nodes": 35643.0,
+            "instructions": 215000000.0
+          },
+          "instructions": 215000000.0,
+          "seconds": 6.949000000000012,
+          "retained_mib": 142.2025403976465
+        },
+        {
+          "phase": "sort",
+          "variant": "before",
+          "round": 3,
+          "begin": {
+            "seconds": 271.842,
+            "kb": 1787108.9228516,
+            "samples": 7328.0
+          },
+          "end": {
+            "seconds": 278.059,
+            "kb": 2186403.796875,
+            "samples": 7540.0
+          },
+          "result": {
+            "seconds": 280.013,
+            "live_delta_kb": 145607.234375,
+            "stored": 481160.0,
+            "nodes": 35643.0,
+            "instructions": 212000000.0
+          },
+          "instructions": 212000000.0,
+          "seconds": 6.217000000000041,
+          "retained_mib": 142.19456481933594
+        },
+        {
+          "phase": "sort",
+          "variant": "after",
+          "round": 3,
+          "begin": {
+            "seconds": 281.021,
+            "kb": 1787109.8603516,
+            "samples": 7540.0
+          },
+          "end": {
+            "seconds": 286.438,
+            "kb": 2151244.4091797,
+            "samples": 7732.0
+          },
+          "result": {
+            "seconds": 289.405,
+            "live_delta_kb": 127550.48144531,
+            "stored": 410605.0,
+            "nodes": 27418.0,
+            "instructions": 192000000.0
+          },
+          "instructions": 192000000.0,
+          "seconds": 5.416999999999973,
+          "retained_mib": 124.56101703643554
+        }
+      ],
+      "summary": {
+        "construction": {
+          "before": {
+            "instructions": 8000000.0,
+            "seconds": 0.3760000000000048,
+            "retained_mib": 57.24563980102539,
+            "nodes": 26411.0,
+            "stored": 0.0
+          },
+          "after": {
+            "instructions": 22000000.0,
+            "seconds": 0.4720000000000084,
+            "retained_mib": 27.4220037460332,
+            "nodes": 18186.0,
+            "stored": 0.0
+          },
+          "reduction_percent": {
+            "instructions": -175.0,
+            "retained_mib": 52.09765522518972,
+            "nodes": 31.14232706069441
+          }
+        },
+        "sort": {
+          "before": {
+            "instructions": 213000000.0,
+            "seconds": 6.949000000000012,
+            "retained_mib": 142.2025403976465,
+            "nodes": 35643.0,
+            "stored": 485046.0
+          },
+          "after": {
+            "instructions": 192000000.0,
+            "seconds": 6.565999999999974,
+            "retained_mib": 124.56830978393555,
+            "nodes": 27418.0,
+            "stored": 408938.0
+          },
+          "reduction_percent": {
+            "instructions": 9.859154929577462,
+            "retained_mib": 12.400784517913433,
+            "nodes": 23.076059815391524,
+            "stored": 15.690882926567784
+          }
+        }
+      }
+    },
+    {
+      "log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/selective-orands-6pnyg_2d/probe-runs/run-20261014-005838-dv7ot44z/runs/sa--selective-orands@1/create.log",
+      "controlled_complete": false,
+      "construction_complete": true,
+      "never_created": 8225,
+      "contexts": null,
+      "measurements": [
+        {
+          "phase": "construction",
+          "variant": "before",
+          "round": 1,
+          "begin": {
+            "seconds": 77.217,
+            "kb": 1065603.4277344,
+            "samples": 5583.0
+          },
+          "end": {
+            "seconds": 77.449,
+            "kb": 1140982.0517578,
+            "samples": 5592.0
+          },
+          "result": {
+            "seconds": 77.994,
+            "live_delta_kb": 58620.000976563,
+            "stored": 0.0,
+            "nodes": 26411.0,
+            "instructions": 9000000.0
+          },
+          "instructions": 9000000.0,
+          "seconds": 0.23199999999999932,
+          "retained_mib": 57.24609470367481
+        },
+        {
+          "phase": "construction",
+          "variant": "after",
+          "round": 1,
+          "begin": {
+            "seconds": 78.724,
+            "kb": 1065604.4335938,
+            "samples": 5601.0
+          },
+          "end": {
+            "seconds": 78.903,
+            "kb": 1104334.8447266,
+            "samples": 5612.0
+          },
+          "result": {
+            "seconds": 79.402,
+            "live_delta_kb": 29655.834960938,
+            "stored": 0.0,
+            "nodes": 18186.0,
+            "instructions": 11000000.0
+          },
+          "instructions": 11000000.0,
+          "seconds": 0.17900000000000205,
+          "retained_mib": 28.960776329041014
+        },
+        {
+          "phase": "construction",
+          "variant": "after",
+          "round": 2,
+          "begin": {
+            "seconds": 80.122,
+            "kb": 1067180.9912109,
+            "samples": 5621.0
+          },
+          "end": {
+            "seconds": 80.291,
+            "kb": 1103944.9482422,
+            "samples": 5632.0
+          },
+          "result": {
+            "seconds": 80.816,
+            "live_delta_kb": 28080.184570313,
+            "stored": 0.0,
+            "nodes": 18186.0,
+            "instructions": 11000000.0
+          },
+          "instructions": 11000000.0,
+          "seconds": 0.16899999999999693,
+          "retained_mib": 27.422055244446288
+        },
+        {
+          "phase": "construction",
+          "variant": "before",
+          "round": 2,
+          "begin": {
+            "seconds": 81.511,
+            "kb": 1067181.9023438,
+            "samples": 5641.0
+          },
+          "end": {
+            "seconds": 81.739,
+            "kb": 1142545.3916016,
+            "samples": 5649.0
+          },
+          "result": {
+            "seconds": 82.271,
+            "live_delta_kb": 58619.732421875,
+            "stored": 0.0,
+            "nodes": 26411.0,
+            "instructions": 8000000.0
+          },
+          "instructions": 8000000.0,
+          "seconds": 0.22800000000000864,
+          "retained_mib": 57.245832443237305
+        },
+        {
+          "phase": "construction",
+          "variant": "before",
+          "round": 3,
+          "begin": {
+            "seconds": 83.004,
+            "kb": 1067182.5673828,
+            "samples": 5658.0
+          },
+          "end": {
+            "seconds": 83.238,
+            "kb": 1142556.5058594,
+            "samples": 5667.0
+          },
+          "result": {
+            "seconds": 83.768,
+            "live_delta_kb": 58619.473632813,
+            "stored": 0.0,
+            "nodes": 26411.0,
+            "instructions": 9000000.0
+          },
+          "instructions": 9000000.0,
+          "seconds": 0.23399999999999466,
+          "retained_mib": 57.24557971954395
+        },
+        {
+          "phase": "construction",
+          "variant": "after",
+          "round": 3,
+          "begin": {
+            "seconds": 84.497,
+            "kb": 1067182.9199219,
+            "samples": 5676.0
+          },
+          "end": {
+            "seconds": 84.688,
+            "kb": 1103941.4404297,
+            "samples": 5686.0
+          },
+          "result": {
+            "seconds": 85.219,
+            "live_delta_kb": 28080.125,
+            "stored": 0.0,
+            "nodes": 18186.0,
+            "instructions": 10000000.0
+          },
+          "instructions": 10000000.0,
+          "seconds": 0.1910000000000025,
+          "retained_mib": 27.4219970703125
+        }
+      ],
+      "summary": {
+        "construction": {
+          "before": {
+            "instructions": 9000000.0,
+            "seconds": 0.23199999999999932,
+            "retained_mib": 57.245832443237305,
+            "nodes": 26411.0,
+            "stored": 0.0
+          },
+          "after": {
+            "instructions": 11000000.0,
+            "seconds": 0.17900000000000205,
+            "retained_mib": 27.422055244446288,
+            "nodes": 18186.0,
+            "stored": 0.0
+          },
+          "reduction_percent": {
+            "instructions": -22.222222222222232,
+            "retained_mib": 52.0977264648271,
+            "nodes": 31.14232706069441
+          }
+        }
+      }
+    }
+  ],
+  "notes": [
+    "Construction pairs use fresh copies of the same pre-expansion graph.",
+    "Matching-sort baseline is reconstructed from the candidate first-pass graph by restoring omitted fixed connectors; this isolates connector cost on one assignment, not baseline first-pass behavior.",
+    "Three alternating pairs per phase. Instructions are sampled Lua VM instructions with interval 1M, bounded by begin/end samples.",
+    "Retained memory is Lua heap growth after full collection; graph construction excludes the input graph copy and sort memory excludes the graphs themselves. No profiler allocation windows or periodic forced collections were enabled.",
+    "Sort scheduling remains random; exact surviving context membership is compared separately.",
+    "Intentional SELECTIVE_STOP means the probe is not full-game validation.",
+    "Initial downstream probe failed in benchmark-only reconstruction due to absent node_to_orands entry for a new traveler; corrected by initializing that entry.",
+    "The controlled sort cohort predates only the energy claim early type rejection. Final construction has the same omitted connector count; sorting code and expansion policy are unchanged. Full candidate validation uses the final source."
+  ],
+  "checks": {
+    "initial_targeted_unit_files": 9,
+    "broader_targeted_unit_files": 17,
+    "new_fixture_cases": 10,
+    "generated_fixture_graphs": 40,
+    "generated_graph_modes": [
+      "complex/home",
+      "complex/no-home"
+    ],
+    "scratch_style_errors": 0,
+    "scratch_full_require_errors": 0,
+    "new_hardcoded_tables": 0,
+    "unapproved_scratch_node_types": 0,
+    "final_targeted_rerun_files": 13,
+    "live_style_errors": 0,
+    "live_require_audit": "passed",
+    "live_unapproved_hardcoded_tables": 0,
+    "live_unapproved_node_types": 0,
+    "live_patch_dry_run": "passed; production patch not applied",
+    "live_post_apply_targeted_files": 25,
+    "live_post_apply_targeted_pass": 25,
+    "post_apply_live_unapproved_tables": [
+      {
+        "id": "e104b804",
+        "path": "src/randomizations/unified/handlers/entity.lua",
+        "table": "budget = {damage = damage, health = prototype.max_health or 1}",
+        "scope": "Unrelated pending entity-death work; excluded from this commit. No approval made."
+      }
+    ],
+    "isolated_commit_new_unapproved_tables": 0,
+    "isolated_commit_targeted_files": 19,
+    "isolated_commit_targeted_pass": 19
+  },
+  "candidate_hashes": {
+    "src/lib/graph/graph-utils.lua": "e7b48729bf2fad1c7057dc076d935eba5fa5c0e194fa4b5e9ae4dda2b3007264",
+    "src/randomizations/unified/execute.lua": "b8321b2f146ac87040ad52b7dac180346dd05894bccad3f3e84bce51b373862f",
+    "src/randomizations/unified/handlers/default.lua": "8c178f8c6d44947ee2f1d96745402b9e1a85d9022ac0ce9c4ef9d158b7717a27",
+    "src/randomizations/unified/handlers/entity-autoplace.lua": "6268483afa4bf93432d5d3a32c3a4eff643ec7076f5aedaf959624c6bb3d7bdb",
+    "src/randomizations/unified/handlers/entity-energy-source.lua": "b7927b46f6064700cc5b424c18c5510b84f459309c01b0d9f543395aade0feaa",
+    "src/randomizations/unified/handlers/entity-operation-fluid.lua": "6b0234ba8ac3257e235a0d94c5e9e1439c17438ec092525758596bb13d36d46b",
+    "src/randomizations/unified/handlers/entity.lua": "0d9dcbc62503f36b29ae6f54df34233a414421057dc45bdfb9bda5bcd5d5e29b",
+    "src/randomizations/unified/handlers/item-ingredients.lua": "1e2292c3c010f43bd1407bf414fd893b98ce029098c1c258f838d3a32f836e5a",
+    "src/randomizations/unified/handlers/item.lua": "1488cc493642ae11d381bab28d97f9f0e94138ea0c77b26a9c5f94431371f38f",
+    "src/randomizations/unified/handlers/mining-fluid-required.lua": "05b93a9d5e18d094fd3b49efd12f194d9847b8efc017477d74487ac50a48fe5f",
+    "src/randomizations/unified/handlers/recipe-category.lua": "03d7469cb2a2f7abd50d5f975c457553cb2a73eb0c47691e17339329201e68dd",
+    "src/randomizations/unified/handlers/recipe-ingredients-first-pass.lua": "c8f9085142e98fcdab8b42d268816463b0e545436401d6bb80fa2e77c8e369b9",
+    "src/randomizations/unified/handlers/recipe-ingredients.lua": "56300f33eb028cdaf313ffcda39d02ba9d041c0e9bf4fca230dad30ea91c36ee",
+    "src/randomizations/unified/handlers/recipe-tech-unlocks.lua": "2833e367043fecde2039c7b22099ccc4501ccb1b4bb30a51c5cf930c5f900bf6",
+    "src/randomizations/unified/handlers/spoiling.lua": "58d64b60d19c247841cb8fe872bca16e3f3cec93a430e70fabb38e75b5d1fe1f",
+    "src/randomizations/unified/handlers/tech-prereqs.lua": "8071c15e697e4238aa8e5fe5568f8d6172549cea7dd2f163151ae43e3c313d2d",
+    "src/randomizations/unified/handlers/tech-science-packs.lua": "7c4e1b87e2c72d86e93b6f1d27287677399ac685b156fe846fad36b78c5c98e0",
+    "src/randomizations/unified/handlers/tech-triggers.lua": "b4fe4187afa077d393d1766f3fe59e19b08bc300e8e9f1861643982ecec07982",
+    "src/randomizations/unified/orand-policy.lua": "c6affe2a2915a0c0880c501c36a4a8e744608e515a117ded4c160c1a90c710e0",
+    "tests/unit/randomizations/unified/test-selective-orands.lua": "4087be66e9a475734c1bb12d6e116eb82ef8eba09123900519244267d3d36037"
+  },
+  "patch_sha256": "481e16d9a4d12f18309f116c5613ca1a323bedd469859fec6b0c1d11bb26bcb2",
+  "full_candidate_runs": [
+    {
+      "log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/selective-orands-6pnyg_2d/candidate-runs/run-20261014-010022-oj4ga9zn/runs/sa--selective-orands@1/create.log",
+      "verdicts": [
+        " 194.334 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: UNIFIEDCHECK checked 1369 planet-locked recipe contexts; lost 0",
+        " 194.337 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: UNIFIEDCHECK checked 1245 recipes; unreachable 0",
+        " 194.384 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: UNIFIEDCHECK promised pebbles compared 32393; missing in final game 0 (0 protected losses)",
+        " 194.391 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: UNIFIEDCHECK unprotected isolatable mechanic contexts (not required): 6657; lost 32",
+        " 194.391 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: UNIFIEDCHECK checked 11553 mechanic contexts; lost 0 (0 protected losses)",
+        " 194.396 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: UNIFIEDCHECK checked furnace recipe selection; collisions 0",
+        " 194.396 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: UNIFIEDCHECK verdict: ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, not counting unprotected isolatability)",
+        " 223.229 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK checked 1369 planet-locked recipe contexts; lost 0",
+        " 223.231 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK checked 1245 recipes; unreachable 0",
+        " 223.277 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK promised pebbles compared 27156; missing in final game 13 (0 protected losses)",
+        " 223.277 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK promised but missing: technology: exfret-rebuilt-electronic-circuit-exfret-intermediate-nauvis-exfret-3-copy-copy-suffix @ planet: nauvis | 00 @ home2 (model rank 11765)",
+        " 223.277 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK promised but missing: technology: circuit-network @ planet: nauvis | 00 @ home1 (model rank 18171)",
+        " 223.277 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK promised but missing: technology: circuit-network @ planet: nauvis | 00 @ home2 (model rank 18173)",
+        " 223.277 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK promised but missing: technology: circuit-network @ planet: nauvis | 00 @ home6 (model rank 18175)",
+        " 223.277 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK promised but missing: technology: circuit-network @ planet: nauvis-exfret-2-copy | 10 (model rank 55475.75)",
+        " 223.277 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK promised but missing: technology: exfret-rebuilt-casting-low-density-structure-exfret-intermediate-vulcanus-exfret-3-copy-copy-suffix @ planet: nauvis | 00 @ home1 (model rank 58233)",
+        " 223.277 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK promised but missing: technology: exfret-rebuilt-casting-low-density-structure-suffix @ planet: nauvis | 00 @ home1 (model rank 59355)",
+        " 223.277 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK promised but missing: technology: circuit-network @ planet: gleba | 10 (model rank 85052.75)",
+        " 223.277 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK promised but missing: technology: circuit-network @ planet: fulgora-exfret-3-copy | 10 (model rank 85053.75)",
+        " 223.277 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK promised but missing: technology: circuit-network @ planet: fulgora-exfret-3-copy | 11 (model rank 85054)",
+        " 223.277 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK promised but missing: technology: circuit-network @ planet: vulcanus-exfret-2-copy | 10 (model rank 106730.75)",
+        " 223.277 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK promised but missing: technology: circuit-network @ planet: fulgora-exfret-2-copy | 10 (model rank 132941.75)",
+        " 223.277 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK promised but missing: technology: circuit-network @ planet: fulgora | 10 (model rank 263611.75)",
+        " 223.284 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK unprotected isolatable mechanic contexts (not required): 5783; lost 30",
+        " 223.284 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK checked 9505 mechanic contexts; lost 0 (0 protected losses)",
+        " 223.289 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK checked furnace recipe selection; collisions 0",
+        " 223.289 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK verdict: ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, not counting unprotected isolatability)"
+      ],
+      "end": [
+        " 236.789 Script @__propertyrandomizer-test-helper__/control.lua:47: PRTEST generated fulgora",
+        " 236.884 Script @__propertyrandomizer-test-helper__/control.lua:47: PRTEST generated fulgora-exfret-2-copy",
+        " 236.978 Script @__propertyrandomizer-test-helper__/control.lua:47: PRTEST generated fulgora-exfret-3-copy",
+        " 237.072 Script @__propertyrandomizer-test-helper__/control.lua:47: PRTEST generated aquilo",
+        " 237.169 Script @__propertyrandomizer-test-helper__/control.lua:47: PRTEST generated aquilo-exfret-2-copy",
+        " 237.261 Script @__propertyrandomizer-test-helper__/control.lua:47: PRTEST generated aquilo-exfret-3-copy",
+        "Done.",
+        " 238.879 Goodbye"
+      ],
+      "summary_path": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/selective-orands-6pnyg_2d/candidate-runs/run-20261014-010022-oj4ga9zn/summary.txt",
+      "summary": "unified (work in progress; hard limits still enforced): 1 of 1 passed\n\nALL TESTS PASSED in 4m03s\n",
+      "passed": true
+    }
+  ],
+  "energy_claim_optimization": "The pure energy claim now rejects unrelated node types before looking up entity prototypes. This preserves eligibility and avoids preflight lookup overhead; final construction was remeasured separately after this change.",
+  "controlled_sort_source_hashes": {
+    "src/lib/graph/graph-utils.lua": "e7b48729bf2fad1c7057dc076d935eba5fa5c0e194fa4b5e9ae4dda2b3007264",
+    "src/randomizations/unified/execute.lua": "b8321b2f146ac87040ad52b7dac180346dd05894bccad3f3e84bce51b373862f",
+    "src/randomizations/unified/handlers/default.lua": "8c178f8c6d44947ee2f1d96745402b9e1a85d9022ac0ce9c4ef9d158b7717a27",
+    "src/randomizations/unified/handlers/entity-autoplace.lua": "6268483afa4bf93432d5d3a32c3a4eff643ec7076f5aedaf959624c6bb3d7bdb",
+    "src/randomizations/unified/handlers/entity-energy-source.lua": "22507121caa7ac4cbc87a4553edfb56e824e74877c904a823a43b170fc35ad64",
+    "src/randomizations/unified/handlers/entity-operation-fluid.lua": "6b0234ba8ac3257e235a0d94c5e9e1439c17438ec092525758596bb13d36d46b",
+    "src/randomizations/unified/handlers/entity.lua": "0d9dcbc62503f36b29ae6f54df34233a414421057dc45bdfb9bda5bcd5d5e29b",
+    "src/randomizations/unified/handlers/item-ingredients.lua": "1e2292c3c010f43bd1407bf414fd893b98ce029098c1c258f838d3a32f836e5a",
+    "src/randomizations/unified/handlers/item.lua": "1488cc493642ae11d381bab28d97f9f0e94138ea0c77b26a9c5f94431371f38f",
+    "src/randomizations/unified/handlers/mining-fluid-required.lua": "05b93a9d5e18d094fd3b49efd12f194d9847b8efc017477d74487ac50a48fe5f",
+    "src/randomizations/unified/handlers/recipe-category.lua": "03d7469cb2a2f7abd50d5f975c457553cb2a73eb0c47691e17339329201e68dd",
+    "src/randomizations/unified/handlers/recipe-ingredients-first-pass.lua": "c8f9085142e98fcdab8b42d268816463b0e545436401d6bb80fa2e77c8e369b9",
+    "src/randomizations/unified/handlers/recipe-ingredients.lua": "56300f33eb028cdaf313ffcda39d02ba9d041c0e9bf4fca230dad30ea91c36ee",
+    "src/randomizations/unified/handlers/recipe-tech-unlocks.lua": "2833e367043fecde2039c7b22099ccc4501ccb1b4bb30a51c5cf930c5f900bf6",
+    "src/randomizations/unified/handlers/spoiling.lua": "58d64b60d19c247841cb8fe872bca16e3f3cec93a430e70fabb38e75b5d1fe1f",
+    "src/randomizations/unified/handlers/tech-prereqs.lua": "8071c15e697e4238aa8e5fe5568f8d6172549cea7dd2f163151ae43e3c313d2d",
+    "src/randomizations/unified/handlers/tech-science-packs.lua": "7c4e1b87e2c72d86e93b6f1d27287677399ac685b156fe846fad36b78c5c98e0",
+    "src/randomizations/unified/handlers/tech-triggers.lua": "b4fe4187afa077d393d1766f3fe59e19b08bc300e8e9f1861643982ecec07982",
+    "src/randomizations/unified/orand-policy.lua": "c6affe2a2915a0c0880c501c36a4a8e744608e515a117ded4c160c1a90c710e0"
+  },
+  "final_construction_source_hashes": {
+    "src/lib/graph/graph-utils.lua": "e7b48729bf2fad1c7057dc076d935eba5fa5c0e194fa4b5e9ae4dda2b3007264",
+    "src/randomizations/unified/execute.lua": "b8321b2f146ac87040ad52b7dac180346dd05894bccad3f3e84bce51b373862f",
+    "src/randomizations/unified/handlers/default.lua": "8c178f8c6d44947ee2f1d96745402b9e1a85d9022ac0ce9c4ef9d158b7717a27",
+    "src/randomizations/unified/handlers/entity-autoplace.lua": "6268483afa4bf93432d5d3a32c3a4eff643ec7076f5aedaf959624c6bb3d7bdb",
+    "src/randomizations/unified/handlers/entity-energy-source.lua": "b7927b46f6064700cc5b424c18c5510b84f459309c01b0d9f543395aade0feaa",
+    "src/randomizations/unified/handlers/entity-operation-fluid.lua": "6b0234ba8ac3257e235a0d94c5e9e1439c17438ec092525758596bb13d36d46b",
+    "src/randomizations/unified/handlers/entity.lua": "0d9dcbc62503f36b29ae6f54df34233a414421057dc45bdfb9bda5bcd5d5e29b",
+    "src/randomizations/unified/handlers/item-ingredients.lua": "1e2292c3c010f43bd1407bf414fd893b98ce029098c1c258f838d3a32f836e5a",
+    "src/randomizations/unified/handlers/item.lua": "1488cc493642ae11d381bab28d97f9f0e94138ea0c77b26a9c5f94431371f38f",
+    "src/randomizations/unified/handlers/mining-fluid-required.lua": "05b93a9d5e18d094fd3b49efd12f194d9847b8efc017477d74487ac50a48fe5f",
+    "src/randomizations/unified/handlers/recipe-category.lua": "03d7469cb2a2f7abd50d5f975c457553cb2a73eb0c47691e17339329201e68dd",
+    "src/randomizations/unified/handlers/recipe-ingredients-first-pass.lua": "c8f9085142e98fcdab8b42d268816463b0e545436401d6bb80fa2e77c8e369b9",
+    "src/randomizations/unified/handlers/recipe-ingredients.lua": "56300f33eb028cdaf313ffcda39d02ba9d041c0e9bf4fca230dad30ea91c36ee",
+    "src/randomizations/unified/handlers/recipe-tech-unlocks.lua": "2833e367043fecde2039c7b22099ccc4501ccb1b4bb30a51c5cf930c5f900bf6",
+    "src/randomizations/unified/handlers/spoiling.lua": "58d64b60d19c247841cb8fe872bca16e3f3cec93a430e70fabb38e75b5d1fe1f",
+    "src/randomizations/unified/handlers/tech-prereqs.lua": "8071c15e697e4238aa8e5fe5568f8d6172549cea7dd2f163151ae43e3c313d2d",
+    "src/randomizations/unified/handlers/tech-science-packs.lua": "7c4e1b87e2c72d86e93b6f1d27287677399ac685b156fe846fad36b78c5c98e0",
+    "src/randomizations/unified/handlers/tech-triggers.lua": "b4fe4187afa077d393d1766f3fe59e19b08bc300e8e9f1861643982ecec07982",
+    "src/randomizations/unified/orand-policy.lua": "c6affe2a2915a0c0880c501c36a4a8e744608e515a117ded4c160c1a90c710e0"
+  },
+  "sort_source_change_since_measurement": [
+    "src/randomizations/unified/handlers/entity-energy-source.lua"
+  ],
+  "settings": {
+    "modset": "sa",
+    "seed": 1,
+    "dupes": true,
+    "dupe_count": 2,
+    "unified_preview": true,
+    "dev_unified": true,
+    "saved_user_settings_replay": false
+  },
+  "integration": "Applied to the live source; a temporary Git index isolates this change from unrelated dirty handler edits.",
+  "reproduction": {
+    "runner": "/private/tmp/selective-orands-run.py",
+    "probe": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/selective-orands-6pnyg_2d/probe/dev/experiments/test-selective-orands-probe.lua",
+    "full_run_command": "python3 /private/tmp/selective-orands-run.py candidate",
+    "configs": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/selective-orands-6pnyg_2d/configs.txt"
+  },
+  "integration_notes": [
+    "The entity precheck also retains death_spoof, a new claim tag introduced by parallel work after the frozen benchmark. This only broadens retention; existing tagged dying edges already pass through acq_kind.",
+    "The recipe-tech-unlocks source preserves the committed baseline\u2019s missing final newline; function bodies match the tested candidate.",
+    "The saved patch now targets the isolated committed baseline, including the conservative death_spoof precheck. Historical scratch source hashes and measurements above remain unchanged."
+  ],
+  "live_candidate_hashes": {
+    "src/lib/graph/graph-utils.lua": "e7b48729bf2fad1c7057dc076d935eba5fa5c0e194fa4b5e9ae4dda2b3007264",
+    "src/randomizations/unified/execute.lua": "b8321b2f146ac87040ad52b7dac180346dd05894bccad3f3e84bce51b373862f",
+    "src/randomizations/unified/handlers/default.lua": "8c178f8c6d44947ee2f1d96745402b9e1a85d9022ac0ce9c4ef9d158b7717a27",
+    "src/randomizations/unified/handlers/entity-autoplace.lua": "6268483afa4bf93432d5d3a32c3a4eff643ec7076f5aedaf959624c6bb3d7bdb",
+    "src/randomizations/unified/handlers/entity-energy-source.lua": "b7927b46f6064700cc5b424c18c5510b84f459309c01b0d9f543395aade0feaa",
+    "src/randomizations/unified/handlers/entity-operation-fluid.lua": "6b0234ba8ac3257e235a0d94c5e9e1439c17438ec092525758596bb13d36d46b",
+    "src/randomizations/unified/handlers/entity.lua": "5551bea8e8e87cc1e2ac701d77e54b2574d598969e6dc87c3304eb77ecd33336",
+    "src/randomizations/unified/handlers/item-ingredients.lua": "1e2292c3c010f43bd1407bf414fd893b98ce029098c1c258f838d3a32f836e5a",
+    "src/randomizations/unified/handlers/item.lua": "1488cc493642ae11d381bab28d97f9f0e94138ea0c77b26a9c5f94431371f38f",
+    "src/randomizations/unified/handlers/mining-fluid-required.lua": "05b93a9d5e18d094fd3b49efd12f194d9847b8efc017477d74487ac50a48fe5f",
+    "src/randomizations/unified/handlers/recipe-category.lua": "03d7469cb2a2f7abd50d5f975c457553cb2a73eb0c47691e17339329201e68dd",
+    "src/randomizations/unified/handlers/recipe-ingredients-first-pass.lua": "c8f9085142e98fcdab8b42d268816463b0e545436401d6bb80fa2e77c8e369b9",
+    "src/randomizations/unified/handlers/recipe-ingredients.lua": "56300f33eb028cdaf313ffcda39d02ba9d041c0e9bf4fca230dad30ea91c36ee",
+    "src/randomizations/unified/handlers/recipe-tech-unlocks.lua": "2833e367043fecde2039c7b22099ccc4501ccb1b4bb30a51c5cf930c5f900bf6",
+    "src/randomizations/unified/handlers/spoiling.lua": "58d64b60d19c247841cb8fe872bca16e3f3cec93a430e70fabb38e75b5d1fe1f",
+    "src/randomizations/unified/handlers/tech-prereqs.lua": "8071c15e697e4238aa8e5fe5568f8d6172549cea7dd2f163151ae43e3c313d2d",
+    "src/randomizations/unified/handlers/tech-science-packs.lua": "7c4e1b87e2c72d86e93b6f1d27287677399ac685b156fe846fad36b78c5c98e0",
+    "src/randomizations/unified/handlers/tech-triggers.lua": "b4fe4187afa077d393d1766f3fe59e19b08bc300e8e9f1861643982ecec07982",
+    "src/randomizations/unified/orand-policy.lua": "c6affe2a2915a0c0880c501c36a4a8e744608e515a117ded4c160c1a90c710e0",
+    "tests/unit/randomizations/unified/test-selective-orands.lua": "4087be66e9a475734c1bb12d6e116eb82ef8eba09123900519244267d3d36037"
+  },
+  "scratch_patch_sha256": "041fc0c5305769424fc42de39c4a2b1c3be885d802c3572c98a764888a7f5ed7",
+  "commit_source_hashes": {
+    "src/lib/graph/graph-utils.lua": "e7b48729bf2fad1c7057dc076d935eba5fa5c0e194fa4b5e9ae4dda2b3007264",
+    "src/randomizations/unified/execute.lua": "b8321b2f146ac87040ad52b7dac180346dd05894bccad3f3e84bce51b373862f",
+    "src/randomizations/unified/handlers/default.lua": "8c178f8c6d44947ee2f1d96745402b9e1a85d9022ac0ce9c4ef9d158b7717a27",
+    "src/randomizations/unified/handlers/entity-autoplace.lua": "6268483afa4bf93432d5d3a32c3a4eff643ec7076f5aedaf959624c6bb3d7bdb",
+    "src/randomizations/unified/handlers/entity-energy-source.lua": "b7927b46f6064700cc5b424c18c5510b84f459309c01b0d9f543395aade0feaa",
+    "src/randomizations/unified/handlers/entity-operation-fluid.lua": "6b0234ba8ac3257e235a0d94c5e9e1439c17438ec092525758596bb13d36d46b",
+    "src/randomizations/unified/handlers/entity.lua": "3928a7b97f74f887c72ce62df8317c08cf18f1f350e0f64e9915cac1a0f1e863",
+    "src/randomizations/unified/handlers/item-ingredients.lua": "1e2292c3c010f43bd1407bf414fd893b98ce029098c1c258f838d3a32f836e5a",
+    "src/randomizations/unified/handlers/item.lua": "1488cc493642ae11d381bab28d97f9f0e94138ea0c77b26a9c5f94431371f38f",
+    "src/randomizations/unified/handlers/mining-fluid-required.lua": "05b93a9d5e18d094fd3b49efd12f194d9847b8efc017477d74487ac50a48fe5f",
+    "src/randomizations/unified/handlers/recipe-category.lua": "03d7469cb2a2f7abd50d5f975c457553cb2a73eb0c47691e17339329201e68dd",
+    "src/randomizations/unified/handlers/recipe-ingredients-first-pass.lua": "c8f9085142e98fcdab8b42d268816463b0e545436401d6bb80fa2e77c8e369b9",
+    "src/randomizations/unified/handlers/recipe-ingredients.lua": "31462a9fac6e270d6190df88de8a2a7c76696301aa8aeab870bc7590e17b476f",
+    "src/randomizations/unified/handlers/recipe-tech-unlocks.lua": "4675686a531d4cd8fdbde1ecf0519485b3c5628b9183ccd3dceb899ee223301f",
+    "src/randomizations/unified/handlers/spoiling.lua": "58d64b60d19c247841cb8fe872bca16e3f3cec93a430e70fabb38e75b5d1fe1f",
+    "src/randomizations/unified/handlers/tech-prereqs.lua": "8071c15e697e4238aa8e5fe5568f8d6172549cea7dd2f163151ae43e3c313d2d",
+    "src/randomizations/unified/handlers/tech-science-packs.lua": "7c4e1b87e2c72d86e93b6f1d27287677399ac685b156fe846fad36b78c5c98e0",
+    "src/randomizations/unified/handlers/tech-triggers.lua": "b4fe4187afa077d393d1766f3fe59e19b08bc300e8e9f1861643982ecec07982",
+    "src/randomizations/unified/orand-policy.lua": "c6affe2a2915a0c0880c501c36a4a8e744608e515a117ded4c160c1a90c710e0",
+    "tests/unit/randomizations/unified/test-selective-orands.lua": "4087be66e9a475734c1bb12d6e116eb82ef8eba09123900519244267d3d36037"
+  }
+}

@@ -117,4 +117,7 @@ entity_operation_fluid.reflect = function(graph, head_to_base, head_to_handler)
     end
 end
 
+-- This claim function is pure; preflight can use it without consuming entries or randomness.
+entity_operation_fluid.may_claim = entity_operation_fluid.claim
+
 return entity_operation_fluid

@@ -824,4 +824,7 @@ item.after_changes = function()
     recipe_renames.apply(renamed_recipes, old_data_raw.recipe, rng.key({id = "unified-item"}))
 end
 
+-- This claim function is pure; preflight can use it without consuming entries or randomness.
+item.may_claim = item.claim
+
 return item

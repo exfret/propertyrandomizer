@@ -2740,4 +2740,9 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
     end
 end
 
+-- Conservative pure preflight: false proves claim has no effect; true still needs ordinary claiming.
+entity.may_claim = function(graph, prereq, dep, edge)
+    return edge.acq_kind ~= nil or edge.mine_back ~= nil or edge.carrier_spoof ~= nil or edge.nowhere ~= nil or edge.death_spoof ~= nil or edge.trigger_spoof ~= nil or edge.projectile_package ~= nil
+end
+
 return entity

@@ -1259,4 +1259,9 @@ recipe_ingredients.reflect = function(graph, head_to_base, head_to_handler)
     end
 end
 
+-- Conservative pure preflight: false proves claim has no effect; true still needs ordinary claiming.
+recipe_ingredients.may_claim = function(graph, prereq, dep, edge)
+    return dep.type == "recipe" or dep.type == FLUID_SLOT_TYPE
+end
+
 return recipe_ingredients

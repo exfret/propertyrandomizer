@@ -86,4 +86,9 @@ recipe_tech_unlocks.reflect = function(graph, head_to_base, head_to_handler)
     end
 end
 
+-- Conservative pure preflight: false proves claim has no effect; true still needs ordinary claiming.
+recipe_tech_unlocks.may_claim = function(graph, prereq, dep, edge)
+    return dep.type == "recipe"
+end
+
 return recipe_tech_unlocks

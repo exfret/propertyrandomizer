@@ -172,4 +172,7 @@ recipe_ingredients_first_pass.reflect = function(graph, head_to_base, head_to_ha
     end]]
 end
 
+-- This claim function is pure; preflight can use it without consuming entries or randomness.
+recipe_ingredients_first_pass.may_claim = recipe_ingredients_first_pass.claim
+
 return recipe_ingredients_first_pass

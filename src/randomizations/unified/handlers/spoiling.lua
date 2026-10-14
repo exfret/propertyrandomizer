@@ -576,4 +576,9 @@ spoiling.after_changes = function()
     end
 end
 
+-- Conservative pure preflight: false proves claim has no effect; true still needs ordinary claiming.
+spoiling.may_claim = function(graph, prereq, dep, edge)
+    return edge.spoils_into ~= nil
+end
+
 return spoiling

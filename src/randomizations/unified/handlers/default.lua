@@ -48,6 +48,13 @@ default.pool_entries = function(graph, sort_info, can_claim)
     return {}
 end
 
+-- Pure conservative preflight, before OR alternatives become claimable AND connectors.
+-- False means claim cannot accept this edge or update handler state. True includes zero-copy claims.
+-- Unknown handlers retain their connectors; preflight never consumes randomness or claim bookkeeping.
+default.may_claim = function(graph, prereq, dep, edge)
+    return true
+end
+
 -- Mandatory
 -- Returns a num_copies of each prereq/base to add (usually 1); falsey returns mean "not claimed"
 -- Having num_copies more than one adds more prereqs to the pool for flexibility or to bias the pool one way

@@ -36,6 +36,7 @@ local localised_text = require("src/localisation/localised-text")
 local rng = require("src/lib/random/rng")
 local dutils = require("src/prototypes/data-utils")
 local gutils = require("src/lib/graph/graph-utils")
+local orand_policy = require("src/randomizations/unified/orand-policy")
 local item_fluid = require("src/randomizations/unified/item-fluid")
 local recycling = require("src/prototypes/recipes/recycling")
 local recipe_item_amounts = require("src/prototypes/recipes/recipe-item-amounts")
@@ -252,7 +253,9 @@ local function attempt(options)
         log("Recipe unlocks: " .. shared_unlocks .. " forwarding ORs share their technology alternatives")
     end
     test_graph_invariants.test(spoofed_graph)
-    gutils.make_orands(spoofed_graph)
+    gutils.make_orands(spoofed_graph, orand_policy.precheck(handlers, function(handler_id, prereq, dep)
+        return repair_only or (graph_customization.selected(handler_id, dep) and not graph_customization.excluded(handler_id, prereq))
+    end))
     test_graph_invariants.test(spoofed_graph)
 
     ----------------------------------------------------------------------------------------------------

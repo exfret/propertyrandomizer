@@ -85,4 +85,7 @@ item_ingredients.reflect = function(graph, head_to_base, head_to_handler)
     end
 end
 
+-- This claim function is pure; preflight can use it without consuming entries or randomness.
+item_ingredients.may_claim = item_ingredients.claim
+
 return item_ingredients

@@ -60,4 +60,7 @@ tech_prereqs.reflect = function(graph, head_to_base, head_to_handler)
     end
 end
 
+-- This claim function is pure; preflight can use it without consuming entries or randomness.
+tech_prereqs.may_claim = tech_prereqs.claim
+
 return tech_prereqs

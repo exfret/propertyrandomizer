@@ -1,0 +1,493 @@
+diff --git a/src/lib/graph/graph-utils.lua b/src/lib/graph/graph-utils.lua
+index b8f0f0c..644ab18 100644
+--- a/src/lib/graph/graph-utils.lua
++++ b/src/lib/graph/graph-utils.lua
+@@ -441,7 +441,8 @@ gutils.make_orand = function(graph, edge_key)
+     return orand
+ end
+ 
+-gutils.make_orands = function(graph)
++-- needs_connector is a pure precheck; nil preserves full expansion for existing callers.
++gutils.make_orands = function(graph, needs_connector)
+     local edges_to_subdivide = {}
+     graph.node_to_orands = {}
+     graph.orand_to_parent = {}
+@@ -452,7 +453,9 @@ gutils.make_orands = function(graph)
+             -- Fixed alternatives need no claimable AND connector; their original edge abilities still apply.
+             if node.fixed_inputs ~= true then
+                 for pre, _ in pairs(node.pre) do
+-                    table.insert(edges_to_subdivide, pre)
++                    if needs_connector == nil or needs_connector(graph, graph.edges[pre]) then
++                        table.insert(edges_to_subdivide, pre)
++                    end
+                 end
+             end
+         else
+@@ -554,7 +557,9 @@ gutils.subdivide_ands = function(graph)
+     for _, node in pairs(graph.nodes) do
+         if node.op == "AND" then
+             for pre, _ in pairs(node.pre) do
+-                table.insert(edges_to_subdivide, pre)
++                if needs_connector == nil or needs_connector(graph, graph.edges[pre]) then
++                        table.insert(edges_to_subdivide, pre)
++                    end
+             end
+         end
+         graph.old_pres[gutils.key(node)] = {}
+diff --git a/src/randomizations/unified/execute.lua b/src/randomizations/unified/execute.lua
+index bfc2d7e..7a7d94f 100644
+--- a/src/randomizations/unified/execute.lua
++++ b/src/randomizations/unified/execute.lua
+@@ -36,6 +36,7 @@ local localised_text = require("src/localisation/localised-text")
+ local rng = require("src/lib/random/rng")
+ local dutils = require("src/prototypes/data-utils")
+ local gutils = require("src/lib/graph/graph-utils")
++local orand_policy = require("src/randomizations/unified/orand-policy")
+ local item_fluid = require("src/randomizations/unified/item-fluid")
+ local recycling = require("src/prototypes/recipes/recycling")
+ local recipe_item_amounts = require("src/prototypes/recipes/recipe-item-amounts")
+@@ -252,7 +253,9 @@ local function attempt(options)
+         log("Recipe unlocks: " .. shared_unlocks .. " forwarding ORs share their technology alternatives")
+     end
+     test_graph_invariants.test(spoofed_graph)
+-    gutils.make_orands(spoofed_graph)
++    gutils.make_orands(spoofed_graph, orand_policy.precheck(handlers, function(handler_id, prereq, dep)
++        return repair_only or (graph_customization.selected(handler_id, dep) and not graph_customization.excluded(handler_id, prereq))
++    end))
+     test_graph_invariants.test(spoofed_graph)
+ 
+     ----------------------------------------------------------------------------------------------------
+diff --git a/src/randomizations/unified/handlers/default.lua b/src/randomizations/unified/handlers/default.lua
+index ba3abb3..ca2d874 100644
+--- a/src/randomizations/unified/handlers/default.lua
++++ b/src/randomizations/unified/handlers/default.lua
+@@ -48,6 +48,13 @@ default.pool_entries = function(graph, sort_info, can_claim)
+     return {}
+ end
+ 
++-- Pure conservative preflight, before OR alternatives become claimable AND connectors.
++-- False means claim cannot accept this edge or update handler state. True includes zero-copy claims.
++-- Unknown handlers retain their connectors; preflight never consumes randomness or claim bookkeeping.
++default.may_claim = function(graph, prereq, dep, edge)
++    return true
++end
++
+ -- Mandatory
+ -- Returns a num_copies of each prereq/base to add (usually 1); falsey returns mean "not claimed"
+ -- Having num_copies more than one adds more prereqs to the pool for flexibility or to bias the pool one way
+diff --git a/src/randomizations/unified/handlers/entity-autoplace.lua b/src/randomizations/unified/handlers/entity-autoplace.lua
+index 4dbf1f7..11df88b 100644
+--- a/src/randomizations/unified/handlers/entity-autoplace.lua
++++ b/src/randomizations/unified/handlers/entity-autoplace.lua
+@@ -128,4 +128,7 @@ entity_autoplace.reflect = function(graph, head_to_base, head_to_handler)
+     end
+ end
+ 
++-- This claim function is pure; preflight can use it without consuming entries or randomness.
++entity_autoplace.may_claim = entity_autoplace.claim
++
+ return entity_autoplace
+\ No newline at end of file
+diff --git a/src/randomizations/unified/handlers/entity-energy-source.lua b/src/randomizations/unified/handlers/entity-energy-source.lua
+index 7f86073..83f428d 100644
+--- a/src/randomizations/unified/handlers/entity-energy-source.lua
++++ b/src/randomizations/unified/handlers/entity-energy-source.lua
+@@ -32,9 +32,13 @@ local num_times_to_include = {
+     ["energy-source-heat"] = 5,
+ }
+ entity_energy_source.claim = function(graph, prereq, dep, edge)
++    -- Most edges are unrelated; reject them before searching prototype categories, including in preflight.
++    if not is_energy_source_node[prereq.type] or dep.type ~= "entity-operate" then
++        return nil
++    end
+     local entity = dutils.get_prot("entity", dep.name)
+ 
+-    if is_energy_source_node[prereq.type] and dep.type == "entity-operate" and categories.energy_sources_any[entity.type] then
++    if categories.energy_sources_any[entity.type] then
+         if entity.energy_source ~= nil and entity.energy_source.type == "burner" then
+             if entity.energy_source.fuel_categories ~= nil then
+                 -- Exclude things without the chemical category at all
+@@ -127,4 +131,7 @@ entity_energy_source.reflect = function(graph, head_to_base, head_to_handler)
+     end
+ end
+ 
++-- This claim function is pure; preflight can use it without consuming entries or randomness.
++entity_energy_source.may_claim = entity_energy_source.claim
++
+ return entity_energy_source
+\ No newline at end of file
+diff --git a/src/randomizations/unified/handlers/entity-operation-fluid.lua b/src/randomizations/unified/handlers/entity-operation-fluid.lua
+index c8ea8e5..bade517 100644
+--- a/src/randomizations/unified/handlers/entity-operation-fluid.lua
++++ b/src/randomizations/unified/handlers/entity-operation-fluid.lua
+@@ -117,4 +117,7 @@ entity_operation_fluid.reflect = function(graph, head_to_base, head_to_handler)
+     end
+ end
+ 
++-- This claim function is pure; preflight can use it without consuming entries or randomness.
++entity_operation_fluid.may_claim = entity_operation_fluid.claim
++
+ return entity_operation_fluid
+\ No newline at end of file
+diff --git a/src/randomizations/unified/handlers/entity.lua b/src/randomizations/unified/handlers/entity.lua
+index 900e157..e353ca0 100644
+--- a/src/randomizations/unified/handlers/entity.lua
++++ b/src/randomizations/unified/handlers/entity.lua
+@@ -2740,4 +2740,9 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
+     end
+ end
+ 
++-- Conservative pure preflight: false proves claim has no effect; true still needs ordinary claiming.
++entity.may_claim = function(graph, prereq, dep, edge)
++    return edge.acq_kind ~= nil or edge.mine_back ~= nil or edge.carrier_spoof ~= nil or edge.nowhere ~= nil or edge.death_spoof ~= nil or edge.trigger_spoof ~= nil or edge.projectile_package ~= nil
++end
++
+ return entity
+diff --git a/src/randomizations/unified/handlers/item-ingredients.lua b/src/randomizations/unified/handlers/item-ingredients.lua
+index ab8e543..0c9a84f 100644
+--- a/src/randomizations/unified/handlers/item-ingredients.lua
++++ b/src/randomizations/unified/handlers/item-ingredients.lua
+@@ -85,4 +85,7 @@ item_ingredients.reflect = function(graph, head_to_base, head_to_handler)
+     end
+ end
+ 
++-- This claim function is pure; preflight can use it without consuming entries or randomness.
++item_ingredients.may_claim = item_ingredients.claim
++
+ return item_ingredients
+\ No newline at end of file
+diff --git a/src/randomizations/unified/handlers/item.lua b/src/randomizations/unified/handlers/item.lua
+index 21a9d13..f61ef72 100644
+--- a/src/randomizations/unified/handlers/item.lua
++++ b/src/randomizations/unified/handlers/item.lua
+@@ -824,4 +824,7 @@ item.after_changes = function()
+     recipe_renames.apply(renamed_recipes, old_data_raw.recipe, rng.key({id = "unified-item"}))
+ end
+ 
++-- This claim function is pure; preflight can use it without consuming entries or randomness.
++item.may_claim = item.claim
++
+ return item
+diff --git a/src/randomizations/unified/handlers/mining-fluid-required.lua b/src/randomizations/unified/handlers/mining-fluid-required.lua
+index 180fe7c..e8e1fc7 100644
+--- a/src/randomizations/unified/handlers/mining-fluid-required.lua
++++ b/src/randomizations/unified/handlers/mining-fluid-required.lua
+@@ -377,4 +377,7 @@ mining_fluid_required.reflect = function(graph, head_to_base, head_to_handler)
+     end
+ end
+ 
++-- This claim function is pure; preflight can use it without consuming entries or randomness.
++mining_fluid_required.may_claim = mining_fluid_required.claim
++
+ return mining_fluid_required
+diff --git a/src/randomizations/unified/handlers/recipe-category.lua b/src/randomizations/unified/handlers/recipe-category.lua
+index 9bd702d..3abb45a 100644
+--- a/src/randomizations/unified/handlers/recipe-category.lua
++++ b/src/randomizations/unified/handlers/recipe-category.lua
+@@ -247,4 +247,9 @@ recipe_category.reflect = function(graph, head_to_base, head_to_handler)
+     end
+ end
+ 
++-- Conservative pure preflight: false proves claim has no effect; true still needs ordinary claiming.
++recipe_category.may_claim = function(graph, prereq, dep, edge)
++    return dep.type == "recipe"
++end
++
+ return recipe_category
+diff --git a/src/randomizations/unified/handlers/recipe-ingredients-first-pass.lua b/src/randomizations/unified/handlers/recipe-ingredients-first-pass.lua
+index 36922d2..a966a7f 100644
+--- a/src/randomizations/unified/handlers/recipe-ingredients-first-pass.lua
++++ b/src/randomizations/unified/handlers/recipe-ingredients-first-pass.lua
+@@ -172,4 +172,7 @@ recipe_ingredients_first_pass.reflect = function(graph, head_to_base, head_to_ha
+     end]]
+ end
+ 
++-- This claim function is pure; preflight can use it without consuming entries or randomness.
++recipe_ingredients_first_pass.may_claim = recipe_ingredients_first_pass.claim
++
+ return recipe_ingredients_first_pass
+\ No newline at end of file
+diff --git a/src/randomizations/unified/handlers/recipe-ingredients.lua b/src/randomizations/unified/handlers/recipe-ingredients.lua
+index af574be..e72c34d 100644
+--- a/src/randomizations/unified/handlers/recipe-ingredients.lua
++++ b/src/randomizations/unified/handlers/recipe-ingredients.lua
+@@ -1259,4 +1259,9 @@ recipe_ingredients.reflect = function(graph, head_to_base, head_to_handler)
+     end
+ end
+ 
++-- Conservative pure preflight: false proves claim has no effect; true still needs ordinary claiming.
++recipe_ingredients.may_claim = function(graph, prereq, dep, edge)
++    return dep.type == "recipe" or dep.type == FLUID_SLOT_TYPE
++end
++
+ return recipe_ingredients
+diff --git a/src/randomizations/unified/handlers/recipe-tech-unlocks.lua b/src/randomizations/unified/handlers/recipe-tech-unlocks.lua
+index 7ec16d7..b8bde15 100644
+--- a/src/randomizations/unified/handlers/recipe-tech-unlocks.lua
++++ b/src/randomizations/unified/handlers/recipe-tech-unlocks.lua
+@@ -86,4 +86,9 @@ recipe_tech_unlocks.reflect = function(graph, head_to_base, head_to_handler)
+     end
+ end
+ 
++-- Conservative pure preflight: false proves claim has no effect; true still needs ordinary claiming.
++recipe_tech_unlocks.may_claim = function(graph, prereq, dep, edge)
++    return dep.type == "recipe"
++end
++
+ return recipe_tech_unlocks
+\ No newline at end of file
+diff --git a/src/randomizations/unified/handlers/spoiling.lua b/src/randomizations/unified/handlers/spoiling.lua
+index 11f2591..6981223 100644
+--- a/src/randomizations/unified/handlers/spoiling.lua
++++ b/src/randomizations/unified/handlers/spoiling.lua
+@@ -576,4 +576,9 @@ spoiling.after_changes = function()
+     end
+ end
+ 
++-- Conservative pure preflight: false proves claim has no effect; true still needs ordinary claiming.
++spoiling.may_claim = function(graph, prereq, dep, edge)
++    return edge.spoils_into ~= nil
++end
++
+ return spoiling
+diff --git a/src/randomizations/unified/handlers/tech-prereqs.lua b/src/randomizations/unified/handlers/tech-prereqs.lua
+index 4a44bc2..71b49d5 100644
+--- a/src/randomizations/unified/handlers/tech-prereqs.lua
++++ b/src/randomizations/unified/handlers/tech-prereqs.lua
+@@ -60,4 +60,7 @@ tech_prereqs.reflect = function(graph, head_to_base, head_to_handler)
+     end
+ end
+ 
++-- This claim function is pure; preflight can use it without consuming entries or randomness.
++tech_prereqs.may_claim = tech_prereqs.claim
++
+ return tech_prereqs
+\ No newline at end of file
+diff --git a/src/randomizations/unified/handlers/tech-science-packs.lua b/src/randomizations/unified/handlers/tech-science-packs.lua
+index 1eccc83..03b1ed6 100644
+--- a/src/randomizations/unified/handlers/tech-science-packs.lua
++++ b/src/randomizations/unified/handlers/tech-science-packs.lua
+@@ -56,4 +56,9 @@ tech_science_packs.reflect = function(graph, head_to_base, head_to_handler)
+     end
+ end
+ 
++-- Conservative pure preflight: false proves claim has no effect; true still needs ordinary claiming.
++tech_science_packs.may_claim = function(graph, prereq, dep, edge)
++    return dep.type == "technology"
++end
++
+ return tech_science_packs
+\ No newline at end of file
+diff --git a/src/randomizations/unified/handlers/tech-triggers.lua b/src/randomizations/unified/handlers/tech-triggers.lua
+index 7a77751..cde37c5 100644
+--- a/src/randomizations/unified/handlers/tech-triggers.lua
++++ b/src/randomizations/unified/handlers/tech-triggers.lua
+@@ -831,4 +831,7 @@ tech_triggers.reflect = function(graph, head_to_base, head_to_handler)
+     end
+ end
+ 
++-- This claim function is pure; preflight can use it without consuming entries or randomness.
++tech_triggers.may_claim = tech_triggers.claim
++
+ return tech_triggers
+diff --git a/src/randomizations/unified/orand-policy.lua b/src/randomizations/unified/orand-policy.lua
+new file mode 100644
+index 0000000..f7d3f35
+--- /dev/null
++++ b/src/randomizations/unified/orand-policy.lua
+@@ -0,0 +1,29 @@
++-- Keep branch nodes only where claiming or another consumer needs their independent identity.
++local logic = require("src/logic/state")
++
++local policy = {}
++
++-- No claim calls here: they can consume copies, mark recipes or draw randomness.
++-- Selection is checked without blacklists: ordinary claiming applies blacklists after its side effects.
++policy.precheck = function(handlers, selected)
++    return function(graph, edge)
++        local prereq = graph.nodes[edge.start]
++        local dep = graph.nodes[edge.stop]
++        local info = logic.type_info[dep.type] or {}
++        -- Production promises and temporary crafting options still query branch identities.
++        -- Research inputs generate home contexts from the transformed branch, not the original source.
++        if edge.item_craft == true or dep.type == "item-craft" or dep.craft_option_only == true or info.context ~= nil or info.research_input == true or info.home_carrier == true or info.relay == true then
++            return true
++        end
++        for handler_id, handler in pairs(handlers) do
++            if selected == nil or selected(handler_id, prereq, dep) then
++                if handler.may_claim == nil or handler.may_claim(graph, prereq, dep, edge) then
++                    return true
++                end
++            end
++        end
++        return false
++    end
++end
++
++return policy
+diff --git a/tests/unit/randomizations/unified/test-selective-orands.lua b/tests/unit/randomizations/unified/test-selective-orands.lua
+new file mode 100644
+index 0000000..87f137e
+--- /dev/null
++++ b/tests/unit/randomizations/unified/test-selective-orands.lua
+@@ -0,0 +1,160 @@
++-- Selective expansion must prove a branch unclaimable without running claim side effects.
++function table.deepcopy(value)
++    if type(value) ~= "table" then return value end
++    local copy = {}
++    for key, child in pairs(value) do copy[key] = table.deepcopy(child) end
++    return copy
++end
++function log(_) end
++serpent = { block = tostring }
++data = { raw = { technology = {} } }
++local logic = {
++    contexts = { A = true, B = true },
++    type_info = {
++        start = {}, room = { context = "room" }, item = {}, recipe = {},
++        base = { relay = true }, head = { relay = true }, orand = { relay = true },
++        technology = { context = true, home_carrier = true }, research = { research_input = true },
++        ["item-craft"] = {},
++    },
++}
++package.loaded["src/logic/state"] = logic
++package.loaded["src/logic/init"] = logic
++package.loaded["src/lib/random/rng"] = { int = function(_, max) return max end }
++package.loaded["src/prototypes/data-utils"] = { get_prot = function() return nil end }
++local gutils = require("src/lib/graph/graph-utils")
++local policy = require("src/randomizations/unified/orand-policy")
++local top = require("src/lib/sort/context-sort")
++local invariants = require("tests/graph-invariants")
++local fx = require("tests/unit/logic/contexts/contexts-for-tests")
++local count = 0
++local function test(name, fn)
++    fn()
++    count = count + 1
++    print("ok - " .. name)
++end
++local function node(g, kind, name, op, extra)
++    extra = extra or {}
++    extra.op = op
++    return gutils.key(gutils.add_node(g, kind, name, extra))
++end
++local function fixture(target_type, extra)
++    local g = { nodes = {}, edges = {}, sources = {} }
++    local start = node(g, "start", "", "AND")
++    g.sources[start] = true
++    local a = node(g, "room", "A", "OR")
++    local b = node(g, "room", "B", "OR")
++    gutils.add_edge(g, start, a)
++    gutils.add_edge(g, start, b)
++    local source = node(g, "item", "source", "OR")
++    gutils.add_edge(g, b, source)
++    local target = node(g, target_type or "item", "target", "OR")
++    local edge = gutils.add_edge(g, source, target, extra or { amount = 3, abilities = fx.edge({ [1] = false }), inds = { [2] = true } })
++    return g, source, target, gutils.ekey(edge)
++end
++local function branches(g)
++    local n = 0
++    for _, v in pairs(g.nodes) do if v.type == "orand" then n = n + 1 end end
++    return n
++end
++local function unclaimable()
++    return policy.precheck({ fixed = { may_claim = function() return false end, claim = function() error("claim was called during preflight") end } })
++end
++local function same(a, b, homes)
++    local opts = { complex_contexts = true, home_contexts = homes ~= nil, home_sets = homes, choose_randomly = false }
++    local sa, sb = top.sort(a, nil, nil, opts), top.sort(b, nil, nil, opts)
++    for key, _ in pairs(b.nodes) do
++        local ca, cb = sa.node_to_context_inds[key] or {}, sb.node_to_context_inds[key] or {}
++        for ctx, _ in pairs(ca) do assert(cb[ctx], "lost " .. key .. " " .. ctx) end
++        for ctx, _ in pairs(cb) do assert(ca[ctx], "gained " .. key .. " " .. ctx) end
++    end
++end
++local homes = { ids = { 1, 2 }, sets = {
++    [1] = { rooms = { A = true }, discovered = {} },
++    [2] = { rooms = { A = true, B = true }, discovered = {} },
++}, of = {}, }
++test("unclaimable edges retain original metadata and no connector", function()
++    local g, _, target, edge_key = fixture()
++    local original = g.edges[edge_key]
++    gutils.make_orands(g, unclaimable())
++    assert(g.edges[edge_key] == original and original.amount == 3 and original.inds[2])
++    assert(next(g.node_to_orands[target]) == nil)
++    assert(branches(g) == 2, "room contexts still need relays")
++    invariants.test(g)
++end)
++test("unknown handler conservatively retains every branch", function()
++    local g = fixture()
++    gutils.make_orands(g, policy.precheck({ unknown = {} }))
++    assert(branches(g) == 4)
++end)
++test("zero-copy claims retain a connector without running claim", function()
++    local g = fixture()
++    local calls = 0
++    gutils.make_orands(g, policy.precheck({ zero = { may_claim = function() return 0 end, claim = function() calls = calls + 1 return 0 end } }))
++    assert(branches(g) == 4 and calls == 0)
++end)
++test("selection can prove an unknown handler inactive on an edge", function()
++    local g = fixture()
++    gutils.make_orands(g, policy.precheck({ unknown = {} }, function() return false end))
++    assert(branches(g) == 2)
++end)
++test("potential claims stay explicit even if later blacklisted", function()
++    local g = fixture()
++    gutils.make_orands(g, policy.precheck({ h = { may_claim = function() return true end } }, function() return true end))
++    assert(branches(g) == 4)
++end)
++test("production promises retain their branch identities", function()
++    local g, _, target, e = fixture("item-craft")
++    gutils.make_orands(g, unclaimable())
++    assert(next(g.node_to_orands[target]) ~= nil and g.edges[e] == nil)
++    g, _, target, e = fixture("item", { item_craft = true, amount = 2 })
++    gutils.make_orands(g, unclaimable())
++    assert(next(g.node_to_orands[target]) ~= nil and g.edges[e] == nil)
++end)
++test("research transform relay stays explicit and preserves homes", function()
++    local g, _, target = fixture("research")
++    local tech = node(g, "technology", "t", "AND")
++    gutils.add_edge(g, target, tech)
++    local before = table.deepcopy(g)
++    gutils.make_orands(before)
++    gutils.make_orands(g, unclaimable())
++    assert(next(g.node_to_orands[target]) ~= nil)
++    same(before, g, homes)
++end)
++test("fixed-input builders keep their existing direct-edge policy", function()
++    local g, _, target, edge = fixture()
++    g.nodes[target].fixed_inputs = true
++    gutils.make_orands(g, policy.precheck({ unknown = {} }))
++    assert(g.edges[edge] ~= nil and next(g.node_to_orands[target]) == nil)
++end)
++test("first-pass style input moves preserve direct edge metadata", function()
++    local g, source, target, edge = fixture()
++    gutils.make_orands(g, unclaimable())
++    local trav = node(g, "item", "target-trav", "OR", { trav = true })
++    gutils.redirect_edge_stop(g, edge, trav)
++    local moved = g.edges[gutils.ekey({ start = source, stop = trav })]
++    assert(moved.amount == 3 and moved.abilities ~= nil and moved.inds[2])
++    assert(g.nodes[target].num_pre == 0 and g.nodes[trav].num_pre == 1)
++    invariants.test(g)
++end)
++test("generated DAGs and cycles preserve surviving contexts", function()
++    for seed = 1, 40 do
++        local g, source, target = fixture()
++        for i = 1, 14 do
++            local v = node(g, "item", "v" .. i, "OR")
++            local pre = i == 1 and source or gutils.key("item", "v" .. (i - 1))
++            gutils.add_edge(g, pre, v, { abilities = fx.edge({ [(seed + i) % 2 + 1] = (seed + i) % 3 == 0 }) })
++            if i % 3 == 0 then gutils.add_edge(g, source, v) end
++            if i == 14 then
++                gutils.add_edge(g, v, target)
++                if seed % 2 == 0 then gutils.add_edge(g, v, source) end
++            end
++        end
++        local before = table.deepcopy(g)
++        gutils.make_orands(before)
++        gutils.make_orands(g, unclaimable())
++        same(before, g, homes)
++        same(before, g, nil)
++        invariants.test(g)
++    end
++end)
++print(count .. " selective orand tests passed")
