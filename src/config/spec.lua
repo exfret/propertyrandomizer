@@ -53,6 +53,76 @@ local spec = {
 ----------------------------------------------------------------------
 -- Numerical randomizations
 ----------------------------------------------------------------------
+    agricultural_tower_crane_speed = {
+        category = "numerical",
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more",
+        },
+    },
+    fluid_wagon_capacity = {
+        category = "numerical",
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "default",
+        },
+    },
+    radar_scan_speed = {
+        category = "numerical",
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more",
+        },
+    },
+    item_fuel_emissions = {
+        category = "numerical",
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more",
+        },
+    },
+    entity_repair_speed = {
+        category = "numerical",
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more",
+        },
+    },
+    unit_spawner_cooldown = {
+        category = "numerical",
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more",
+        },
+    },
+    heat_specific_heat = {
+        category = "numerical",
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more",
+        },
+    },
+    heat_max_transfer = {
+        category = "numerical",
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more",
+        },
+    },
+    heat_min_temperature_gradient = {
+        category = "numerical",
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more",
+        },
+    },
+    pipe_extent = {
+        category = "numerical",
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more",
+        },
+    },
     -- How much power accumulators store
     accumulator_buffer = {
         category = "numerical",
@@ -399,13 +469,13 @@ local spec = {
             val = "more",
         },
     },
-    --[[car_rotation_speed = {
+    car_rotation_speed = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "default"
         }
-    },]]
+    },
     cargo_bay_inventory_bonus = {
         category = "numerical",
         setting = {
@@ -572,13 +642,13 @@ local spec = {
             val = "default",
         },
     },
-    --[[equipment_grid_sizes = {
+    equipment_grid_sizes = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "default"
         }
-    },]]
+    },
     equipment_inventory_bonus = {
         category = "numerical",
         setting = {
@@ -764,13 +834,13 @@ local spec = {
             val = "more",
         },
     },
-    --[[gate_opening_speed = {
+    gate_opening_speed = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-logistic",
             val = "default"
         }
-    },]]
+    },
     -- How much steam do steam engines use
     generator_fluid_usage = {
         category = "numerical",
@@ -794,14 +864,13 @@ local spec = {
             val = "more",
         },
     },
-    -- Broken without transformer now
-    --[[gun_movement_slowdown_factor = {
+    gun_movement_slowdown_factor = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },]]
+    },
     gun_range = {
         category = "numerical",
         setting = {
@@ -831,13 +900,13 @@ local spec = {
             val = "default",
         },
     },
-    --[[inserter_base_hand_size = {
+    inserter_base_hand_size = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-logistic",
             val = "more"
         }
-    },]]
+    },
     --[[inserter_filter = {
         category = "numerical",
         setting = {
@@ -989,13 +1058,13 @@ local spec = {
             val = "more",
         },
     },
-    --[[locomotive_max_speed = {
+    locomotive_max_speed = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },]]
+    },
     module_effects = {
         category = "numerical",
         setting = {
@@ -1049,13 +1118,13 @@ local spec = {
             val = "more",
         },
     },
-    --[[mining_drill_radius = {
+    mining_drill_radius = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-logistic",
             val = "more"
         }
-    },]]
+    },
     --[[mining_drill_resource_drain = {
         category = "numerical",
         setting = {
@@ -1215,13 +1284,13 @@ local spec = {
             val = "default",
         },
     },
-    --[[radar_reveal_area = {
+    radar_reveal_area = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },]]
+    },
     radar_search_area = {
         category = "numerical",
         setting = {
@@ -1348,13 +1417,13 @@ local spec = {
             val = "more",
         },
     },
-    --[[roboport_radar_range = {
+    roboport_radar_range = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-logistic",
             val = "more"
         }
-    },]]
+    },
     --[[rocket_parts_required = {
         category = "numerical",
         setting = {
@@ -1585,13 +1654,13 @@ local spec = {
             val = "more",
         },
     },
-    --[[tile_walking_speed_modifier = {
+    tile_walking_speed_modifier = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },]]
+    },
     -- Affects science capacity
     tool_durability = {
         category = "numerical",

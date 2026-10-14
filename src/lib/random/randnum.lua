@@ -173,6 +173,9 @@ randnum.fill_in_defaults = function(params, skip_tuning)
 end
 
 local function round_normal(num)
+    if num == 0 then
+        return 0
+    end
     local digits_modulus = math.pow(10, math.floor(math.log(math.abs(num), 10) - constants.left_digits_to_keep + 1))
     local rounded_num = math.floor((num + digits_modulus / 2) / digits_modulus) * digits_modulus
     -- If we accidentally rounded down to zero, round the other direction instead

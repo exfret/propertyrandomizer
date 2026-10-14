@@ -419,24 +419,35 @@ randomizations.gun_minimum_range = function(id)
     end
 end
 
--- Not added to spec yet
 randomizations.gun_movement_slowdown_factor = function(id)
-    for _, gun in pairs(data.raw.gun) do
-        local attack_parameters = gun.attack_parameters
-
-        -- This can cause guns to speed you up but that's funny
-        if attack_parameters.movement_slow_down_factor ~= nil then
-            local old_value = attack_parameters.movement_slow_down_factor
-            randomize({
+    for _, gun in pairs(data.raw.gun or {}) do
+        local parameters = gun.attack_parameters
+        local old_value = parameters.movement_slow_down_factor or 1
+        -- Randomize travel time: slowdown x leaves a movement fraction of 1 - x.
+        -- Full slowdown has infinite travel time, so it remains at that endpoint.
+        if old_value >= 0 and old_value < 1 then
+            local old_travel_time = 1 / (1 - old_value)
+            local params = {
                 id = id,
                 prototype = gun,
-                tbl = attack_parameters,
-                property = "movement_slow_down_factor",
+                dummy = old_travel_time,
+                dir = -1,
                 range = "big",
-                rounding = "discrete_float",
-            })
-            local factor = attack_parameters.movement_slow_down_factor / old_value
-            locale_utils.create_localised_description(gun, factor, id)
+                abs_min = 1,
+            }
+            randnum.fill_in_defaults(params)
+            local rounding = params.rounding
+            params.rounding = "none"
+            local travel_time = randomize(params, true)
+            -- Round only after converting back, using the configured rounding mode.
+            local slowdown = randnum.fixes({
+                key = params.key,
+                rounding = rounding,
+                abs_min = 0,
+                abs_max = 1,
+            }, 1 - 1 / travel_time)
+            parameters.movement_slow_down_factor = slowdown
+            locale_utils.create_localised_description(gun, (1 - slowdown) / (1 - old_value), id, { variance = "big" })
         end
     end
 end
@@ -514,6 +525,27 @@ randomizations.item_fuel_acceleration = function(id)
 end
 
 -- New
+randomizations.item_fuel_emissions = function(id)
+    for class, _ in pairs(defines.prototypes.item) do
+        for _, item in pairs(data.raw[class] or {}) do
+            if item.fuel_value ~= nil then
+                item.fuel_emissions_multiplier = item.fuel_emissions_multiplier or 1
+                local old_value = item.fuel_emissions_multiplier
+                randomize({
+                    id = id,
+                    prototype = item,
+                    property = "fuel_emissions_multiplier",
+                    rounding = "discrete_float",
+                    dir = -1,
+                })
+                if old_value > 0 then
+                    locale_utils.create_localised_description(item, item.fuel_emissions_multiplier / old_value, id, { flipped = true })
+                end
+            end
+        end
+    end
+end
+
 randomizations.item_fuel_top_speed = function(id)
     for _, item in pairs(items) do
         -- Change this if vehicles ever use other types of fuel

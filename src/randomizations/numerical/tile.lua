@@ -44,29 +44,18 @@ randomizations.tile_pollution_absorption = function (id)
 end
 
 randomizations.tile_walking_speed_modifier = function(id)
-    local prototypes = {}
-    local tile_to_old_modifier = {}
-    for _, tile in pairs(data.raw.tile) do
-        if tile.walking_speed_modifier ~= nil and tile.walking_speed_modifier > 0 then
-            table.insert(prototypes, tile)
-            tile_to_old_modifier[tile.name] = tile.walking_speed_modifier
-        end
-    end
-
-    for _, prototype in pairs(prototypes) do
-        randomize({
-            id = id,
-            prototype = prototype,
-            property = "walking_speed_modifier",
-            rounding = "discrete_float",
-            variance = "big",
-        })
-    end
-
-    for _, tile in pairs(data.raw.tile) do
-        if tile.walking_speed_modifier ~= nil then
-            local factor = tile.walking_speed_modifier / tile_to_old_modifier[tile.name]
-            locale_utils.create_localised_description(tile, factor, id, { variance = "big" })
+    for _, tile in pairs(data.raw.tile or {}) do
+        local old_value = tile.walking_speed_modifier or 1
+        if old_value > 0 then
+            tile.walking_speed_modifier = old_value
+            randomize({
+                id = id,
+                prototype = tile,
+                property = "walking_speed_modifier",
+                rounding = "discrete_float",
+                variance = "big",
+            })
+            locale_utils.create_localised_description(tile, tile.walking_speed_modifier / old_value, id, { variance = "big" })
         end
     end
 end

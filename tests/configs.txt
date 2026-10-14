@@ -154,3 +154,9 @@ config exclusions-legacy-item settings seeds=1 dupes=false item=true logistic=no
 # Independent deposits (src/randomizations/unified/deposit-copies.lua): without planet copies (coal, stone and crude oil are mined on two planets each), and on the user's usual settings (11-22 minutes and 12-15 GB of memory per game when run alone, 2026-10-07, so give it the machine: --jobs 1)
 config deposits unified seeds=1,2 dev-unified=true independent-deposits=true
 config dupes-preview-deposits unified seeds=1 unified-preview=true dev-unified=false dupes=true dupe-count=2 independent-deposits=true
+
+# Added numerical fields, isolated from other randomizations.
+config numerical-additions settings seeds=1 logistic=none production=none military=none misc=none overrides=fluid_wagon_capacity;radar_scan_speed;item_fuel_emissions;agricultural_tower_crane_speed;entity_repair_speed;unit_spawner_cooldown;heat_specific_heat;heat_max_transfer;heat_min_temperature_gradient;pipe_extent
+
+# Restored numerical randomizations, including independent equipment grids and collision-bounded mining radii.
+config numerical-restored settings seeds=1,2 logistic=none production=none military=none misc=none overrides=car_rotation_speed;gate_opening_speed;equipment_grid_sizes;locomotive_max_speed;mining_drill_radius;inserter_base_hand_size;tile_walking_speed_modifier;radar_reveal_area;roboport_radar_range;gun_movement_slowdown_factor
