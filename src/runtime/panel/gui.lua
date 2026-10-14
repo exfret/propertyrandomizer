@@ -33,6 +33,7 @@ local explorer_rows = require("src/runtime/explorer/explorer-rows")
 local events = require("src/runtime/events")
 local customizer = require("src/runtime/customizer/customizer")
 local derandomizer = require("src/runtime/panel/derandomizer")
+local info = require("src/runtime/panel/info")
 
 local set_width_height = common.set_width_height
 
@@ -283,12 +284,7 @@ local function size_main_panel(player, main_frame)
     if customizer_flow ~= nil then
         customizer.resize(customizer_flow, inner_width, common.screen_size(player).height * MAIN_PANEL_FRAC)
     end
-    for _, child in pairs(tabbed_pane["randomizer-home-flow"].children) do
-        if child.type == "label" then
-            child.style.single_line = false
-            child.style.maximal_width = inner_width
-        end
-    end
+    info.resize(tabbed_pane["randomizer-info-flow"], inner_width)
     local explorer_intro = tabbed_pane["randomizer-explorer-flow"]["randomizer-explorer-intro"]
     explorer_intro.style.single_line = false
     explorer_intro.style.maximal_width = inner_width
@@ -310,6 +306,13 @@ local function toggle_randomizer_panel(event)
     local player = game.players[event.player_index]
     local gui = player.gui.screen
 
+    local saved_panel = gui["randomizer-main-panel"]
+    local saved_info = saved_panel ~= nil and saved_panel["randomizer-main-tabbed-pane"]["randomizer-info-flow"] or nil
+    if saved_panel ~= nil and (saved_info == nil or saved_info.tags.layout_version ~= info.layout_version) then
+        -- Rebuild panels saved with an older tab layout; customizer drafts live in storage.
+        close_contexts_panel(player)
+        saved_panel.destroy()
+    end
     if gui["randomizer-main-panel"] ~= nil then
         --gui["randomizer-main-panel"].destroy()
         gui["randomizer-main-panel"].visible = not gui["randomizer-main-panel"].visible
@@ -342,47 +345,7 @@ local function toggle_randomizer_panel(event)
     local main_tabbed_pane = main_frame.add({type = "tabbed-pane", name = "randomizer-main-tabbed-pane"})
     main_tabbed_pane.style.horizontally_stretchable = true
     main_tabbed_pane.style.vertically_stretchable = true
-
-    local home_tab = main_tabbed_pane.add({type = "tab", name = "randomizer-home-tab", caption = {"propertyrandomizer-gui.home"}})
-    local home_flow = main_tabbed_pane.add({type = "flow", name = "randomizer-home-flow", direction = "vertical"})
-    home_flow.style.horizontally_stretchable = true
-    home_flow.style.vertically_stretchable = true
-    main_tabbed_pane.add_tab(home_tab, home_flow)
-    local home_flow_caption = home_flow.add({type = "label", name = "randomizer-home-flow-caption", caption = {"propertyrandomizer-gui.welcome"}})
-    local reachability_text
-    local reachable = prototypes.mod_data["propertyrandomizer-reachability-data"].data["reachable"]
-    local total = prototypes.mod_data["propertyrandomizer-reachability-data"].data["total"]
-    if reachable < total then
-        reachability_text = {"propertyrandomizer-gui.science-unreachable", tostring(reachable), tostring(total)}
-    elseif prototypes.mod_data["propertyrandomizer-reachability-data"].data["check_ok"] == false then
-        -- The mechanic context check (skeleton/check.lua) found something a player needs lost, like a recipe no longer reachable
-        reachability_text = {"propertyrandomizer-gui.mechanic-check-failed"}
-    else
-        reachability_text = {"propertyrandomizer-gui.science-reachable", tostring(total)}
-    end
-    local home_flow_reachability = home_flow.add({type = "label", name = "randomizer-home-flow-reachability", caption = reachability_text})
-    -- Limits on planetary changes the game breaks (planetary.broken_limits), each a red line: not a softlock, but a game the tests fail
-    for ind, caption in pairs(prototypes.mod_data["propertyrandomizer-reachability-data"].data["broken_limits"] or {}) do
-        home_flow.add({type = "label", name = "randomizer-home-flow-broken-limit-" .. ind, caption = caption})
-    end
-    -- What randomization warned about at startup (randomization_info.warnings, smuggled by data-final-fixes.lua), without the chat-style prefix each one starts with
-    for data, _ in pairs(prototypes.item["propertyrandomizer-warnings"].get_entity_type_filters(defines.selection_mode.select)) do
-        local _, warnings = serpent.load(data)
-        for ind, warning in pairs(warnings or {}) do
-            local message = warning
-            if type(warning) == "string" then
-                message = string.gsub(warning, "^%[img=item%.propertyrandomizer%-gear%] %[color=[^%]]*%]exfret's Randomizer:%[/color%] ", "")
-            end
-            home_flow.add({type = "label", name = "randomizer-home-flow-startup-warning-" .. ind, caption = {"propertyrandomizer-gui.warning", message}})
-        end
-        break
-    end
-    if settings.startup["propertyrandomizer-seed"].value == 0 then
-        local home_default_seed_warning_caption = home_flow.add({type = "label", name = "randomizer-home-flow-warning", caption = {"propertyrandomizer-gui.default-seed"}})
-        local home_default_seed_warning_caption_2 = home_flow.add({type = "label", name = "randomizer-home-flow-warning-2", caption = {"propertyrandomizer-gui.default-disabled"}})
-        local home_default_seed_warning_caption_3 = home_flow.add({type = "label", name = "randomizer-home-flow-warning-3", caption = {"propertyrandomizer-gui.prototype-caching"}})
-    end
-    local home_flow_tip_sync = home_flow.add({type = "label", name = "randomizer-home-flow-tip-1", caption = {"propertyrandomizer-gui.sync-tip"}})
+    info.create(main_tabbed_pane)
 
     --local derandomizer_tab = derandomizer.create(main_tabbed_pane, event.player_index)
 
@@ -454,6 +417,9 @@ events.on_event("randomizer-panel", function(event)
 end)
 
 events.on_event(defines.events.on_gui_selection_state_changed, function(event)
+    if info.on_selection_changed(event) then
+        return
+    end
     if customizer.on_selection_changed(event) then
         return
     end
@@ -843,6 +809,9 @@ local function expand_prereq_dropdown(gui_elt_flow_down, player_index, new_node,
 end
 
 events.on_event(defines.events.on_gui_click, function(event)
+    if info.on_click(event) then
+        return
+    end
     if customizer.on_click(event) then
         return
     end

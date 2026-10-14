@@ -87,6 +87,7 @@ claim_tool.prepare(data.raw, defines.prototypes.entity)
 
 -- Freeze the original appearance donors after planet copies exist, before gameplay randomization edits them.
 local biomes = require("src/randomizations/planetary/biomes")
+local biome_collision = require("src/randomizations/planetary/biome-collision")
 if config.planetary_biomes == true then
     biomes.capture()
 end
@@ -721,7 +722,28 @@ data:extend({
 local result_summary = require("src/pipeline/result-summary")
 local names_before_old_versions = result_summary.prototype_names(data.raw)
 randomizations.add_old_versions()
+local biome_placement_report = (data.raw["mod-data"] or {})["propertyrandomizer-biome-placement"]
+if biome_placement_report ~= nil then
+    biome_collision.refresh(data.raw, defines.prototypes, biome_placement_report.data.aliases)
+end
 randomizations.post_fixes()
+
+-- Keep compatible automatic targets; clear only links invalidated by the finished prototypes.
+local entity_compatibility = require("src/randomizations/unified/handler-helpers/entity")
+for kind, _ in pairs(defines.prototypes.entity) do
+    for _, entity in pairs(data.raw[kind] or {}) do
+        local problem = entity_compatibility.next_upgrade_problem(entity)
+        if problem ~= nil then
+            log("Removing incompatible next_upgrade from " .. entity.name .. ": " .. problem)
+            entity.next_upgrade = nil
+        end
+    end
+end
+
+local biome_descriptions = require("src/randomizations/planetary/biome-descriptions")
+if biome_placement_report ~= nil then
+    biome_descriptions.apply(data.raw, defines.prototypes)
+end
 
 if release_isolation ~= nil then
     release_isolation.check_prerequisites()
@@ -745,7 +767,7 @@ if config.planet_names == true then
 end
 
 -- Regional terrain appearances and decorative vegetation preserve the finished terrain and entity mechanics, after gameplay checks.
-if config.planetary_biomes == true then
+if config.planetary_biomes == true and (data.raw["mod-data"] or {})["propertyrandomizer-biomes"] == nil then
     biomes.execute()
 end
 

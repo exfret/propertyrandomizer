@@ -1,6 +1,8 @@
 -- Logs lines for dev/run-tests.py to read, all starting with PRTEST
 
 local biomes = require("biomes")
+local tile_buildability = require("test-tile-buildability")
+local biome_placement = require("test-biome-placement")
 
 -- The randomizer panel's softlock warning (src/runtime/panel/gui.lua) reads this mod data, so the test reads the same numbers
 local function log_reachability()
@@ -47,6 +49,8 @@ local function generate_planets(biomes_enabled)
 end
 
 script.on_init(function()
+    tile_buildability.run()
+    biome_placement.run()
     log_settings()
     log_reachability()
     local biome_setting = settings.startup["propertyrandomizer-planetary-biomes"]

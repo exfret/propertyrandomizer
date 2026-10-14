@@ -189,6 +189,7 @@ biomes.execute = function()
     biomes.assignments = {}
     biomes.clone_to_slot = {}
     local clones_of = {}
+    local clone_to_appearance = {}
     local original_tile_names = sorted_keys(data.raw.tile)
     local sequence = 0
     local never = named_expression("propertyrandomizer_biome_never", "-inf")
@@ -287,6 +288,7 @@ biomes.execute = function()
                         clones_of[host_name] = clones_of[host_name] or {}
                         table.insert(clones_of[host_name], clone.name)
                         table.insert(regions[i].tiles, clone.name)
+                        clone_to_appearance[clone.name] = look.name
                         biomes.clone_to_slot[clone.name] = host_name
                         assignment.clones[clone.name] = host_name
                         assignment.clone_regions[clone.name] = i
@@ -309,6 +311,7 @@ biomes.execute = function()
     report.data = {
         planets = biomes.assignments,
         clone_to_slot = biomes.clone_to_slot,
+        clone_to_appearance = clone_to_appearance,
         protected_planet = constants.starting_planet,
     }
     data:extend({ report })

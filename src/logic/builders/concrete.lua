@@ -12,6 +12,7 @@ local lutils = require("src/logic/logic-utils")
 local builder = require("src/logic/builders/builder")
 local acquisition = require("src/logic/builders/acquisition")
 local rail_requirements = require("src/logic/builders/rail-requirements")
+local tile_requirements = require("src/logic/builders/tile-requirements")
 local military_variants = require("src/randomizations/unified/military-variants")
 local science_rooms = require("src/logic/science-rooms")
 local recipe_loops = require("src/prototypes/recipes/recipe-loops")
@@ -341,6 +342,9 @@ function concrete.build(lu, extra_params)
             add_edge("entity-build-architecture", nil, { amount = 1 })
             -- We could include a cost for special tiles needed here, but we already factor in space costs in the entity-operate
             add_edge("entity-build-tile")
+            if next(entity.tile_buildability_rules or {}) ~= nil then
+                add_edge("entity-build-tile-rules")
+            end
             if entity.surface_conditions ~= nil and #entity.surface_conditions > 0 then
                 add_edge("entity-build-surface-condition")
             end
@@ -418,6 +422,9 @@ function concrete.build(lu, extra_params)
                         add_edge("tile", restriction)
                     end
                 end
+            end
+            if next(entity.tile_buildability_rules or {}) ~= nil then
+                tile_requirements.build(entity, lu)
             end
         end
 

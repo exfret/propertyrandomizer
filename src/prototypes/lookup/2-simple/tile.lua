@@ -228,6 +228,13 @@ stage.room_tile_maps = function()
             end
         end
 
+        -- Appearance clones replace these natural tiles on this planet.
+        -- The graph cannot satisfy a visible-biome requirement with terrain suppressed by their saved -inf overrides.
+        local appearances = (data.raw["mod-data"] or {})["propertyrandomizer-biomes"]
+        local assignment = appearances and appearances.data.planets[room.name]
+        for name, _ in pairs(assignment and assignment.original_probabilities or {}) do
+            results[name] = nil
+        end
         return results
     end
 

@@ -109,8 +109,9 @@ config.entity_biters = config.unified_preview or settings.startup["propertyrando
 -- Whether enemies spawned away from their home planet are rebalanced: spawners keep them in their home numbers, and they take their new planet's strength (src/randomizations/unified/handler-helpers/military.lua)
 config.military_rebalance = settings.startup["propertyrandomizer-military-rebalance"].value
 config.planetary_oceans = config.unified_preview or settings.startup["propertyrandomizer-planetary-oceans"].value
--- Regional terrain and vegetation appearances run separately from the gameplay stages, after their checks.
+-- Regional appearances run after gameplay checks unless placement uses their visible tile families.
 config.planetary_biomes = settings.startup["propertyrandomizer-planetary-biomes"].value
+config.planetary_biome_placement = settings.startup["propertyrandomizer-planetary-biome-placement"].value
 config.planetary_resources = config.unified_preview or settings.startup["propertyrandomizer-planetary-resources"].value
 config.planetary_lightning = settings.startup["propertyrandomizer-planetary-lightning"].value
 config.planetary_freezing = settings.startup["propertyrandomizer-planetary-freezing"].value
@@ -129,7 +130,7 @@ config.planetary_connections = config.dupes or settings.startup["propertyrandomi
 -- Demolisher territories and the starting planet's kinds of enemies move to other planets (src/randomizations/planetary/enemies.lua), a work in progress (notes/wip.txt)
 config.planetary_enemies = settings.startup["propertyrandomizer-planetary-enemies"].value
 -- Whether any planetary gameplay stage is on (src/randomizations/planetary/execute.lua), planet rewards included; biome appearances run independently.
-config.planetary = config.planetary_oceans or config.planetary_resources or config.planetary_lightning or config.planetary_freezing or config.planetary_locks or config.planetary_rewards or config.planetary_connections or config.planetary_enemies
+config.planetary = config.planetary_biome_placement or config.planetary_oceans or config.planetary_resources or config.planetary_lightning or config.planetary_freezing or config.planetary_locks or config.planetary_rewards or config.planetary_connections or config.planetary_enemies
 
 config.item_new_num_retries = settings.startup["propertyrandomizer-item-retries"].value
 config.item_percent_randomized = settings.startup["propertyrandomizer-item-percent"].value / 100

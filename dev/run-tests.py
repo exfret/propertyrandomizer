@@ -18,7 +18,7 @@
 # Other mods a mod set enables are the newest copies in the user's mods directory made for this game version
 # The mod is snapshotted when the run starts, so edits made during a long run don't mix in
 # Each Factorio process gets its own mod and write-data directories, so this works while the game or other runs are open
-# The test helper mod (dev/test-helper-mod) unhides hidden settings and logs what the checks read
+# The test helper mod (dev/test-helper-mod) comes from the same snapshot, unhides hidden settings and logs what the checks read
 # With recipe randomization on, science costs are checked immediately before/after
 # recipes and recycling, before item/numerical changes: each pack <=4x, mean ratio <2x.
 # Both measurements use the old randomizer's global production-cost model.
@@ -1036,7 +1036,11 @@ def main(argv):
     root = new_root()
     snapshot_dir = os.path.join(root, MOD_NAME)
     snapshot(snapshot_dir, args.ref, args.staged, args.dir)
-    shutil.copytree(HELPER_MOD, os.path.join(root, HELPER_NAME))
+    # Keep helper imports in sync with the tested source, especially for partially staged commits.
+    # Stripped releases and older refs without a helper still use the development helper.
+    snapshot_helper = os.path.join(snapshot_dir, "dev", "test-helper-mod")
+    helper_source = snapshot_helper if os.path.isdir(snapshot_helper) else HELPER_MOD
+    shutil.copytree(helper_source, os.path.join(root, HELPER_NAME))
     if args.profile:
         shutil.copytree(PROFILER_MOD, os.path.join(root, PROFILER_NAME))
     settings = load_settings(snapshot_dir)

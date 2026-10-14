@@ -12,6 +12,13 @@
 - If the docs and data don't settle it, or the question is what a game concept should mean for the randomizer, ask the user instead of picking an interpretation. A question costs less than a wrong assumption built into the logic.
 - When a reply states a game fact, say where it was verified (a doc link or a game data path). A Stop hook reviews each final reply and sends unsourced game facts back to you.
 
+## Design conflicts: stop and ask
+
+- When an engine constraint or implementation obstacle requires choosing a different player-facing behavior, stop work on that behavior and ask the user what to do. Verify and explain the constraint, describe the concrete tradeoff, and wait for their decision before implementing a workaround. Independent investigation may continue.
+- Technical compatibility does not authorize changing the design. In particular, do not silently couple independent randomization choices, change the unit being randomized (for example, entities into upgrade chains), exclude candidates, reduce a feature's scope, or remove another feature to satisfy a constraint. Routine implementation choices that preserve the requested behavior do not need approval.
+- A user rejecting your choice does not approve its opposite or another workaround. Acknowledge the mismatch and ask how to proceed; do not announce or implement a replacement decision. For biome placement, neither grouping upgrade chains nor removing upgrade links is authorized merely by learning that independent restrictions can conflict with upgrade compatibility.
+- Passing tests do not establish user authorization. Do not write a test asserting an unapproved compromise and then treat it as the intended specification. Behavioral regression scenarios for this boundary are in `tests/agent/design-conflicts.json`; these are evaluation cases, not an automatically enforced hook.
+
 ## No hardcoded vanilla assumptions
 
 - Don't identify prototypes by name or by hardcoded type lists, since other mods add their own. Derive the property from data.raw, identify by node type, or declare a flag where the node is built.

@@ -388,6 +388,13 @@ data:extend({
     {
         setting_type = "startup",
         type = "bool-setting",
+        name = "propertyrandomizer-planetary-biome-placement",
+        default_value = false,
+        order = "f-cb[planetary-biome-placement]",
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
         name = "propertyrandomizer-planetary-resources",
         default_value = false,
         order = "f-d[planetary-resources]",
