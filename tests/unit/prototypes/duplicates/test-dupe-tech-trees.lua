@@ -686,6 +686,56 @@ test("local variants share products and inputs while keeping planet locks and co
         recipe = local_recipe.name,
     })
     local final_copy = dupe.item(data.raw.item["test-final"], 2)
+    -- The other planet copy's own copied recipe takes the component too (its technology's copy follows that planet's discovery), so both planet copies need local variants of it
+    local other_finisher = tech("test-other-finisher", {
+        unit = {
+            ingredients = {
+                {
+                    "test-science",
+                    1,
+                },
+            },
+        },
+    })
+    other_finisher.effects = {
+        {
+            type = "unlock-recipe",
+            recipe = "test-other-final",
+        },
+    }
+    local other_finisher_copy = dupe.prototype(other_finisher, 2)
+    other_finisher_copy.effects = nil
+    other_finisher_copy.prerequisites = {
+        other_home.name,
+    }
+    dupe.technology_copies[2][other_finisher.name] = other_finisher_copy
+    data:extend({
+        {
+            type = "item",
+            name = "test-other-final",
+            icon = "test-other-final.png",
+        },
+        {
+            type = "recipe",
+            name = "test-other-final",
+            enabled = false,
+            ingredients = {
+                {
+                    type = "item",
+                    name = "test-component",
+                    amount = 1,
+                },
+            },
+            results = {
+                {
+                    type = "item",
+                    name = "test-other-final",
+                    amount = 1,
+                },
+            },
+        },
+    })
+    dupe.item(data.raw.item["test-other-final"], 2)
     intermediates.execute()
     assert(data.raw.item["test-component-exfret-2-copy"] == nil)
     assert(data.raw.item["test-basic-exfret-2-copy"] == nil)
@@ -730,6 +780,146 @@ test("local variants share products and inputs while keeping planet locks and co
     assert(variants["test-component"]["test-other-copy"].ingredients[1].amount == 1)
     assert(data.raw.recipe["test-component"].ingredients[1].amount == 1)
 
+end)
+
+-- User, 2026-10-14: "nauvis copies have military science, why would fulgora (which doesn't have military science) need to get a copy for it?"
+test("a planet copy gets local variants only of what its own copied recipes need", function()
+    function log() end
+    local home = tech("test-home", {
+        effects = {
+            {
+                type = "unlock-space-location",
+                space_location = "test-home-copy",
+            },
+        },
+    })
+    dupe.home_discoveries[2] = home
+    local other_home = tech("test-other-home", {
+        effects = {
+            {
+                type = "unlock-space-location",
+                space_location = "test-other-copy",
+            },
+        },
+    })
+    for _, name in pairs({
+        "test-home-copy",
+        "test-other-copy",
+    }) do
+        data.raw.planet[name] = {
+            name = name,
+            dupe_number = 2,
+            icon = name .. ".png",
+        }
+    end
+    local function item_with_recipe(name, ingredients)
+        local recipe = {
+            type = "recipe",
+            name = name,
+            enabled = false,
+            ingredients = {},
+            results = {
+                {
+                    type = "item",
+                    name = name,
+                    amount = 1,
+                },
+            },
+        }
+        for _, ingredient in pairs(ingredients) do
+            table.insert(recipe.ingredients, {
+                type = "item",
+                name = ingredient,
+                amount = 1,
+            })
+        end
+        data:extend({
+            {
+                type = "item",
+                name = name,
+                icon = name .. ".png",
+            },
+            recipe,
+        })
+    end
+    -- Intermediates every planet could make: rounds (for the starting planet copy's pack), coils (for the other planet copy's), and a shared part both packs take
+    item_with_recipe("test-rounds", {})
+    item_with_recipe("test-coil", {})
+    item_with_recipe("test-part", {})
+    item_with_recipe("test-orphan-input", {})
+    item_with_recipe("test-home-pack", {
+        "test-rounds",
+        "test-part",
+    })
+    item_with_recipe("test-other-pack", {
+        "test-coil",
+        "test-part",
+    })
+    -- Each pack's technology copy is on its planet copy's branch: the starting planet copy's has no prerequisites (its tree is rooted at the home discovery), the other planet copy's follows that planet's discovery
+    for _, entry in pairs({
+        {
+            pack = "test-home-pack",
+            prerequisites = {},
+        },
+        {
+            pack = "test-other-pack",
+            prerequisites = {
+                other_home.name,
+            },
+        },
+    }) do
+        local original = tech(entry.pack .. "-tech", {
+            effects = {
+                {
+                    type = "unlock-recipe",
+                    recipe = entry.pack,
+                },
+            },
+        })
+        local copy = dupe.prototype(original, 2)
+        copy.effects = nil
+        copy.prerequisites = entry.prerequisites
+        dupe.technology_copies[2] = dupe.technology_copies[2] or {}
+        dupe.technology_copies[2][original.name] = copy
+        dupe.item(data.raw.item[entry.pack], 2)
+    end
+    -- A copied recipe no technology unlocks, whose planet copy can't be told: it counts for both
+    data:extend({
+        {
+            type = "recipe",
+            name = "test-orphan-exfret-2-copy",
+            dupe_number = 2,
+            orig_name = "test-orphan",
+            ingredients = {
+                {
+                    type = "item",
+                    name = "test-orphan-input",
+                    amount = 1,
+                },
+            },
+            results = {},
+        },
+    })
+    intermediates.execute()
+    local planets_of = {}
+    for _, recipe in pairs(data.raw.recipe) do
+        if recipe.intermediate_planet ~= nil then
+            planets_of[recipe.orig_name] = planets_of[recipe.orig_name] or {}
+            planets_of[recipe.orig_name][recipe.intermediate_planet] = true
+        end
+    end
+    local function on(name)
+        local list = {}
+        for planet, _ in pairs(planets_of[name] or {}) do
+            table.insert(list, planet)
+        end
+        table.sort(list)
+        return table.concat(list, ",")
+    end
+    assert(on("test-rounds") == "test-home-copy", "rounds: " .. on("test-rounds"))
+    assert(on("test-coil") == "test-other-copy", "coils: " .. on("test-coil"))
+    assert(on("test-part") == "test-home-copy,test-other-copy", "parts: " .. on("test-part"))
+    assert(on("test-orphan-input") == "test-home-copy,test-other-copy", "orphan input: " .. on("test-orphan-input"))
 end)
 
 test("on a planet's branch, copies keep the starting planet's items rather than this number's copies of them", function()
