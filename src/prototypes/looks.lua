@@ -107,7 +107,7 @@ looks.primary_icon = function(prot)
 end
 
 -- A planet's icon as a badge on a recipe made for that planet (src/randomizations/planetary/scaffolds.lua), or nil if there's no icon
--- Half size, in the top right corner, where a recipe's number badge goes too (src/prototypes/duplicates/dupe.lua); it's always added after any number badge, so where they meet the planet is drawn over it (user, 2026-10-10: the planet takes priority)
+-- Half size, in the top right corner, replacing the recipe's number badge when one would otherwise be added (user, 2026-10-13: the planet takes priority and the badges shouldn't occur together)
 looks.planet_badge = function(planet)
     if planet == nil then
         return nil

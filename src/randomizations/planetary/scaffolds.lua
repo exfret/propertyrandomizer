@@ -94,11 +94,19 @@ local function recipe_icon_layers(recipe)
 end
 
 -- A recipe's icon layers with a planet's icon as a badge in their top right corner (looks.planet_badge), for a planet variant of the recipe, or nil when either has no icon
+-- A variant of an already badged recipe replaces the inherited planet badge instead of stacking another one on it.
 scaffolds.badged_icons = function(recipe, planet_name)
     local icons = recipe_icon_layers(recipe)
     local badge = looks.planet_badge(data.raw.planet[planet_name])
     if icons == nil or badge == nil then
         return nil
+    end
+    local previous = recipe.planet_badge ~= nil and looks.planet_badge(data.raw.planet[recipe.planet_badge]) or nil
+    local last = icons[#icons]
+    -- Our planet badges are the last layer; check their derived image and placement before removing one.
+    if previous ~= nil and last ~= nil and last.icon == previous.icon and last.scale == previous.scale and (last.icon_size or 64) == (previous.icon_size or 64) and last.shift ~= nil
+        and (last.shift.x or last.shift[1]) == previous.shift[1] and (last.shift.y or last.shift[2]) == previous.shift[2] then
+        table.remove(icons)
     end
     table.insert(icons, badge)
     return icons
@@ -126,7 +134,7 @@ end
 -- Names a planet variant of the recipe after the planet (scaffolds.variant_name) and puts the planet in its intermediate_planet field, as src/prototypes/duplicates/dupe-intermediates.lua does for planet copies' own recipes
 -- The field keeps the planet in the name when item randomization renames the recipe (src/prototypes/recipes/recipe-renames.lua), and keeps a further variant for the same planet from naming it twice
 -- A room that isn't a planet gets no intermediate_planet, since the renames look the planet up
--- Every variant named this way also gets its planet's icon as a badge (scaffolds.badged_icons), so its planet_badge field keeps that badge when the renames give it its new product's icon; planet copies' own recipes show a copy number instead, and get none
+-- Every variant named this way also gets its planet's icon as a badge (scaffolds.badged_icons), so its planet_badge field keeps that badge when the renames give it its new product's icon, just like planet copies' local recipes
 -- A variant is a version of the recipe it was made from (version_of, the first recipe for a version of a version), so it can merge with the recipe's other versions once randomization is done (src/prototypes/recipes/recipe-merges.lua); a new recipe named this way (a conversion) is no one's version
 scaffolds.name_variant = function(variant, recipe, planet_name)
     variant.localised_name = scaffolds.variant_name(recipe, planet_name)

@@ -548,10 +548,12 @@ test("local variants share products and inputs while keeping planet locks and co
     data.raw.planet["test-home-copy"] = {
         name = "test-home-copy",
         dupe_number = 2,
+        icon = "test-home-copy.png",
     }
     data.raw.planet["test-other-copy"] = {
         name = "test-other-copy",
         dupe_number = 2,
+        icon = "test-other-copy.png",
     }
     data.raw.planet["test-original"] = {
         name = "test-original",
@@ -696,6 +698,9 @@ test("local variants share products and inputs while keeping planet locks and co
     for _, recipe in pairs(data.raw.recipe) do
         if recipe.intermediate_planet ~= nil then
             assert(recipe.dupe_number == 2)
+            assert(recipe.planet_badge == recipe.intermediate_planet)
+            assert(#recipe.icons == 2)
+            assert(recipe.icons[2].icon == recipe.intermediate_planet .. ".png")
             assert(recipe.intermediate_planet ~= "test-original" and recipe.intermediate_planet ~= "test-next-copy")
             local rooms = package.loaded["src/randomizations/planetary/locks"].fixed["recipe/" .. recipe.name]
             assert(rooms["planet: " .. recipe.intermediate_planet] and next(rooms, next(rooms)) == nil)

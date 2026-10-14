@@ -1,6 +1,6 @@
 -- Names and icons for the recipes item randomization renames after their new product, in both the unified item handler (src/randomizations/unified/handlers/item.lua) and the old item randomization (src/legacy/randomizations/item.lua)
 -- A renamed recipe takes its new product's name and icon, since it may have had its own, and is listed with its new product (its subgroup defaults to the main product's, see RecipePrototype::main_product)
--- When several recipes are named after the same product, the renamed ones also get a prefix and a number badge to tell them apart
+-- When several recipes are named after the same product, the renamed ones also get a prefix and a number badge to tell them apart, unless they have a planet badge
 -- A planet's variant of a recipe keeps its planet in its name and its planet's badge on its icon
 
 local constants = require("src/config/constants")
@@ -59,10 +59,12 @@ recipe_renames.apply = function(renamed, old_recipes, rng_key)
         -- The product's prototype in its current form (an identity that changed form has one now)
         local product = item_fluid.prot(renamed[recipe_name])
         local recipe_icons = icons_of(product)
+        -- Planet variants and planet copies' local recipes use their planet's badge instead of a number.
+        local planet_badge = recipe.planet_badge ~= nil and looks.planet_badge(data.raw.planet[recipe.planet_badge]) or nil
         if (num_named_after[product_key] or 0) >= 2 then
             recipe.localised_name = {"propertyrandomizer-recipe-prefix." .. constants.funny_recipe_prefixes[rng.int(rng_key, #constants.funny_recipe_prefixes)], locale_utils.find_localised_name(product)}
             num_numbered[product_key] = (num_numbered[product_key] or 0) + 1
-            if num_numbered[product_key] <= dupe.max_icon_number then
+            if planet_badge == nil and num_numbered[product_key] <= dupe.max_icon_number then
                 table.insert(recipe_icons, dupe.recipe_number_icon(num_numbered[product_key]))
             end
         else
@@ -76,8 +78,6 @@ recipe_renames.apply = function(renamed, old_recipes, rng_key)
                 locale_utils.find_localised_name(planet),
             }
         end
-        -- A planet variant keeps its planet's badge (scaffolds.name_variant), added after the number badge so it's drawn over it
-        local planet_badge = recipe.planet_badge ~= nil and looks.planet_badge(data.raw.planet[recipe.planet_badge]) or nil
         if planet_badge ~= nil then
             table.insert(recipe_icons, planet_badge)
         end

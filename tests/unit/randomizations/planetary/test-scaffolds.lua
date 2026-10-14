@@ -298,4 +298,16 @@ local other_planet = table.deepcopy(copy_recipe)
 scaffolds.name_variant(other_planet, copy_recipe, "lake")
 check(count_text(other_planet.localised_name, "space-location-name.lake") == 1 and other_planet.intermediate_planet == "lake", "a variant for another planet isn't named after that planet")
 
+-- A deposit variant can inherit the planet badge of a local recipe; it keeps only the target planet's badge.
+local same_icons = scaffolds.badged_icons(copy_recipe, "ember-exfret-2-copy")
+check(#same_icons == #copy_recipe.icons, "a variant on the same planet adds a second planet badge")
+check(same_icons[#same_icons].icon == "__test__/ember-2.png", "a variant on the same planet lost its badge")
+local other_icons = scaffolds.badged_icons(copy_recipe, "lake")
+check(#other_icons == #copy_recipe.icons, "a variant on another planet keeps both planet badges")
+check(other_icons[#other_icons].icon == "__test__/lake.png", "a variant on another planet kept the old badge")
+check(copy_recipe.icons[#copy_recipe.icons].icon == "__test__/ember-2.png", "badging a variant changed the source recipe")
+for i = 1, #copy_recipe.icons - 1 do
+    check(other_icons[i].icon == copy_recipe.icons[i].icon, "replacing a planet badge lost a product icon layer")
+end
+
 print("test-scaffolds: " .. num_checks .. " checks passed")

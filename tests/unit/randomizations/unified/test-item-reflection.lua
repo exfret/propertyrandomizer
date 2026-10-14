@@ -417,12 +417,16 @@ test("local intermediate recipe names keep their planet after product renaming",
     assert(recipe.icons[1].icon == "test-shared-product.png")
 end)
 
-test("planet variants keep their planet's badge in the top right, over the number badge, after product renaming, and planet copies' own recipes get none", function()
+test("planet variants and local copies use planet badges instead of numbers after product renaming", function()
     data.raw.planet = {
         ["test-badge-world"] = {
             type = "planet",
             name = "test-badge-world",
             icon = "test-badge-world.png",
+        },
+        ["test-no-icon-world"] = {
+            type = "planet",
+            name = "test-no-icon-world",
         },
     }
     data.raw.item["test-badge-product"] = {
@@ -430,7 +434,7 @@ test("planet variants keep their planet's badge in the top right, over the numbe
         name = "test-badge-product",
         icon = "test-badge-product.png",
     }
-    -- A planet variant (scaffolds.name_variant) says whose badge it wears; a planet copy's own recipe (src/prototypes/duplicates/dupe-intermediates.lua) is named after its planet too, but wears a copy number
+    -- Both creation paths mark the planet whose badge the recipe keeps.
     local function made_on_world(name, planet_badge)
         return {
             type = "recipe",
@@ -448,8 +452,12 @@ test("planet variants keep their planet's badge in the top right, over the numbe
     end
     data.raw.recipe = {
         ["test-variant"] = made_on_world("test-variant", "test-badge-world"),
-        ["test-copy-local"] = made_on_world("test-copy-local", nil),
+        ["test-copy-local"] = made_on_world("test-copy-local", "test-badge-world"),
+        ["test-no-icon"] = made_on_world("test-no-icon", "test-no-icon-world"),
+        ["test-plain"] = made_on_world("test-plain", nil),
     }
+    data.raw.recipe["test-no-icon"].intermediate_planet = "test-no-icon-world"
+    data.raw.recipe["test-plain"].intermediate_planet = nil
     recipe_renames.apply({
         ["test-variant"] = {
             type = "item",
@@ -459,14 +467,33 @@ test("planet variants keep their planet's badge in the top right, over the numbe
             type = "item",
             name = "test-badge-product",
         },
+        ["test-no-icon"] = {
+            type = "item",
+            name = "test-badge-product",
+        },
+        ["test-plain"] = {
+            type = "item",
+            name = "test-badge-product",
+        },
     }, {}, "key")
-    -- Both are named after the product, so both get number badges in the top right; only the variant has its planet's badge, there too and drawn over the number (a later layer is drawn on top, types/IconData.html)
-    local variant_icons = data.raw.recipe["test-variant"].icons
-    assert(#variant_icons == 3 and variant_icons[1].icon == "test-badge-product.png" and variant_icons[2].icon == dupe.recipe_number_icon(2).icon)
-    local badge = variant_icons[3]
-    assert(badge.icon == "test-badge-world.png" and badge.shift[1] == 8 and badge.shift[2] == -8 and badge.scale == 16 / 64)
-    local copy_icons = data.raw.recipe["test-copy-local"].icons
-    assert(#copy_icons == 2 and copy_icons[2].icon == dupe.recipe_number_icon(1).icon)
+    -- A planet badge is the only corner badge, even when several recipes share the product.
+    local planet_recipes = {
+        "test-variant",
+        "test-copy-local",
+    }
+    for _, name in pairs(planet_recipes) do
+        local recipe = data.raw.recipe[name]
+        assert(#recipe.icons == 2 and recipe.icons[1].icon == "test-badge-product.png")
+        local badge = recipe.icons[2]
+        assert(badge.icon == "test-badge-world.png" and badge.shift[1] == 8 and badge.shift[2] == -8 and badge.scale == 16 / 64)
+        assert(recipe.localised_name[1] == "propertyrandomizer.recipe_planet_variant")
+        assert(recipe.localised_name[2][1] == "propertyrandomizer-recipe-prefix." .. constants.funny_recipe_prefixes[1])
+    end
+    -- Recipes without a usable planet icon keep their number, including the original numbering order.
+    local no_icon = data.raw.recipe["test-no-icon"].icons
+    local plain = data.raw.recipe["test-plain"].icons
+    assert(#no_icon == 2 and no_icon[2].icon == dupe.recipe_number_icon(2).icon)
+    assert(#plain == 2 and plain[2].icon == dupe.recipe_number_icon(3).icon)
 end)
 
 print(num_passed .. " tests passed")

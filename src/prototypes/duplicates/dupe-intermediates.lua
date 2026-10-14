@@ -5,6 +5,7 @@ local dupe = require("src/prototypes/duplicates/dupe")
 local furnace_selection = require("src/prototypes/entities/furnace-selection")
 local gutils = require("src/lib/graph/graph-utils")
 local locale_utils = require("src/localisation/locale")
+local looks = require("src/prototypes/looks")
 local surface_sets = require("src/prototypes/surfaces/surface-sets")
 local locks = require("src/randomizations/planetary/locks")
 
@@ -192,8 +193,9 @@ intermediates.execute = function()
                         home_discovery = discoveries[planet_name],
                     })
                     -- Outputs and intermediate ingredients keep their ordinary item identities.
-                    -- The marker keeps the planet label when item randomization renames recipes.
+                    -- The markers keep the planet label and badge when item randomization renames recipes.
                     recipe.intermediate_planet = planet_name
+                    recipe.planet_badge = planet_name
                     -- A version of the original, which it can merge with once randomization is done (src/prototypes/recipes/recipe-merges.lua)
                     recipe.version_of = original.version_of or original.name
                     recipe.localised_name = {
@@ -203,7 +205,7 @@ intermediates.execute = function()
                     }
                     recipe.icons = table.deepcopy(dupe.get_recipe_icons(original))
                     recipe.icon = nil
-                    table.insert(recipe.icons, dupe.recipe_number_icon(number))
+                    table.insert(recipe.icons, looks.planet_badge(planet) or dupe.recipe_number_icon(number))
                     locks.fix("recipe", recipe.name, {
                         [room] = true,
                     })
