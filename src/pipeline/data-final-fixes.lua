@@ -213,7 +213,7 @@ old_data_raw = table.deepcopy(data.raw)
 log("Loading in new dependency graph file")
 
 local unified = require("src/randomizations/unified/execute")
--- Loaded with unified randomization (its recipe-ingredients handler prices with the old logic)
+-- Unified recipe pricing uses the legacy key helpers, without building its dependency graph.
 local old_build_graph = require("src/legacy/logic/build-graph")
 
 -- Planetary stages waited for unified's prerequisite chooser.
@@ -406,24 +406,24 @@ old_data_raw_for_derandomization = table.deepcopy(data.raw)
 
 -- NOTE: When adding a dependency graph randomization, add it to constants.lua!
 
-log("Building dependency graph (if applicable)")
-
 -- Load in dependency graph
 local build_graph
 local build_graph_compat
 build_graph = require("src/legacy/logic/build-graph")
--- The old graph was first built when its file was required, before unified randomization and any planetary reroll (which draws new space connections, among other things); the custom nodes below look prototypes up by their current names in it, so it's built again from the game as it is now
-build_graph.load()
--- Make dependency graph global
-dep_graph = build_graph.graph
-
--- Add custom nodes
-log("Adding custom nodes")
 build_graph_compat = require("src/legacy/logic/build-graph-compat")
-
--- Build dependents
-log("Adding dependents")
-build_graph.add_dependents(dep_graph)
+-- Shared cost helpers import the legacy utilities too, but only enabled legacy passes need its graph.
+local needs_legacy_graph = next(config.graph) ~= nil
+if needs_legacy_graph then
+    log("Building dependency graph (if applicable)")
+    build_graph.load()
+    dep_graph = build_graph.graph
+    log("Adding custom nodes")
+    build_graph_compat.load(dep_graph)
+    log("Adding dependents")
+    build_graph.add_dependents(dep_graph)
+else
+    log("Skipping legacy dependency graph (no legacy graph randomizations)")
+end
 
 log("Gathering randomizations")
 
@@ -478,10 +478,12 @@ if config.graph.item then
     old_logic_packs_before = old_logic_science_packs()
 end
 
-build_graph.load()
-dep_graph = build_graph.graph
-build_graph_compat.load(dep_graph)
-build_graph.add_dependents(dep_graph)
+if needs_legacy_graph then
+    build_graph.load()
+    dep_graph = build_graph.graph
+    build_graph_compat.load(dep_graph)
+    build_graph.add_dependents(dep_graph)
+end
 
 if config.graph.technology then
     -- We currently do tech randomization many times since one time isn't enough to get it that random

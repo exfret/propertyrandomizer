@@ -634,7 +634,6 @@ end
 -- export
 build_graph_compat.load = load
 
--- First time loading
-load(dep_graph)
+-- The pipeline adds compatibility rules explicitly, after building the graph they belong to.
 
 return build_graph_compat

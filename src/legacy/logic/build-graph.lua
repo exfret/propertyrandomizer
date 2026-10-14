@@ -4308,7 +4308,7 @@ function build_graph.add_dependents(graph_param)
     end
 end
 
-load()
+-- Importing utility functions must not build a graph; the pipeline calls load when legacy randomizations need one.
 
 -- TODO: Function inspired by code that used to be here to determine complexity of graph for future optimization purposes if I go that route
 
