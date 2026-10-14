@@ -996,14 +996,13 @@ local spec = {
             val = "more"
         }
     },]]
-    -- Disabled until there is a workable version
-    --[[ module_effects = {
+    module_effects = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-production",
-            val = "default"
-        }
-    },]]
+            val = "default",
+        },
+    },
     machine_energy_usage = {
         category = "numerical",
         setting = {
