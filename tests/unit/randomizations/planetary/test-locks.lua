@@ -318,4 +318,19 @@ locks.revert({
 check(accepted_now() == room("ember", 2), "reverting the move brings the home lock back, not " .. accepted_now())
 check(data.raw.recipe["smelter-2"].localised_description[1] == "own", "a home lock leaves the recipe's description alone")
 
+-- A move on purpose to exactly some rooms (a drill following its ore, lock_repairs.drill_moves): the home lock waits while it lasts, like a drawn move
+local ember_2 = room("ember", 2)
+local moved_id = locks.move_to("recipe", "smelter-2", set_of({room("frost", 2)}), {
+    [ember_2] = room("frost", 2),
+})
+check(moved_id == "recipe/smelter-2", "move_to moves a home-locked recipe")
+check(locks.move_to("recipe", "smelter-2", set_of({room("frost", 3)}), {}) == nil, "a lock moves once")
+locks.realize()
+check(accepted_now() == room("frost", 2), "the move is in the game, not " .. accepted_now())
+check(locks.transport(true)["recipe: smelter-2"].map[ember_2] == room("frost", 2), "its goals go where the map says")
+locks.revert({
+    moved_id,
+})
+check(accepted_now() == ember_2, "reverting it brings the home lock back, not " .. accepted_now())
+
 print("test-locks: " .. num_checks .. " checks passed")

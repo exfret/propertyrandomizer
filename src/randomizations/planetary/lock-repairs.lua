@@ -5,11 +5,13 @@
 -- The original stays for the planets its lock accepts, with the version beside it, like the resource stage's versions of planet-locked recipes
 -- A recipe still failing its goals there keeps its old lock: the lock stage reverts it, and lock_repairs.undo takes its versions back
 -- A moved recipe that makes a machine only planet-locked machines are like (the foundry) also takes that machine's ocean recipes along (lock_repairs.follow_machines, user 2026-10-08): each new planet gets its own version of the recipes the machine made from its old planet's ocean, taking the new planet's ocean instead (molten iron from lava on a Fulgora whose ocean is now lava)
+-- The resource stage makes versions the same way for drills that follow an ore (lock_repairs.drill_versions, user 2026-10-13): a planet the swap gave an ore it can't mine with what it builds itself gets its own version of a drill that mines it, crafted in a machine the planet has
 
 local dutils = require("src/prototypes/data-utils")
 local furnace_selection = require("src/prototypes/entities/furnace-selection")
 local gutils = require("src/lib/graph/graph-utils")
 local locale_utils = require("src/localisation/locale")
+local lutils = require("src/logic/logic-utils")
 local recycling = require("src/prototypes/recipes/recycling")
 local research_triggers = require("src/prototypes/technology/research-triggers")
 local top = require("src/lib/sort/context-sort")
@@ -176,6 +178,74 @@ local function local_ingredients(sort, recipe, room_key, home_rooms, excluded)
     return ingredients, swaps
 end
 
+-- The crafting categories a version with these ingredients is made in on the room: nil when one of the recipe's own is crafted there from the room's own resources, else the one category, of those crafting machines craft, crafted there earliest that takes its fluids, or nil and why when there's none
+-- A category a machine picking recipes by ingredient crafts isn't one (another recipe there might take the same ingredients), and neither is one only machines with a fixed recipe craft (a rocket silo crafts only its rocket parts)
+-- For a drill following an ore (user, 2026-10-13): the big mining drill is made in a foundry, which only Vulcanus builds, so a planet's own version of it is made in a machine that planet has
+local function local_categories(sort, recipe, ingredients, room_key, excluded)
+    local fluids = lutils.find_recipe_fluids({
+        ingredients = ingredients,
+        results = recipe.results,
+    })
+    -- The category list's recipe-category node (lutils.rcat_node_name) if it's crafted in the room from the room's own resources, or nil
+    local function local_node(categories)
+        local node_key = gutils.key("recipe-category", lutils.rcat_node_name(lutils.rcat_key(categories, fluids)))
+        if sort.graph.nodes[node_key] ~= nil and is_isolatable_in(sort, node_key, room_key, excluded) then
+            return node_key
+        end
+        return nil
+    end
+    if local_node(furnace_selection.recipe_categories(recipe)) ~= nil then
+        return nil
+    end
+    local pools = furnace_selection.pools()
+    local rooms = {
+        [room_key] = true,
+    }
+    -- Candidates: each category a machine without a fixed recipe crafts, and each category list a recipe has (2.1 recipes can list several), as sorted lists keyed by their joined names
+    local crafted = {}
+    for _, machine in pairs(dutils.get_all_prots("entity")) do
+        for _, category in pairs(machine.fixed_recipe == nil and machine.crafting_categories or {}) do
+            crafted[category] = true
+        end
+    end
+    local candidates = {}
+    local function consider(categories)
+        local list = {}
+        for _, category in pairs(categories) do
+            if crafted[category] == nil then
+                return
+            end
+            table.insert(list, category)
+        end
+        table.sort(list)
+        if #list > 0 and #furnace_selection.pools_for(pools, list) == 0 then
+            candidates[table.concat(list, ",")] = list
+        end
+    end
+    for category, _ in pairs(crafted) do
+        consider({ category })
+    end
+    for _, other in pairs(data.raw.recipe) do
+        if not recycling.looks_generated(other) then
+            consider(furnace_selection.recipe_categories(other))
+        end
+    end
+    local best
+    local best_depth
+    for _, name in pairs(sorted_keys(candidates)) do
+        local node_key = local_node(candidates[name])
+        local depth = node_key ~= nil and helpers.depth_of(sort, node_key, rooms, excluded) or nil
+        if depth ~= nil and (best == nil or depth < best_depth) then
+            best = candidates[name]
+            best_depth = depth
+        end
+    end
+    if best == nil then
+        return nil, "nothing there crafts it"
+    end
+    return best
+end
+
 local function unlocking_technologies(recipe_name)
     local names = {}
     for _, technology in pairs(data.raw.technology) do
@@ -258,7 +328,8 @@ local function own_pack(sort, room_key, excluded)
 end
 
 -- A trigger the room meets itself (isolatably, without the recipe), for a copy of a technology whose trigger was old_trigger: of its kind if one fits, else of another kind, preferring what only the room's family has, closest in depth to the old trigger at home
-local function local_trigger(sort, old_trigger, room_key, home_rooms, excluded)
+-- old_depth (optional): how deep the old trigger was, when sort no longer has it (like a drill that left, lock_repairs.retrigger_drill_research)
+local function local_trigger(sort, old_trigger, room_key, home_rooms, excluded, old_depth)
     local kinds = {
         old_trigger.type,
     }
@@ -272,7 +343,9 @@ local function local_trigger(sort, old_trigger, room_key, home_rooms, excluded)
         end
     end
     local old_source = rewards.trigger_source_keys(old_trigger)[1]
-    local old_depth = old_source ~= nil and helpers.depth_of(sort, old_source, home_rooms) or nil
+    if old_depth == nil then
+        old_depth = old_source ~= nil and helpers.depth_of(sort, old_source, home_rooms) or nil
+    end
     local rooms = {
         [room_key] = true,
     }
@@ -402,8 +475,8 @@ local function technology_copy(sort, source, variant_name, room_key, home_rooms,
     }
 end
 
--- The version of a recipe for a room: the recipe with the given ingredients, named after the planet with its icon as a badge, locked to it (a fixed lock, locks.lua; locks.realize must run after)
-local function add_version(recipe, room_key, ingredients)
+-- The version of a recipe for a room: the recipe with the given ingredients (and categories, if given), named after the planet with its icon as a badge, locked to it (a fixed lock, locks.lua; locks.realize must run after)
+local function add_version(recipe, room_key, ingredients, categories)
     local variant = table.deepcopy(recipe)
     variant.name = scaffolds.planet_variant_name(recipe.name, room_name(room_key))
     scaffolds.name_variant(variant, recipe, room_name(room_key))
@@ -413,6 +486,10 @@ local function add_version(recipe, room_key, ingredients)
         variant.icon = nil
     end
     variant.ingredients = table.deepcopy(ingredients)
+    if categories ~= nil then
+        variant.categories = table.deepcopy(categories)
+        variant.category = nil
+    end
     data:extend({
         variant,
     })
@@ -685,6 +762,488 @@ lock_repairs.follow_machines = function(state)
     return num_made
 end
 
+-- A version of a recipe for a room, made there from the room's own resources (user, 2026-10-08): each ingredient the room can't make itself swapped for a stand-in (local_ingredients), locked to the room, and unlocked by a technology researchable there (one unlocking the recipe already, or a copy, technology_copy)
+-- home_rooms: the planets the recipe worked on before, which stand-ins are measured against
+-- options.always: make one even when nothing needs swapping and its research is doable there (for a recipe whose lock doesn't accept the room, like a drill following an ore)
+-- options.local_category: when none of the recipe's own crafting categories is crafted there, make it in one that is (local_categories)
+-- options.source_stays: the recipe stays where it works, so what the room makes may come through it (like the discovery of a planet whose route runs past the big mining drill on Vulcanus); only the version itself is left out, where a moved recipe's version leaves out the recipe too (own_recipes)
+-- Returns the repair ({ recipe_name, room_key, variant_name, tech_name, copy_name, notes }), or nil and why; locks.realize must run after
+lock_repairs.local_version = function(sort, recipe, room_key, home_rooms, options)
+    options = options or {}
+    local excluded = options.source_stays and {} or own_recipes(recipe)
+    local ingredients, swaps = local_ingredients(sort, recipe, room_key, home_rooms, excluded)
+    if ingredients == nil then
+        return nil, "nothing there stands in for " .. tostring(swaps)
+    end
+    local version_name = scaffolds.planet_variant_name(recipe.name, room_name(room_key))
+    excluded[gutils.key("recipe", version_name)] = true
+    local techs = unlocking_technologies(recipe.name)
+    local tech_name
+    for _, name in pairs(techs) do
+        if tech_name == nil and is_isolatable_in(sort, gutils.key("technology", name), room_key, excluded) then
+            tech_name = name
+        end
+    end
+    if data.raw.recipe[version_name] ~= nil then
+        return nil, "an earlier stage made " .. version_name .. " already"
+    end
+    local categories
+    if options.local_category == true then
+        local why
+        categories, why = local_categories(sort, recipe, ingredients, room_key, excluded)
+        if why ~= nil then
+            return nil, why
+        end
+    end
+    if options.always ~= true and #swaps == 0 and categories == nil and (tech_name ~= nil or #techs == 0) then
+        return nil, "it takes nothing the planet can't make, and its research is already doable there"
+    end
+    local variant_name = add_version(recipe, room_key, ingredients, categories)
+    local repair = {
+        recipe_name = recipe.name,
+        room_key = room_key,
+        variant_name = variant_name,
+        notes = {},
+    }
+    for _, swap in pairs(swaps) do
+        table.insert(repair.notes, swap.from .. " --> " .. swap.to)
+    end
+    if categories ~= nil then
+        table.insert(repair.notes, "made in " .. table.concat(categories, ", ") .. " instead of " .. table.concat(furnace_selection.recipe_categories(recipe), ", "))
+    end
+    if tech_name ~= nil then
+        add_unlock(tech_name, variant_name)
+        repair.tech_name = tech_name
+    elseif #techs > 0 then
+        local copy, copy_why = technology_copy(sort, data.raw.technology[techs[1]], variant_name, room_key, home_rooms, excluded)
+        if copy == nil then
+            remove_version(repair)
+            return nil, copy_why
+        end
+        repair.tech_name = copy.name
+        if copy.shared ~= true then
+            repair.copy_name = copy.name
+        end
+        table.insert(repair.notes, "researched by " .. copy.name .. (#copy.notes > 0 and (" (" .. table.concat(copy.notes, "; ") .. ")") or ""))
+    end
+    return repair
+end
+
+-- Takes versions lock_repairs.local_version made back out of the game, and out of state.variants_of; locks.realize must run after
+lock_repairs.remove_local_versions = function(repairs, state)
+    for _, repair in pairs(repairs) do
+        remove_version(repair)
+        state.variants_of = with_variant(state.variants_of, repair.recipe_name, repair.variant_name, false)
+    end
+end
+
+-- Makes a recipe the room's own in place, from the room's own resources (a drill whose lock moved with its ore, see lock_repairs.make_drills_local): each ingredient the room can't make itself swapped for a stand-in, crafted in a category the room crafts when none of its own is (local_categories), and researchable there (a technology unlocking it already, or a copy unlocking it, technology_copy)
+-- Only for a recipe whose lock accepts that room alone among the planets it works on, since an edit in place changes it everywhere
+-- Returns the repair ({ recipe_name, room_key, in_place, old_ingredients, old_categories, old_category, tech_name, copy_name, notes }), or nil and why; lock_repairs.undo_in_place takes it back
+lock_repairs.local_in_place = function(sort, recipe, room_key, home_rooms)
+    local excluded = own_recipes(recipe)
+    local ingredients, swaps = local_ingredients(sort, recipe, room_key, home_rooms, excluded)
+    if ingredients == nil then
+        return nil, "nothing there stands in for " .. tostring(swaps)
+    end
+    local categories, why = local_categories(sort, recipe, ingredients, room_key, excluded)
+    if why ~= nil then
+        return nil, why
+    end
+    local techs = unlocking_technologies(recipe.name)
+    local tech_name
+    for _, name in pairs(techs) do
+        if tech_name == nil and is_isolatable_in(sort, gutils.key("technology", name), room_key, excluded) then
+            tech_name = name
+        end
+    end
+    local repair = {
+        recipe_name = recipe.name,
+        room_key = room_key,
+        in_place = true,
+        old_ingredients = table.deepcopy(recipe.ingredients),
+        old_categories = table.deepcopy(recipe.categories),
+        old_category = recipe.category,
+        notes = {},
+    }
+    for _, swap in pairs(swaps) do
+        table.insert(repair.notes, swap.from .. " --> " .. swap.to)
+    end
+    if tech_name == nil and #techs > 0 then
+        local copy, copy_why = technology_copy(sort, data.raw.technology[techs[1]], recipe.name, room_key, home_rooms, excluded)
+        if copy == nil then
+            return nil, copy_why
+        end
+        repair.tech_name = copy.name
+        if copy.shared ~= true then
+            repair.copy_name = copy.name
+        end
+        table.insert(repair.notes, "researched by " .. copy.name .. (#copy.notes > 0 and (" (" .. table.concat(copy.notes, "; ") .. ")") or ""))
+    end
+    recipe.ingredients = table.deepcopy(ingredients)
+    if categories ~= nil then
+        table.insert(repair.notes, "made in " .. table.concat(categories, ", ") .. " instead of " .. table.concat(furnace_selection.recipe_categories(recipe), ", "))
+        recipe.categories = table.deepcopy(categories)
+        recipe.category = nil
+    end
+    return repair
+end
+
+-- Puts a recipe lock_repairs.local_in_place changed back as it was, with its research
+lock_repairs.undo_in_place = function(repair)
+    local recipe = data.raw.recipe[repair.recipe_name]
+    if recipe ~= nil then
+        recipe.ingredients = table.deepcopy(repair.old_ingredients)
+        recipe.categories = table.deepcopy(repair.old_categories)
+        recipe.category = repair.old_category
+    end
+    if repair.copy_name ~= nil then
+        data.raw.technology[repair.copy_name] = nil
+    elseif repair.tech_name ~= nil and data.raw.technology[repair.tech_name] ~= nil then
+        -- A copy another repair made for that planet, which this one only added an unlock to
+        local effects = data.raw.technology[repair.tech_name].effects or {}
+        for i = #effects, 1, -1 do
+            if effects[i].type == "unlock-recipe" and effects[i].recipe == repair.recipe_name then
+                table.remove(effects, i)
+            end
+        end
+    end
+end
+
+-- Recipes making a drill that mines this mining category with these fluids (an entity whose resource_categories have it, with the fluid boxes the fluids need, as src/prototypes/lookup/2-simple/mining.lua matches them), the recycler's aside
+-- Sorted by name, those that work on a planet of the given copy number first (surface_sets.copy_number: the big mining drill's copy 2 for a planet's copy 2)
+local function category_drill_recipes(category, fluids, copy_number)
+    local placers = {}
+    for item_name, item in pairs(dutils.get_all_prots("item")) do
+        local drill = item.place_result ~= nil and dutils.get_prot("entity", item.place_result) or nil
+        if drill ~= nil and (fluids.input == 0 or drill.input_fluid_box ~= nil) and (fluids.output == 0 or drill.output_fluid_box ~= nil) then
+            for _, drill_category in pairs(drill.resource_categories or {}) do
+                if drill_category == category then
+                    placers[item_name] = true
+                end
+            end
+        end
+    end
+    local same_copy = {}
+    local others = {}
+    for _, recipe_name in pairs(sorted_keys(data.raw.recipe)) do
+        local recipe = data.raw.recipe[recipe_name]
+        local makes_drill = false
+        for _, result in pairs(recipe.results or {}) do
+            if result.type == "item" and placers[result.name] ~= nil then
+                makes_drill = true
+            end
+        end
+        if makes_drill and not recycling.looks_generated(recipe) then
+            local is_same_copy = false
+            for room_key, _ in pairs(surface_sets.accepted(recipe)) do
+                if gutils.deconstruct(room_key).type == "planet" and surface_sets.copy_number(room_key) == copy_number then
+                    is_same_copy = true
+                end
+            end
+            table.insert(is_same_copy and same_copy or others, recipe)
+        end
+    end
+    for _, recipe in pairs(others) do
+        table.insert(same_copy, recipe)
+    end
+    return same_copy
+end
+
+-- Recipes making a drill that mines the resource (its category and mining fluids, category_drill_recipes)
+local function drill_recipes(resource, copy_number)
+    return category_drill_recipes(resource.category or "basic-solid", lutils.find_mining_fluids(resource), copy_number)
+end
+
+-- Ores packaged with the drills unlocked just to mine them (user, 2026-10-13: "if there's an ore on a planet and a drill you unlock just to mine that ore, package them and move them together"): each mining category of a resource that only drills made by planet-locked recipes mine (like hard-solid: tungsten ore, which only the big mining drill mines, and that's made only on Vulcanus), with the recipes making those drills
+-- Returns a list of { category, recipes } sorted by category, the recipes sorted by name
+lock_repairs.ore_drills = function()
+    local categories = {}
+    for _, resource in pairs(data.raw.resource) do
+        if resource.minable ~= nil then
+            categories[resource.category or "basic-solid"] = true
+        end
+    end
+    local packages = {}
+    for _, category in pairs(sorted_keys(categories)) do
+        local recipes = category_drill_recipes(category, {
+            input = 0,
+            output = 0,
+        }, 1)
+        local is_package = #recipes > 0
+        for _, recipe in pairs(recipes) do
+            if not is_locked(recipe) then
+                is_package = false
+            end
+        end
+        if is_package then
+            table.sort(recipes, function(a, b)
+                return a.name < b.name
+            end)
+            table.insert(packages, {
+                category = category,
+                recipes = recipes,
+            })
+        end
+    end
+    return packages
+end
+
+-- Where the packages' drills go after a resource swap (slots, assignment and origins, as resources.execute returns them): an ore of a package takes the package's drills on the planet it came from along to the planet it went to, and a drill leaves the planets whose ores all went elsewhere (a planet that never had one keeps it)
+-- Copy numbers don't matter (user, 2026-10-13: they only say where a duplicate starts, so drill 2 can go to Aquilo 1)
+-- Returns a list of moves { recipe_name, category, old, rooms, map }, for the recipes whose planets change: old and rooms are room key --> true, and map is each old room left --> the new room its goals go to (check.transport)
+lock_repairs.drill_moves = function(packages, slots, assignment, origins)
+    local moves = {}
+    for _, package in pairs(packages) do
+        local function is_of_package(resource_name)
+            local resource = data.raw.resource[resource_name]
+            return resource ~= nil and (resource.category or "basic-solid") == package.category
+        end
+        -- Planets that had an ore of the package before the swap
+        local had = {}
+        for _, slot in pairs(slots) do
+            if is_of_package(slot.resource_name) then
+                had[gutils.key("planet", slot.planet_name)] = true
+            end
+        end
+        for _, recipe in pairs(package.recipes) do
+            local old = {}
+            for room_key, _ in pairs(surface_sets.accepted(recipe)) do
+                if gutils.deconstruct(room_key).type == "planet" then
+                    old[room_key] = true
+                end
+            end
+            local rooms = {}
+            for room_key, _ in pairs(old) do
+                if had[room_key] == nil then
+                    rooms[room_key] = true
+                end
+            end
+            for j, slot in pairs(slots) do
+                local from = slots[origins[j] or j]
+                if is_of_package(assignment[j]) and old[gutils.key("planet", from.planet_name)] ~= nil then
+                    rooms[gutils.key("planet", slot.planet_name)] = true
+                end
+            end
+            local is_same = true
+            for room_key, _ in pairs(rooms) do
+                if old[room_key] == nil then
+                    is_same = false
+                end
+            end
+            for room_key, _ in pairs(old) do
+                if rooms[room_key] == nil then
+                    is_same = false
+                end
+            end
+            if next(rooms) ~= nil and not is_same then
+                local arrivals = {}
+                for _, room_key in pairs(sorted_keys(rooms)) do
+                    if old[room_key] == nil then
+                        table.insert(arrivals, room_key)
+                    end
+                end
+                local map = {}
+                for _, room_key in pairs(sorted_keys(old)) do
+                    if rooms[room_key] == nil then
+                        map[room_key] = arrivals[1] or sorted_keys(rooms)[1]
+                    end
+                end
+                table.insert(moves, {
+                    recipe_name = recipe.name,
+                    category = package.category,
+                    old = old,
+                    rooms = rooms,
+                    map = map,
+                })
+            end
+        end
+    end
+    return moves
+end
+
+-- A trigger's item or entity name (a trigger can name it, or give it as a filter with a name)
+local function trigger_target(target)
+    return type(target) == "table" and target.name or target
+end
+
+-- Research a moved drill's old planet did by crafting or building it (like Tungsten steel, researched by crafting a big mining drill, which metallurgic science needs) is researched there some other way once the drill leaves (user, 2026-10-13: re-trigger it, so the drill fully leaves)
+-- Each technology of the drill's own tree (the same dupe number as its recipe, src/prototypes/duplicates/dupe.lua) whose trigger asks for the drill gets a trigger the old planet meets itself (local_trigger), picked in sort, the game with the drills gone, and close in depth to where the drill was in before (the game before the planetary changes)
+-- Sets move.retriggered ({ tech_name, old_trigger, new_trigger, room_key }), and returns the moves with research whose old planet meets no other trigger, each with move.why
+lock_repairs.retrigger_drill_research = function(sort, before, moves)
+    local stuck = {}
+    for _, move in pairs(moves) do
+        move.retriggered = {}
+        local recipe = data.raw.recipe[move.recipe_name]
+        local left = {}
+        for _, room_key in pairs(sorted_keys(move.old)) do
+            if move.rooms[room_key] == nil then
+                table.insert(left, room_key)
+            end
+        end
+        if recipe ~= nil and #left > 0 then
+            local items = {}
+            local entities = {}
+            for _, result in pairs(recipe.results or {}) do
+                if result.type == "item" then
+                    items[result.name] = true
+                    local item = dutils.get_prot("item", result.name)
+                    if item ~= nil and item.place_result ~= nil then
+                        entities[item.place_result] = true
+                    end
+                end
+            end
+            local number = recipe.dupe_number or 1
+            local room_key = left[1]
+            local rooms = {
+                [room_key] = true,
+            }
+            for _, tech_name in pairs(sorted_keys(data.raw.technology)) do
+                local tech = data.raw.technology[tech_name]
+                local trigger = tech.research_trigger
+                local asks = trigger ~= nil and ((trigger.type == "craft-item" and items[trigger_target(trigger.item)] ~= nil) or (trigger.type == "build-entity" and entities[trigger_target(trigger.entity)] ~= nil))
+                if asks and (tech.dupe_number or 1) == number and move.why == nil then
+                    local old_source = rewards.trigger_source_keys(trigger)[1]
+                    local old_depth = old_source ~= nil and helpers.depth_of(before, old_source, rooms) or nil
+                    local new_trigger = local_trigger(sort, trigger, room_key, rooms, {}, old_depth)
+                    if new_trigger == nil then
+                        move.why = tech_name .. " is researched by " .. helpers.trigger_text(trigger) .. ", and " .. room_name(room_key) .. " meets no other trigger itself"
+                    else
+                        table.insert(move.retriggered, {
+                            tech_name = tech_name,
+                            old_trigger = table.deepcopy(trigger),
+                            new_trigger = table.deepcopy(new_trigger),
+                            room_key = room_key,
+                        })
+                        tech.research_trigger = new_trigger
+                    end
+                end
+            end
+        end
+        if move.why ~= nil then
+            lock_repairs.undo_retrigger(move)
+            table.insert(stuck, move)
+        end
+    end
+    return stuck
+end
+
+-- Puts back the research triggers lock_repairs.retrigger_drill_research changed for a move
+lock_repairs.undo_retrigger = function(move)
+    for _, change in pairs(move.retriggered or {}) do
+        local tech = data.raw.technology[change.tech_name]
+        if tech ~= nil then
+            tech.research_trigger = table.deepcopy(change.old_trigger)
+        end
+    end
+    move.retriggered = {}
+end
+
+-- Makes each moved drill (lock_repairs.drill_moves' moves, whose locks moved with locks.move_to) makeable on the planets it went to, from their own resources: on the first of them its own recipe in place when it left every old planet (lock_repairs.local_in_place), and versions elsewhere (lock_repairs.local_version, counted as the recipe in state.variants_of)
+-- sort: the game with the drills moved already and every extra patch the swap could need (execute.lua's move_drills): where a drill went nothing makes it yet and where it left nothing has it, so no stand-in leans on it
+-- Sets move.repairs, and returns the moves it couldn't make so on some planet they went to, each with move.why (lock_repairs.undo_drill_local takes their repairs back)
+lock_repairs.make_drills_local = function(sort, moves, state)
+    local failed = {}
+    for _, move in pairs(moves) do
+        move.repairs = {}
+        local recipe = data.raw.recipe[move.recipe_name]
+        local keeps_old = false
+        for room_key, _ in pairs(move.old) do
+            if move.rooms[room_key] ~= nil then
+                keeps_old = true
+            end
+        end
+        for _, room_key in pairs(sorted_keys(move.rooms)) do
+            if move.why == nil and move.old[room_key] == nil then
+                local repair, why
+                if not keeps_old and #move.repairs == 0 then
+                    repair, why = lock_repairs.local_in_place(sort, recipe, room_key, move.old)
+                else
+                    repair, why = lock_repairs.local_version(sort, recipe, room_key, move.old, {
+                        always = true,
+                        local_category = true,
+                    })
+                    if repair ~= nil then
+                        state.variants_of = with_variant(state.variants_of, repair.recipe_name, repair.variant_name, true)
+                    end
+                end
+                if repair ~= nil then
+                    table.insert(move.repairs, repair)
+                else
+                    move.why = room_name(room_key) .. ": " .. tostring(why)
+                end
+            end
+        end
+        if move.why ~= nil then
+            table.insert(failed, move)
+        end
+    end
+    return failed
+end
+
+-- Takes back what lock_repairs.make_drills_local did for a move (its recipe changed in place, its versions); locks.realize must run after
+lock_repairs.undo_drill_local = function(move, state)
+    for _, repair in pairs(move.repairs or {}) do
+        if repair.in_place == true then
+            lock_repairs.undo_in_place(repair)
+        else
+            lock_repairs.remove_local_versions({
+                repair,
+            }, state)
+        end
+    end
+    move.repairs = {}
+end
+
+-- Drills follow ores (user, 2026-10-13): a planet the resource swap gave an ore it can't mine with what it builds itself (the ore's mining category isn't isolatable there in the sort, like tungsten ore, which only the big mining drill mines, and that's made in a foundry on Vulcanus) gets its own version of a drill that mines it (lock_repairs.local_version): made there from its own resources, crafted in a machine it has, and researchable there
+-- The resource stage asks for these only for planets that fail even with every extra patch, before undoing their changes (execute.lua's run_resources)
+-- new_ores: planet name --> sorted list of the resources the swap gave it
+-- Returns the versions made, as local_version's repairs with planet_name and ore_name; locks.realize has run when it made any, and state.variants_of counts each as its original
+lock_repairs.drill_versions = function(sort, new_ores, state)
+    local made = {}
+    for _, planet_name in pairs(sorted_keys(new_ores)) do
+        local room_key = gutils.key("planet", planet_name)
+        local is_handled = {}
+        for _, ore_name in pairs(new_ores[planet_name]) do
+            local resource = data.raw.resource[ore_name]
+            local node_key = resource ~= nil and resource.minable ~= nil and gutils.key("resource-category", lutils.mcat_name(resource)) or nil
+            if node_key ~= nil and is_handled[node_key] == nil and sort.graph.nodes[node_key] ~= nil and not is_isolatable_in(sort, node_key, room_key) then
+                is_handled[node_key] = true
+                local repair
+                local why = "no recipe makes a drill that mines it"
+                for _, recipe in pairs(drill_recipes(resource, surface_sets.copy_number(room_key))) do
+                    if repair == nil then
+                        local home_rooms = {}
+                        for accepted_key, _ in pairs(surface_sets.accepted(recipe)) do
+                            if gutils.deconstruct(accepted_key).type == "planet" then
+                                home_rooms[accepted_key] = true
+                            end
+                        end
+                        repair, why = lock_repairs.local_version(sort, recipe, room_key, home_rooms, {
+                            always = true,
+                            local_category = true,
+                            source_stays = true,
+                        })
+                    end
+                end
+                if repair ~= nil then
+                    repair.planet_name = planet_name
+                    repair.ore_name = ore_name
+                    state.variants_of = with_variant(state.variants_of, repair.recipe_name, repair.variant_name, true)
+                    table.insert(made, repair)
+                    log("Planetary resources: " .. planet_name .. " can't mine " .. ore_name .. " with what it builds itself, so it gets " .. repair.variant_name .. (#repair.notes > 0 and (" (" .. table.concat(repair.notes, ", ") .. ")") or ""))
+                else
+                    log("Planetary resources: " .. planet_name .. " can't mine " .. ore_name .. " with what it builds itself, and gets no drill of its own, since " .. tostring(why))
+                end
+            end
+        end
+    end
+    if #made > 0 then
+        locks.realize()
+    end
+    return made
+end
+
 -- Makes versions of moved recipes for the new planets where what they must keep fails (failures from check.required_failures in the sort after the moves)
 -- Returns how many versions it made (locks.realize has run when it made any)
 lock_repairs.make_local = function(sort, failures, state)
@@ -713,63 +1272,14 @@ lock_repairs.make_local = function(sort, failures, state)
                 end
             end
             for _, room_key in pairs(sorted_keys(needs[id])) do
-                local excluded = own_recipes(recipe)
-                local ingredients, swaps = local_ingredients(sort, recipe, room_key, home_rooms, excluded)
-                local why
-                if ingredients == nil then
-                    why = "nothing there stands in for " .. tostring(swaps)
+                local repair, why = lock_repairs.local_version(sort, recipe, room_key, home_rooms)
+                if repair ~= nil then
+                    lock_repairs.made[id] = lock_repairs.made[id] or {}
+                    table.insert(lock_repairs.made[id], repair)
+                    state.variants_of = with_variant(state.variants_of, recipe.name, repair.variant_name, true)
+                    num_made = num_made + 1
+                    log("Planet lock repair: " .. id .. " on " .. room_name(room_key) .. ": " .. repair.variant_name .. (#repair.notes > 0 and (" (" .. table.concat(repair.notes, ", ") .. ")") or ""))
                 else
-                    local version_name = scaffolds.planet_variant_name(recipe.name, room_name(room_key))
-                    excluded[gutils.key("recipe", version_name)] = true
-                    local techs = unlocking_technologies(recipe.name)
-                    local tech_name
-                    for _, name in pairs(techs) do
-                        if tech_name == nil and is_isolatable_in(sort, gutils.key("technology", name), room_key, excluded) then
-                            tech_name = name
-                        end
-                    end
-                    if data.raw.recipe[version_name] ~= nil then
-                        why = "an earlier stage made " .. version_name .. " already"
-                    elseif #swaps == 0 and (tech_name ~= nil or #techs == 0) then
-                        why = "it takes nothing the planet can't make, and its research is already doable there"
-                    else
-                        local variant_name = add_version(recipe, room_key, ingredients)
-                        local repair = {
-                            recipe_name = recipe.name,
-                            room_key = room_key,
-                            variant_name = variant_name,
-                            notes = {},
-                        }
-                        for _, swap in pairs(swaps) do
-                            table.insert(repair.notes, swap.from .. " --> " .. swap.to)
-                        end
-                        if tech_name ~= nil then
-                            add_unlock(tech_name, variant_name)
-                            repair.tech_name = tech_name
-                        elseif #techs > 0 then
-                            local copy, copy_why = technology_copy(sort, data.raw.technology[techs[1]], variant_name, room_key, home_rooms, excluded)
-                            if copy == nil then
-                                remove_version(repair)
-                                why = copy_why
-                                repair = nil
-                            else
-                                repair.tech_name = copy.name
-                                if copy.shared ~= true then
-                                    repair.copy_name = copy.name
-                                end
-                                table.insert(repair.notes, "researched by " .. copy.name .. (#copy.notes > 0 and (" (" .. table.concat(copy.notes, "; ") .. ")") or ""))
-                            end
-                        end
-                        if repair ~= nil then
-                            lock_repairs.made[id] = lock_repairs.made[id] or {}
-                            table.insert(lock_repairs.made[id], repair)
-                            state.variants_of = with_variant(state.variants_of, recipe.name, variant_name, true)
-                            num_made = num_made + 1
-                            log("Planet lock repair: " .. id .. " on " .. room_name(room_key) .. ": " .. variant_name .. (#repair.notes > 0 and (" (" .. table.concat(repair.notes, ", ") .. ")") or ""))
-                        end
-                    end
-                end
-                if why ~= nil then
                     log("Planet lock repair: " .. id .. " on " .. room_name(room_key) .. ": no version, since " .. why)
                 end
             end

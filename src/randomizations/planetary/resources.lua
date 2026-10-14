@@ -131,14 +131,17 @@ resources.in_starting_area = function(slot)
 end
 
 -- Slot index --> the resource now placed there; resources move only within their kind, and each one moves if it can
+-- Also returns slot index --> the slot index that resource came from (its own where it stayed), so what moves with an ore can follow it (lock_repairs.drill_moves)
 -- The starting planet keeps its starting area's resources and its wells (user, 2026-10-01, like it keeps its ocean's fluid): everything after its first minutes is made from them (crude oil has no starting area patches but is as basic), and losing them broke the other planets too through the recipes they share
 resources.random_assignment = function(slots, id)
     local key = rng.key({ id = id })
     local assignment = {}
+    local origins = {}
     local kept = {}
     for i, slot in pairs(slots) do
         if slot.planet_name == constants.starting_planet and (resources.in_starting_area(slot) or slot.kind == "well") then
             assignment[i] = slot.resource_name
+            origins[i] = i
             table.insert(kept, slot.resource_name)
         end
     end
@@ -155,16 +158,17 @@ resources.random_assignment = function(slots, id)
                 table.insert(indices, i)
             end
         end
+        -- The travelers by the slot each comes from: rng.shuffle draws the same whatever the list holds, so the resources land where they would as a list of names
         local travelers = {}
         for _, i in pairs(indices) do
-            table.insert(travelers, slots[i].resource_name)
+            table.insert(travelers, i)
         end
         -- A few tries for a derangement (every resource somewhere new); the last shuffle is kept either way
         for _ = 1, 20 do
             rng.shuffle(key, travelers)
             local is_derangement = true
             for j, i in pairs(indices) do
-                if travelers[j] == slots[i].resource_name then
+                if slots[travelers[j]].resource_name == slots[i].resource_name then
                     is_derangement = false
                 end
             end
@@ -173,10 +177,11 @@ resources.random_assignment = function(slots, id)
             end
         end
         for j, i in pairs(indices) do
-            assignment[i] = travelers[j]
+            assignment[i] = slots[travelers[j]].resource_name
+            origins[i] = travelers[j]
         end
     end
-    return assignment
+    return assignment, origins
 end
 
 -- Makes a planet place a resource with the given probability and richness noise expression names
@@ -920,7 +925,7 @@ resources.replacements_without = function(replacements, planets)
     return kept
 end
 
--- Returns the slots, assignment and planet --> set of lost resources
+-- Returns the slots, assignment, planet --> set of lost resources, and the slot each resource came from (resources.random_assignment)
 resources.execute = function(id)
     resources.run = resources.run + 1
     local slots = resources.slots()
@@ -930,14 +935,14 @@ resources.execute = function(id)
     end
     resources.num_planets = #sorted_keys(planets)
     resources.num_patches = #slots
-    local assignment = resources.random_assignment(slots, id)
+    local assignment, origins = resources.random_assignment(slots, id)
     local moves = {}
     for i, slot in pairs(slots) do
         table.insert(moves, slot.planet_name .. " " .. slot.resource_name .. " <-- " .. assignment[i])
     end
     log("Planetary resources (planet slot <-- resource): " .. table.concat(moves, ", "))
     local lost = resources.apply(slots, assignment)
-    return slots, assignment, lost
+    return slots, assignment, lost, origins
 end
 
 -- The extra patches the planets have, as a sorted list of their slider names, and the most the game may have (see resources.PATCHES_PER_EXTRA_PATCH), or nil before any resource swap

@@ -78,6 +78,24 @@ local function planet_label(planet_name)
     return "[img=space-location." .. planet_name .. "] " .. name
 end
 
+-- Planets for a warning, each after its icon: the log's text, and the randomizer panel's LocalisedString (localised_text.join keeps a long list within the parameter limit)
+local function planet_list(planet_names)
+    local labels = {}
+    local localised_labels = {}
+    for _, planet_name in pairs(planet_names) do
+        table.insert(labels, planet_label(planet_name))
+        local planet = data.raw.planet[planet_name]
+        table.insert(localised_labels, {
+            "",
+            "[img=space-location." .. planet_name .. "] ",
+            planet ~= nil and planet.localised_name or {
+                "space-location-name." .. planet_name,
+            },
+        })
+    end
+    return table.concat(labels, ", "), localised_text.join(localised_labels, ", ")
+end
+
 local function run_oceans(logic, state, old_raw)
     planetary_check.moved_features["oceans"] = true
     local assignment, clone_to_slot = oceans.execute("random", "planetary-oceans")
@@ -98,14 +116,8 @@ local function run_oceans(logic, state, old_raw)
         variants_of, after, past_limit = scaffolds.execute(assignment, oceans, logic, state.before, state.careful)
     end
     if #put_back > 0 then
-        local labels = {}
-        local localised_labels = {}
-        for _, planet_name in pairs(put_back) do
-            table.insert(labels, planet_label(planet_name))
-            local planet = data.raw.planet[planet_name]
-            table.insert(localised_labels, {"", "[img=space-location." .. planet_name .. "] ", planet.localised_name or {"space-location-name." .. planet_name}})
-        end
-        warn("ocean swaps", "left " .. table.concat(labels, ", ") .. " their own oceans, since each would have needed a recipe making its old ocean's fluid from its new one, and a game gets " .. scaffolds.MAX_CONVERSIONS .. " at most.", localised_text.get("propertyrandomizer-warning.ocean-conversion-limit", localised_text.join(localised_labels, ", "), scaffolds.MAX_CONVERSIONS))
+        local labels, localised_labels = planet_list(put_back)
+        warn("ocean swaps", "left " .. labels .. " their own oceans, since each would have needed a recipe making its old ocean's fluid from its new one, and a game gets " .. scaffolds.MAX_CONVERSIONS .. " at most.", localised_text.get("propertyrandomizer-warning.ocean-conversion-limit", localised_labels, scaffolds.MAX_CONVERSIONS))
     end
     -- Tile collision staying exactly as it was is part of how the swap works, so a difference means something unexpected happened
     local tile_problems, tile_messages = planetary_check.tiles_unchanged(old_raw, clone_to_slot)
@@ -168,10 +180,10 @@ end
 
 -- Swaps resources, and has the recipes and mining-triggered technologies belonging to one planet follow its swap (recipes a planet shares with its copies through planet variants)
 -- The variants count as their originals for the checks (state.variants_of)
--- Returns what resources.execute does, then the recipe edits, the trigger edits and the variant plans
+-- Returns the slots, assignment and lost resources (resources.execute), then the recipe edits, the trigger edits and the variant plans, then the slot each resource came from
 local function swap_resources(state)
     planetary_check.moved_features["resources"] = true
-    local slots, assignment, lost = resources.execute("planetary-resources")
+    local slots, assignment, lost, origins = resources.execute("planetary-resources")
 
     -- Recipes belonging to one planet follow that planet's swap, including the ocean stage's planet variants
     local planet_recipes = {}
@@ -198,24 +210,42 @@ local function swap_resources(state)
     for _, edit in pairs(trigger_edits) do
         resources.add_trigger_edit(edit)
     end
-    return slots, assignment, lost, edits, trigger_edits, variants
+    return slots, assignment, lost, edits, trigger_edits, variants, origins
 end
 
--- The variants replace their originals on their planets (user, 2026-09-30), once the patches are chosen: each original stops accepting its variants' planets (resources.exclude_originals), except where a planet still needs it
+-- The variants replace their originals on their planets (user, 2026-09-30), once the extra patches, edits and variants are final: each original stops accepting its variants' planets (resources.exclude_originals), except where a planet still needs it
 -- A planet can need its original where its variant's new ingredient is harder to get from its own resources than the original's was, like uranium ore, which is mined with sulfuric acid (base/prototypes/entity/resources.lua).
 -- So the goals that fail without the originals get them back through gates in a staged sort, one per original and planet, like the lock stage's "widen", and only the gates on their witnesses open.
--- If a goal fails even with every original back, the exclusions all go, leaving the game the patches were chosen for as it was.
--- Returns the excluded originals still excluded (resources.exclude_originals' entries, planet_rooms narrowed to those still excluded) and how many planets got an original back
+-- Goals that fail even with every original back aren't the exclusions' doing, so they don't count (user, 2026-10-13: this used to give every original back on every planet over any such failure, like a planet whose own recipe edits failed, which left the variants pointless)
+-- Returns { excluded = the originals still excluded (resources.exclude_originals' entries, planet_rooms narrowed to those still excluded), num_back = how many came back on a planet, initial = each original and planet it tried, as { recipe_name, room_key }, after = the sort of the game it ends with when its last change came before it, else nil }
 local function exclude_originals(logic, state, variants)
     local excluded = resources.exclude_originals(variants)
+    local initial = {}
+    for _, entry in pairs(excluded) do
+        for _, room_key in pairs(sorted_keys(entry.planet_rooms)) do
+            table.insert(initial, {
+                recipe_name = entry.recipe_name,
+                room_key = room_key,
+            })
+        end
+    end
     if #excluded == 0 then
-        return {}, 0
+        return {
+            excluded = {},
+            num_back = 0,
+            initial = initial,
+        }
     end
     locks.realize()
     local after = planetary_check.sort(logic)
     local failures = planetary_check.required_failures(state.before, after, state.variants_of)
     if #failures == 0 then
-        return excluded, 0
+        return {
+            excluded = excluded,
+            num_back = 0,
+            initial = initial,
+            after = after,
+        }
     end
     local add = {}
     local include_of_gate = {}
@@ -251,14 +281,17 @@ local function exclude_originals(logic, state, variants)
         graph = staged_sort.graph,
         sort_info = staged_sort.sort_info,
     }
-    if #planetary_check.required_failures(state.before, with_all, state.variants_of) > 0 then
-        resources.include_originals(excluded)
-        locks.realize()
-        log("Planetary resources: the originals stay makeable beside their variants, since some planets can't do without them even with every original back")
-        return {}, 0
+    local caused = planetary_check.caused_failures(failures, planetary_check.required_failures(state.before, with_all, state.variants_of))
+    if #caused == 0 then
+        return {
+            excluded = excluded,
+            num_back = 0,
+            initial = initial,
+            after = after,
+        }
     end
     local num_back = 0
-    for _, gate in pairs(staged_sort.gates_on_witness(planetary_check.goal_inds(failures, with_all))) do
+    for _, gate in pairs(staged_sort.gates_on_witness(planetary_check.goal_inds(caused, with_all))) do
         local include = gate.kind == "add" and include_of_gate[gate.start .. " --> " .. gate.stop] or nil
         if include ~= nil and include.entry.planet_rooms[include.room_key] ~= nil then
             include.entry.planet_rooms[include.room_key] = nil
@@ -280,7 +313,99 @@ local function exclude_originals(logic, state, variants)
         end
     end
     locks.realize()
-    return still, num_back
+    return {
+        excluded = still,
+        num_back = num_back,
+        initial = initial,
+    }
+end
+
+-- Makes excluded originals makeable again on the given rooms (room key --> true, or nil for every room)
+-- Returns the entries still excluded somewhere; locks.realize must run after
+local function include_on_rooms(excluded, rooms)
+    local still = {}
+    for _, entry in pairs(excluded) do
+        for _, room_key in pairs(sorted_keys(entry.planet_rooms)) do
+            if rooms == nil or rooms[room_key] ~= nil then
+                entry.planet_rooms[room_key] = nil
+                local lock = locks.fixed["recipe/" .. entry.recipe_name]
+                if lock ~= nil then
+                    lock.rooms[room_key] = true
+                end
+            end
+        end
+        if next(entry.planet_rooms) == nil then
+            resources.include_originals({
+                entry,
+            })
+        else
+            table.insert(still, entry)
+        end
+    end
+    return still
+end
+
+-- The variants replace their originals (exclude_originals), once the extra patches, edits and variants are final
+-- With careful, the planets where that still breaks something get all their originals back, a round of failing planets at a time (a per-planet fallback, user 2026-10-13), and when what fails isn't on a planet with an original left out, every original comes back (the last resort); state.after is then the sort of the game it ends with (current: a sort of the game before the exclusions, or nil)
+-- Every original still makeable on a planet beside its variant there is warned about in the randomizer panel (user, 2026-10-13: fallbacks are always warnings)
+-- Returns the originals still excluded, how many came back on a planet where a goal needed them, and why the stage fails if something still fails with every original back (else nil)
+local function replace_originals(logic, state, variants, current)
+    local result = exclude_originals(logic, state, variants)
+    local excluded = result.excluded
+    local reason
+    if state.careful then
+        state.after = result.after or (#result.initial == 0 and current) or planetary_check.sort(logic)
+        local failures = planetary_check.required_failures(state.before, state.after, state.variants_of)
+        while #failures > 0 and #excluded > 0 do
+            local failing = resources.failing_planets(failures, {})
+            local rooms = {}
+            for planet_name, _ in pairs(failing) do
+                rooms[gutils.key("planet", planet_name)] = true
+            end
+            local is_on_failing = false
+            for _, entry in pairs(excluded) do
+                for room_key, _ in pairs(entry.planet_rooms) do
+                    if rooms[room_key] ~= nil then
+                        is_on_failing = true
+                    end
+                end
+            end
+            if is_on_failing then
+                log("Planetary resources: the originals stay makeable beside their variants on the planets still failing: " .. table.concat(sorted_keys(failing), ", "))
+            else
+                rooms = nil
+                log("Planetary resources: what still fails isn't on a planet with an original left out, so every original stays makeable beside its variants")
+            end
+            excluded = include_on_rooms(excluded, rooms)
+            locks.realize()
+            state.after = planetary_check.sort(logic)
+            failures = planetary_check.required_failures(state.before, state.after, state.variants_of)
+        end
+        if #failures > 0 then
+            reason = localised_text.reason("planet-lost", "a planet lost something it must keep even with every original back (see PLANETCHECK in the log)")
+        end
+    else
+        state.after = nil
+    end
+    local still = {}
+    for _, entry in pairs(excluded) do
+        for room_key, _ in pairs(entry.planet_rooms) do
+            still[entry.recipe_name .. " @ " .. room_key] = true
+        end
+    end
+    local kept_on = {}
+    local num_kept = 0
+    for _, tried in pairs(result.initial) do
+        if still[tried.recipe_name .. " @ " .. tried.room_key] == nil then
+            num_kept = num_kept + 1
+            kept_on[gutils.deconstruct(tried.room_key).name] = true
+        end
+    end
+    if num_kept > 0 then
+        local labels, localised_labels = planet_list(sorted_keys(kept_on))
+        warn("resource swaps", "kept " .. num_kept .. " original recipes makeable on " .. labels .. " beside those planets' own versions, since the planets still needed them.", localised_text.get("propertyrandomizer-warning.resource-originals-kept", num_kept, localised_labels))
+    end
+    return excluded, result.num_back, reason
 end
 
 -- Takes planet variants back out of the game, and out of state.variants_of
@@ -301,11 +426,13 @@ end
 
 -- After a resource swap failed even with every extra patch (failures, from check.required_failures), the planets those failures are on (resources.failing_planets) get their original recipes and technology triggers back, without planet variants, while the other planets keep theirs
 -- That repeats while failures are on planets with changes left; failures on none of them take every planet's changes (the last resort)
+-- Either is a fallback, so the randomizer panel warns about the planets (user, 2026-10-13)
 -- The trigger edits are made again from replacements (resources.replacements' table), since one edit can serve several planets
--- Leaves state.after the sort of the game it ends with, and returns the edits, trigger edits and variants still in it
+-- Leaves state.after the sort of the game it ends with, and returns the edits, trigger edits and variants still in it, and the planets it undid (planet name --> true)
 local function undo_failing_planets(logic, state, failures, replacements, edits, trigger_edits, variants)
     local undone = {}
     local is_first = true
+    local is_every_planet = false
     while #failures > 0 do
         local changed = resources.changed_planets(edits, trigger_edits, variants)
         local planets = {}
@@ -318,6 +445,7 @@ local function undo_failing_planets(logic, state, failures, replacements, edits,
             log("Planetary resources: " .. (is_first and "every extra patch still wasn't enough" or "still failing") .. ", so these planets get their original recipes and technology triggers back, without planet variants: " .. table.concat(sorted_keys(planets), ", "))
         elseif next(changed) ~= nil then
             planets = changed
+            is_every_planet = true
             log("Planetary resources: what still fails isn't on a planet with changes left, so every planet gets its original recipes and technology triggers back, without planet variants")
         else
             break
@@ -344,35 +472,131 @@ local function undo_failing_planets(logic, state, failures, replacements, edits,
         state.after = planetary_check.sort(logic)
         failures = planetary_check.required_failures(state.before, state.after, state.variants_of)
     end
-    return edits, trigger_edits, variants
+    if is_every_planet then
+        warn("resource swaps", "gave every planet its original recipes and research triggers back instead of its own versions, since what still failed wasn't on a planet with changes left.", localised_text.get("propertyrandomizer-warning.resource-all-undone"))
+    elseif next(undone) ~= nil then
+        local labels, localised_labels = planet_list(sorted_keys(undone))
+        warn("resource swaps", "gave " .. labels .. " their original recipes and research triggers back instead of their own versions, since those still couldn't be made there with every extra patch.", localised_text.get("propertyrandomizer-warning.resource-planets-undone", localised_labels))
+    end
+    return edits, trigger_edits, variants, undone
+end
+
+-- The resources the swap gave each of the given planets (planet name --> true) that the planet didn't have before, as planet name --> sorted resource names
+local function new_resources(slots, assignment, planets)
+    local own = {}
+    for _, slot in pairs(slots) do
+        own[slot.planet_name] = own[slot.planet_name] or {}
+        own[slot.planet_name][slot.resource_name] = true
+    end
+    local new = {}
+    for i, slot in pairs(slots) do
+        local resource_name = assignment[i]
+        if planets[slot.planet_name] ~= nil and own[slot.planet_name][resource_name] == nil then
+            new[slot.planet_name] = new[slot.planet_name] or {}
+            new[slot.planet_name][resource_name] = true
+        end
+    end
+    local lists = {}
+    for planet_name, resource_names in pairs(new) do
+        lists[planet_name] = sorted_keys(resource_names)
+    end
+    return lists
+end
+
+-- Room keys' names in braces, for the log
+local function room_names(rooms)
+    local names = {}
+    for _, room_key in pairs(sorted_keys(rooms)) do
+        table.insert(names, gutils.deconstruct(room_key).name)
+    end
+    return "{" .. table.concat(names, ", ") .. "}"
+end
+
+-- Takes the drills whose moves go back (back: move id --> why) back to where they were, with what made them local where they went; the randomizer panel warns about them, since it's a fallback
+-- Returns the moves kept
+local function take_back_drills(moves, back, state)
+    local kept = {}
+    local ids = {}
+    for _, move in pairs(moves) do
+        if back[move.id] ~= nil then
+            lock_repairs.undo_drill_local(move, state)
+            lock_repairs.undo_retrigger(move)
+            planetary_check.transport[gutils.key("recipe", move.recipe_name)] = nil
+            table.insert(ids, move.id)
+            log("Planetary resources: " .. move.recipe_name .. " stays on " .. room_names(move.old) .. " instead of following its " .. move.category .. " ore to " .. room_names(move.rooms) .. ", since " .. back[move.id])
+        else
+            table.insert(kept, move)
+        end
+    end
+    if #ids > 0 then
+        locks.revert(ids)
+        warn("resource swaps", "kept " .. #ids .. " drills on their old planets instead of moving them with their ore, since they couldn't be made where it went or their old planet still needed them.", localised_text.get("propertyrandomizer-warning.drills-stayed", #ids))
+    end
+    return kept
+end
+
+-- Drills follow their ores (user, 2026-10-13: "if there's an ore on a planet and a drill you unlock just to mine that ore, package them and move them together"): the drills only planet-locked recipes make for a mining category (lock_repairs.ore_drills, like the big mining drill for tungsten ore) go where the swap put the ores from their planets, and leave the planets those ores left (lock_repairs.drill_moves, with origins from resources.execute)
+-- On its new planet a drill's own recipe is made from that planet's own resources, crafted in a machine it has, with research doable there (lock_repairs.make_drills_local), since the big mining drill is crafted in a foundry from tungsten carbide
+-- What a planet makes is judged with every extra patch the swap could need (repairs) and the drills already moved: where they went nothing makes them yet and where they left nothing has them, so no stand-in leans on a drill; the patches their stand-ins need are chosen with the rest afterwards
+-- Their goals go with them (check.transport); a drill that can't be made where it went goes back (take_back_drills)
+-- Returns the moves kept
+local function move_drills(logic, state, slots, assignment, origins, repairs)
+    local moves = {}
+    for _, move in pairs(lock_repairs.drill_moves(lock_repairs.ore_drills(), slots, assignment, origins)) do
+        move.id = locks.move_to("recipe", move.recipe_name, move.rooms, move.map)
+        if move.id ~= nil then
+            table.insert(moves, move)
+        end
+    end
+    if #moves == 0 then
+        return {}
+    end
+    locks.realize()
+    for _, repair in pairs(repairs) do
+        resources.add_repair(repair)
+    end
+    local sort = planetary_check.sort(logic)
+    -- Research a drill's old planet did by crafting it gets a trigger that planet meets itself (user, 2026-10-13: re-trigger it), and the planets are judged again with it: a far planet's route can need that research (Tungsten steel, before metallurgic science)
+    local back = {}
+    for _, move in pairs(lock_repairs.retrigger_drill_research(sort, state.before, moves)) do
+        back[move.id] = "its old planet's research can't do without it: " .. move.why
+    end
+    local num_retriggered = 0
+    for _, move in pairs(moves) do
+        num_retriggered = num_retriggered + #move.retriggered
+    end
+    if num_retriggered > 0 then
+        sort = planetary_check.sort(logic)
+    end
+    for _, move in pairs(lock_repairs.make_drills_local(sort, moves, state)) do
+        back[move.id] = back[move.id] or ("it can't be made on " .. move.why)
+    end
+    for _, repair in pairs(repairs) do
+        resources.remove_repair(repair)
+    end
+    moves = take_back_drills(moves, back, state)
+    for _, move in pairs(moves) do
+        if next(move.map) ~= nil then
+            planetary_check.transport[gutils.key("recipe", move.recipe_name)] = {
+                map = table.deepcopy(move.map),
+                keep_isolatability = true,
+            }
+        end
+        local notes = {}
+        for _, repair in pairs(move.repairs) do
+            table.insert(notes, (repair.variant_name or (repair.recipe_name .. " in place")) .. " on " .. gutils.deconstruct(repair.room_key).name .. (#repair.notes > 0 and (": " .. table.concat(repair.notes, ", ")) or ""))
+        end
+        for _, change in pairs(move.retriggered) do
+            table.insert(notes, change.tech_name .. " researched by " .. rewards.helpers.trigger_text(change.new_trigger) .. " on " .. gutils.deconstruct(change.room_key).name .. " instead of " .. rewards.helpers.trigger_text(change.old_trigger))
+        end
+        log("Planetary resources: " .. move.recipe_name .. " follows its " .. move.category .. " ore: " .. room_names(move.old) .. " --> " .. room_names(move.rooms) .. (#notes > 0 and (" (" .. table.concat(notes, "; ") .. ")") or ""))
+    end
+    locks.realize()
+    return moves
 end
 
 local function run_resources(logic, state)
-    local slots, assignment, lost, edits, trigger_edits, variants = swap_resources(state)
-    local excluded = {}
-
-    -- What the swap still breaks without any extra patches
-    local without = planetary_check.sort(logic)
-    local failures = planetary_check.required_failures(state.before, without, state.variants_of)
-    if #failures == 0 then
-        local num_back
-        excluded, num_back = exclude_originals(logic, state, variants)
-        log_edits(edits, trigger_edits, variants)
-        log("Planetary resources: " .. #excluded .. " originals replaced by their variants, " .. num_back .. " kept beside them where a planet still needs them; no extra patches needed")
-        state.after = nil
-        if state.careful == true then
-            state.after = planetary_check.sort(logic)
-            if #excluded > 0 and not planetary_check.required(state.before, state.after, state.variants_of, true) then
-                resources.include_originals(excluded)
-                locks.realize()
-                state.after = planetary_check.sort(logic)
-            end
-        end
-        return nil
-    end
-    for _, failure in pairs(failures) do
-        log("Planetary resources: without extra patches, failing " .. failure.text)
-    end
+    local slots, assignment, lost, edits, trigger_edits, variants, origins = swap_resources(state)
 
     -- Every extra patch that could help (each resource a planet lost), then only those the witnesses (earliest-provider paths) of what broke can't do without
     -- A patch is a planet's map placing the resource, which the logic has as an edge from the planet's autoplace node to the resource's entity (src/logic/builders/concrete.lua); those edges go behind a gate in a staged sort (src/lib/sort/staged-sort.lua) of the game without patches, so a witness goes through a patch only where the recipe edits, planet variants and new resources can't do it
@@ -386,79 +610,119 @@ local function run_resources(logic, state)
             end
         end
     end
-    local kept = resource_repairs.select(logic, state, repairs, without)
-    local num_back
-    excluded, num_back = exclude_originals(logic, state, variants)
-    local function log_kept()
+    -- Drills unlocked just to mine an ore go where the ore went (move_drills)
+    local drill_moves = move_drills(logic, state, slots, assignment, origins, repairs)
+
+    -- What the swap still breaks without any extra patches
+    local without = planetary_check.sort(logic)
+    local failures = planetary_check.required_failures(state.before, without, state.variants_of)
+    if #failures == 0 then
+        local excluded, num_back, reason = replace_originals(logic, state, variants, without)
         log_edits(edits, trigger_edits, variants)
-        if #variants > 0 then
-            local num_planets = 0
-            for _, entry in pairs(excluded) do
-                for _, _ in pairs(entry.planet_rooms) do
-                    num_planets = num_planets + 1
+        log("Planetary resources: " .. #excluded .. " originals replaced by their variants, " .. num_back .. " kept beside them where a planet still needs them; no extra patches needed")
+        return reason
+    end
+    for _, failure in pairs(failures) do
+        log("Planetary resources: without extra patches, failing " .. failure.text)
+    end
+
+    local kept = resource_repairs.select(logic, state, repairs, without)
+    -- Versions of drills that planets got for ores they couldn't mine themselves (lock_repairs.drill_versions)
+    local drills = {}
+    if state.careful then
+        state.after = planetary_check.sort(logic)
+        if not planetary_check.required(state.before, state.after, state.variants_of, true) then
+            -- The witnesses missed something, so try every extra patch
+            for _, repair in pairs(repairs) do
+                resources.add_repair(repair)
+            end
+            kept = repairs
+            state.after = planetary_check.sort(logic)
+            failures = planetary_check.required_failures(state.before, state.after, state.variants_of)
+            if #failures > 0 then
+                for _, failure in pairs(failures) do
+                    log("Planetary resources: with every extra patch, failing " .. failure.text)
+                end
+                -- A moved drill that still fails its own goals where it went, or whose old planet fails without it, goes back first
+                local back = {}
+                for _, failure in pairs(failures) do
+                    local room = failure.context ~= nil and top.context_room(failure.context) or nil
+                    for _, move in pairs(drill_moves) do
+                        if failure.keys[1] == gutils.key("recipe", move.recipe_name) then
+                            back[move.id] = back[move.id] or ("it still fails there with every extra patch: " .. failure.text)
+                        elseif room ~= nil and move.old[room] ~= nil and move.rooms[room] == nil then
+                            back[move.id] = back[move.id] or ("its old planet fails without it, with every extra patch: " .. failure.text)
+                        end
+                    end
+                end
+                if next(back) ~= nil then
+                    drill_moves = take_back_drills(drill_moves, back, state)
+                    state.after = planetary_check.sort(logic)
+                    failures = planetary_check.required_failures(state.before, state.after, state.variants_of)
                 end
             end
-            log("Planetary resources: " .. #excluded .. " originals replaced by their variants on " .. num_planets .. " planets, " .. num_back .. " kept beside them where a planet still needs them")
-        end
-        log("Planetary resources: " .. #kept .. " of " .. #repairs .. " possible extra patches needed")
-        for _, repair in pairs(kept) do
-            log("Planetary resources: extra " .. repair.resource_name .. " patches on " .. repair.planet_name)
-        end
-    end
-    if not state.careful then
-        log_kept()
-        state.after = nil
-        return nil
-    end
-    state.after = planetary_check.sort(logic)
-    if #excluded > 0 and not planetary_check.required(state.before, state.after, state.variants_of, true) then
-        -- The originals the variants replace may be what's missing, so they come back first
-        resources.include_originals(excluded)
-        locks.realize()
-        excluded = {}
-        num_back = 0
-        state.after = planetary_check.sort(logic)
-    end
-    if not planetary_check.required(state.before, state.after, state.variants_of, true) then
-        -- The witnesses missed something, so try every extra patch
-        for _, repair in pairs(repairs) do
-            resources.add_repair(repair)
-        end
-        kept = repairs
-        state.after = planetary_check.sort(logic)
-        local failures = planetary_check.required_failures(state.before, state.after, state.variants_of)
-        if #failures > 0 then
-            for _, failure in pairs(failures) do
-                log("Planetary resources: with every extra patch, failing " .. failure.text)
+            if #failures > 0 then
+                -- A failing planet that can't mine an ore the swap gave it with what it builds itself gets its own version of a drill that mines it, made in a machine it has (user, 2026-10-13)
+                drills = lock_repairs.drill_versions(state.after, new_resources(slots, assignment, resources.failing_planets(failures, edits)), state)
+                if #drills > 0 then
+                    state.after = planetary_check.sort(logic)
+                    failures = planetary_check.required_failures(state.before, state.after, state.variants_of)
+                end
             end
-            -- The edits themselves may be what's in the way (like a new ingredient only a later drill can mine), so the planets still failing get their original recipes and technology triggers back (user, 2026-10-08: taking every planet's edits back over one planet's failures left the user's seed 16 extra patches)
-            if #excluded > 0 then
-                resources.include_originals(excluded)
-                locks.realize()
-                excluded = {}
+            if #failures > 0 then
+                -- The edits themselves may be what's in the way, so the planets still failing get their original recipes and technology triggers back (user, 2026-10-08: taking every planet's edits back over one planet's failures left the user's seed 16 extra patches)
+                local undone
+                edits, trigger_edits, variants, undone = undo_failing_planets(logic, state, failures, resources.replacements(slots, assignment, lost), edits, trigger_edits, variants)
+                if not planetary_check.required(state.before, state.after, state.variants_of) then
+                    return localised_text.reason("planet-lost-patches", "a planet lost something it must keep even with extra patches (see PLANETCHECK in the log)")
+                end
+                -- Nothing needs the drill versions of planets whose changes were undone
+                local unused
+                unused, drills = resources.split_by_planet(drills, undone)
+                if #unused > 0 then
+                    lock_repairs.remove_local_versions(unused, state)
+                    locks.realize()
+                end
             end
-            edits, trigger_edits, variants = undo_failing_planets(logic, state, failures, resources.replacements(slots, assignment, lost), edits, trigger_edits, variants)
+        end
+        -- The fallback changed recipes or triggers and temporarily restored every candidate.
+        -- Choose witnesses again in that final world instead of retaining the whole diagnostic set.
+        if kept == repairs then
+            for _, repair in pairs(repairs) do
+                resources.remove_repair(repair)
+            end
+            local final_without = planetary_check.sort(logic)
+            kept = resource_repairs.select(logic, state, repairs, final_without)
+            log("Planetary resources: reselected " .. #kept .. " of " .. #repairs .. " extra patches after fallback")
+            state.after = planetary_check.sort(logic)
             if not planetary_check.required(state.before, state.after, state.variants_of) then
-                return localised_text.reason("planet-lost-patches", "a planet lost something it must keep even with extra patches (see PLANETCHECK in the log)")
+                return localised_text.reason("planet-lost-patches", "a planet lost something it must keep after selecting its extra patches (see PLANETCHECK in the log)")
             end
         end
     end
-    -- The fallback changed recipes or triggers and temporarily restored every candidate.
-    -- Choose witnesses again in that final world instead of retaining the whole diagnostic set.
-    if kept == repairs then
-        for _, repair in pairs(repairs) do
-            resources.remove_repair(repair)
+
+    local excluded, num_back, reason = replace_originals(logic, state, variants, state.careful and state.after or nil)
+    log_edits(edits, trigger_edits, variants)
+    if #variants > 0 then
+        local num_planets = 0
+        for _, entry in pairs(excluded) do
+            for _, _ in pairs(entry.planet_rooms) do
+                num_planets = num_planets + 1
+            end
         end
-        local final_without = planetary_check.sort(logic)
-        kept = resource_repairs.select(logic, state, repairs, final_without)
-        log("Planetary resources: reselected " .. #kept .. " of " .. #repairs .. " extra patches after fallback")
-        state.after = planetary_check.sort(logic)
-        if not planetary_check.required(state.before, state.after, state.variants_of) then
-            return localised_text.reason("planet-lost-patches", "a planet lost something it must keep after selecting its extra patches (see PLANETCHECK in the log)")
-        end
+        log("Planetary resources: " .. #excluded .. " originals replaced by their variants on " .. num_planets .. " planets, " .. num_back .. " kept beside them where a planet still needs them")
     end
-    log_kept()
-    return nil
+    for _, move in pairs(drill_moves) do
+        log("Planetary resources: " .. move.recipe_name .. " moved with its ore: " .. room_names(move.old) .. " --> " .. room_names(move.rooms))
+    end
+    for _, drill in pairs(drills) do
+        log("Planetary resources: drill version " .. drill.variant_name .. " on " .. drill.planet_name .. " for " .. drill.ore_name)
+    end
+    log("Planetary resources: " .. #kept .. " of " .. #repairs .. " possible extra patches needed")
+    for _, repair in pairs(kept) do
+        log("Planetary resources: extra " .. repair.resource_name .. " patches on " .. repair.planet_name)
+    end
+    return reason
 end
 
 -- Why a stage built on the current logic can't run, or nil: the old graph randomizations (config.graph: technology, recipe, recipe tech unlocks, item) reason with the old logic (lib/old-logic), which knows nothing of lightning safety, the heating bootstrap or moved planet locks, so they can't keep what these stages need
@@ -703,6 +967,11 @@ local function run_locks(logic, state)
         planetary_check.transport[recipe_key] = nil
         reverted_recipes[recipe_key] = true
     end
+    -- Moves taken back are fallbacks, so the randomizer panel warns about them (user, 2026-10-13)
+    local num_reverted = #sorted_keys(reverted)
+    if num_reverted > 0 then
+        warn("planet locks", "kept " .. num_reverted .. " moved recipes and buildings on their old planets, since they still couldn't be made on their new ones.", localised_text.get("propertyrandomizer-warning.lock-moves-reverted", num_reverted))
+    end
     for _, undo in pairs(rewards.sync()) do
         forget_reward_transport(undo)
     end
@@ -760,6 +1029,7 @@ local function run_locks(logic, state)
     for _, undo in pairs(rewards.sync()) do
         forget_reward_transport(undo)
     end
+    local num_widened = 0
     for id, lock in pairs(locks.moved) do
         local rooms = {}
         for room_key, _ in pairs(new_rooms[id]) do
@@ -769,7 +1039,13 @@ local function run_locks(logic, state)
             rooms[room_key] = true
             log("Planet locks: " .. id .. " accepts " .. room_key .. " again")
         end
+        if next(used[id] or {}) ~= nil then
+            num_widened = num_widened + 1
+        end
         lock.rooms = rooms
+    end
+    if num_widened > 0 then
+        warn("planet locks", "let " .. num_widened .. " moved recipes and buildings work on their old planets again too, since those planets still needed them.", localised_text.get("propertyrandomizer-warning.lock-moves-widened", num_widened))
     end
     locks.realize()
     -- Now that the locks are final, moved machines take their ocean recipes along to their new planets
@@ -795,6 +1071,9 @@ local function run_locks(logic, state)
             end
         end
         locks.realize()
+        if next(locks.moved) ~= nil then
+            warn("planet locks", "let every moved recipe and building work on its old planets again, since the check after the moves still failed.", localised_text.get("propertyrandomizer-warning.lock-moves-all-widened"))
+        end
         state.after = planetary_check.sort(logic)
         if not planetary_check.required(state.before, state.after, state.variants_of) then
             return localised_text.reason("planet-lost-locks", "a planet lost something it must keep even with every lock accepting its old planets again (see PLANETCHECK in the log)")
@@ -957,10 +1236,14 @@ local function run_stage(what, stage, logic, state, can_retry, fix)
     }
     local old_moved_features = table.deepcopy(planetary_check.moved_features)
     local old_transport = table.deepcopy(planetary_check.transport)
-    local old_locks = locks.moved
+    -- A copy, since stages move locks in place (locks.move, locks.move_to)
+    local old_locks = table.deepcopy(locks.moved)
+    -- Fixed locks (a stage's variants, versions and originals left out) belong to the data.raw they were made for: one left behind would come back with a recipe of the same name the next time (resources.exclude_originals skips an original with a lock already)
+    local old_fixed = table.deepcopy(locks.fixed)
     local old_rewards = rewards.moved
     local old_lock_repairs = lock_repairs.save()
     local old_bootstrap_heat_rooms = lutils.bootstrap_heat_rooms
+    local num_old_warnings = #randomization_info.warnings
     local is_ok, reason = pcall(stage, logic, state, old_raw)
     if is_ok and reason ~= nil and fix ~= nil and state.after ~= nil then
         -- Specialized repairs ran first. Only an unmet requirement calls the prerequisite chooser.
@@ -990,7 +1273,12 @@ local function run_stage(what, stage, logic, state, can_retry, fix)
         locks.moved = old_locks
         rewards.moved = old_rewards
         lock_repairs.restore(old_lock_repairs)
+        locks.fixed = old_fixed
         lutils.bootstrap_heat_rooms = old_bootstrap_heat_rooms
+        -- The stage's own fallbacks went with it, so their warnings go too
+        for i = #randomization_info.warnings, num_old_warnings + 1, -1 do
+            randomization_info.warnings[i] = nil
+        end
         if can_retry and is_ok then
             log("Planetary " .. what .. ": rolling again, since " .. localised_text.diagnostic(reason))
             return false, true
@@ -1148,12 +1436,13 @@ local function recheck_home_sets(state)
 end
 
 -- What the end of planetary.execute does once the stages ran (and planetary.run_pending, with the fix pass): the home sets checked again if the changes moved them (undoing everything back to old_raw if they fail with them), the final planetary check, and the game before the changes kept for the checks after randomization
-local function finish(state, old_raw)
+local function finish(state, old_raw, old_fixed)
     if state.after ~= nil and next(planetary_check.moved_features) ~= nil then
         local original_home_sets = planetary_check.home_sets
         local is_ok, passes = pcall(recheck_home_sets, state)
         if not (is_ok and passes) then
             data.raw = old_raw
+            locks.fixed = table.deepcopy(old_fixed)
             state.variants_of = {}
             state.after = nil
             planetary_check.home_sets = original_home_sets
@@ -1164,6 +1453,10 @@ local function finish(state, old_raw)
             lock_repairs.forget()
             lutils.bootstrap_heat_rooms = {}
             scaffolds.kept = {}
+            -- The stages' own fallbacks went with them, so their warnings go too
+            for i = #randomization_info.warnings, (state.num_warnings_before or #randomization_info.warnings) + 1, -1 do
+                randomization_info.warnings[i] = nil
+            end
             warn("changes", "were undone, since " .. (is_ok and "they changed which planets discoveries need, and fail with the home sets both games agree on (see PLANETCHECK home sets in the log)" or "of an error: " .. tostring(passes)) .. ".", localised_text.get("propertyrandomizer-warning.planetary-undone", (is_ok and {"propertyrandomizer-reason.discovery-home-sets"} or localised_text.get("propertyrandomizer-reason.error", tostring(passes)))))
         end
     end
@@ -1255,7 +1548,9 @@ planetary.execute = function(logic)
     end
 
     local old_raw = table.deepcopy(data.raw)
+    local old_fixed = table.deepcopy(locks.fixed)
     local warnings_before_stages = #randomization_info.warnings
+    state.num_warnings_before = warnings_before_stages
     run_stages(logic, state, false)
     if state.after == nil then
         local is_sorted, passes = pcall(function()
@@ -1269,6 +1564,7 @@ planetary.execute = function(logic)
                 randomization_info.warnings[i] = nil
             end
             data.raw = old_raw
+            locks.fixed = table.deepcopy(old_fixed)
             state.variants_of = {}
             state.after = nil
             planetary_check.moved_features = {}
@@ -1281,7 +1577,7 @@ planetary.execute = function(logic)
             run_stages(logic, state, true)
         end
     end
-    finish(state, old_raw)
+    finish(state, old_raw, old_fixed)
 end
 
 -- The game before planetary changes (its sort, and the scaffold variants that count as its recipes), kept for check_final while any stage's changes are in the game
@@ -1301,12 +1597,14 @@ planetary.run_pending = function(fix)
     local logic = pending.logic
     local state = pending.state
     local old_raw = table.deepcopy(data.raw)
+    local old_fixed = table.deepcopy(locks.fixed)
+    state.num_warnings_before = #randomization_info.warnings
     run_stages(logic, state, true, fix)
     -- Stages that skipped their own check need a final sort
     if state.after == nil and next(planetary_check.moved_features) ~= nil then
         state.after = planetary_check.sort(logic)
     end
-    finish(state, old_raw)
+    finish(state, old_raw, old_fixed)
 end
 
 -- The home sets planetary's goals were made with (check.home_sets) while any stage's changes are in the game, for the rest of randomization's sorts, or nil

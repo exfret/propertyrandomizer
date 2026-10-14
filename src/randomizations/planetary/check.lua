@@ -657,6 +657,22 @@ check.required = function(before, after, variants_of, is_quiet, label)
     return #failures == 0, failures
 end
 
+-- The failures (check.required_failures) a change caused: those the game without the change (its failures, without_change) doesn't have too, the same goal by its text
+-- A fallback for a change answers only for these (user, 2026-10-13: the resource stage gave every original recipe back on every planet over a failure that was there with every original as well)
+check.caused_failures = function(failures, without_change)
+    local was_failing = {}
+    for _, failure in pairs(without_change) do
+        was_failing[failure.text] = true
+    end
+    local caused = {}
+    for _, failure in pairs(failures) do
+        if was_failing[failure.text] == nil then
+            table.insert(caused, failure)
+        end
+    end
+    return caused
+end
+
 -- Indices in a sort of each failure's earliest pebble there (if it has one), so the witnesses of what a change fixes can be found with top.path
 check.goal_inds = function(failures, sort)
     local inds = {}

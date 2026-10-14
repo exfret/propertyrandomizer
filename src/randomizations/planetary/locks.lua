@@ -439,6 +439,40 @@ locks.move = function(kind, name, map)
     return target_id
 end
 
+-- Moves one lock on purpose to exactly these rooms (room key --> true), for a group that moves together (like a drill following its ore, see lock_repairs.drill_moves)
+-- The map gives each old room it leaves the new room its goals go to (locks.transport)
+-- Doesn't realize, so a caller can move several locks and realize once
+-- Returns the lock's target id, or nil if the prototype has no lock or its lock moved already
+locks.move_to = function(kind, name, rooms, map)
+    local prototype
+    local node_type
+    if kind == "recipe" then
+        prototype = data.raw.recipe[name]
+        node_type = "recipe-surface-condition"
+    else
+        prototype = dutils.get_prot("entity", name)
+        node_type = "entity-build-surface-condition"
+    end
+    if prototype == nil or prototype.surface_conditions == nil or next(prototype.surface_conditions) == nil then
+        return nil
+    end
+    local target_id = kind .. "/" .. name
+    if locks.moved[target_id] ~= nil then
+        return nil
+    end
+    locks.moved[target_id] = {
+        kind = kind,
+        name = name,
+        node_key = gutils.key(node_type, name),
+        original = own_original(target_id, prototype),
+        old = surface_sets.accepted(prototype),
+        new = copy_set(rooms),
+        map = table.deepcopy(map),
+        rooms = copy_set(rooms),
+    }
+    return target_id
+end
+
 -- Fixes a lock to exactly these rooms on purpose (a planet copy's science pack recipes, see src/prototypes/duplicates/dupe-planets.lua): every later realize keeps it, and it's never drawn, transported or reverted
 -- The kind is "recipe" or "entity"; the prototype needn't have surface conditions yet (a starting planet's science pack has none)
 -- Doesn't realize, so a caller can fix several locks and realize once (locks.realize needs the logic's lookups loaded)
