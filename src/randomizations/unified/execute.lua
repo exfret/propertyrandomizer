@@ -42,6 +42,7 @@ local recipe_item_amounts = require("src/prototypes/recipes/recipe-item-amounts"
 local top = require("src/lib/sort/context-sort")
 local superpose = require("src/lib/graph/superpose")
 local reductions = require("src/logic/analysis/reductions")
+local unlock_contraction = require("src/logic/analysis/unlock-contraction")
 local logic = require("src/logic/init")
 local item_craft = require("src/logic/builders/item-craft")
 local first_pass = require("src/randomizations/unified/first-pass")
@@ -245,6 +246,11 @@ local function attempt(options)
     for _, handler in pairs(handlers) do
         handler.spoof(spoofed_graph)
     end
+    -- Share unchanged unlock forwarding links after debt expansion/spoofing, keeping every endpoint the debt needs.
+    local shared_unlocks = reductions.enabled and unlock_contraction.share_forwarders(spoofed_graph, debt) or 0
+    if shared_unlocks > 0 then
+        log("Recipe unlocks: " .. shared_unlocks .. " forwarding ORs share their technology alternatives")
+    end
     test_graph_invariants.test(spoofed_graph)
     gutils.make_orands(spoofed_graph)
     test_graph_invariants.test(spoofed_graph)
@@ -283,6 +289,29 @@ local function attempt(options)
     for _, handler in pairs(handlers) do
         handler_id_to_handler[handler.id] = handler
     end
+    -- Ordinary edges and metadata-only uses share the same policy; ordinary claim side effects retain their order.
+    local function selected(handler_id, prereq, dep)
+        return repair_only or (graph_customization.selected(handler_id, dep) and not graph_customization.excluded(handler_id, prereq))
+    end
+    local function blacklisted(handler_id, prereq, dep)
+        if repair_only then
+            return false
+        end
+        local options = randomization_info.options.unified[handler_id]
+        return options.blacklisted_pre[key(prereq)] == true or options.blacklisted_dep[key(dep)] == true
+    end
+    local function add_pool_entry(handler, base_key, num_copies)
+        if num_copies > 0 then
+            table.insert(handler_to_shuffled_prereqs[handler.id], base_key)
+            for i = 2, num_copies do
+                if handler.uniform_copies == true then
+                    table.insert(handler_to_shuffled_prereqs[handler.id], base_key)
+                else
+                    table.insert(handler_to_post_shuffled_prereqs[handler.id], base_key)
+                end
+            end
+        end
+    end
     local dep_to_heads = {}
     local head_to_handler = {}
     for ind, node_key in pairs(sort_for_deps.pebble_keys) do
@@ -309,14 +338,10 @@ local function attempt(options)
 
                     for handler_id, handler in pairs(handlers) do
                         local num_copies
-                        if repair_only or (graph_customization.selected(handler_id, orand_parent) and not graph_customization.excluded(handler_id, prereq_node)) then
+                        if selected(handler_id, prereq_node, orand_parent) then
                             num_copies = handler.claim(subdiv_graph, prereq_node, orand_parent, subdiv_graph.edges[pre])
                         end
-                        -- Make sure this connection isn't blacklisted for this handler
-                        if not repair_only and randomization_info.options.unified[handler_id].blacklisted_pre[key(prereq_node)] == true then
-                            num_copies = false
-                        end
-                        if not repair_only and randomization_info.options.unified[handler_id].blacklisted_dep[key(orand_parent)] == true then
+                        if blacklisted(handler_id, prereq_node, orand_parent) then
                             num_copies = false
                         end
 
@@ -339,18 +364,17 @@ local function attempt(options)
                     table.insert(dep_to_heads[node_key], key(conns.head))
                     head_to_handler[key(conns.head)] = info.handler
                     -- Add the base as the "prereqs"
-                    if info.num_copies > 0 then
-                        table.insert(handler_to_shuffled_prereqs[info.handler.id], key(conns.base))
-                        for i = 2, info.num_copies do
-                            if info.handler.uniform_copies then
-                                table.insert(handler_to_shuffled_prereqs[info.handler.id], key(conns.base))
-                            else
-                                table.insert(handler_to_post_shuffled_prereqs[info.handler.id], key(conns.base))
-                            end
-                        end
-                    end
+                    add_pool_entry(info.handler, key(conns.base), info.num_copies)
                 end
             end
+        end
+    end
+    for handler_id, handler in pairs(handlers) do
+        local entries = handler.pool_entries(subdiv_graph, sort_for_deps, function(prereq, dep)
+            return selected(handler_id, prereq, dep) and not blacklisted(handler_id, prereq, dep)
+        end)
+        for _, entry in pairs(entries) do
+            add_pool_entry(handler, entry.base_key, entry.num_copies)
         end
     end
     local num_craft_options = item_craft.fuse_options(subdiv_graph)
@@ -405,7 +429,7 @@ local function attempt(options)
         end
     end
 
-    -- SKELETON EXPERIMENT (measurement only; see randomizations/graph/unified/skeleton/)
+    -- SKELETON EXPERIMENT (measurement only; see src/randomizations/unified/skeleton/)
     if SKELETON_STATS then
         skeleton_stats.run({
             graph = pool_graph,
@@ -980,7 +1004,11 @@ local function attempt(options)
                         if head_to_handler[head_key].validate(random_graph, base, head, {
                             init_sort = sort_for_claiming, -- Needed for tech rando
                         }) then
-                            log("Accepted prereq " .. key(gutils.get_owner(random_graph, base)) .. " (" .. key(gutils.get_owner(random_graph, random_graph.nodes[base.old_head])) .. ") for " .. dep .. (#paying_contexts > 0 and (prom.head_pays(head_key, base_key, paying_contexts) and " (pays)" or " (doesn't pay)") or ""))
+                            local origin = "pool-only source"
+                            if base.pool_only ~= true then
+                                origin = key(gutils.get_owner(random_graph, random_graph.nodes[base.old_head]))
+                            end
+                            log("Accepted prereq " .. key(gutils.get_owner(random_graph, base)) .. " (" .. origin .. ") for " .. dep .. (#paying_contexts > 0 and (prom.head_pays(head_key, base_key, paying_contexts) and " (pays)" or " (doesn't pay)") or ""))
                             head_to_handler[head_key].process(random_graph, base, head)
                             found_prereq = true
                             handler_to_used_prereq_inds[handler_id][ind] = true

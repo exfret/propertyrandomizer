@@ -14,6 +14,7 @@
 local categories = require("src/prototypes/categories")
 local constants = require("src/config/constants")
 local graph_customization = require("src/config/graph-customization")
+local build_supply = require("src/logic/analysis/entity-build-item")
 local acquisition = require("src/logic/builders/acquisition")
 local dutils = require("src/prototypes/data-utils")
 local deposit_copies = require("src/prototypes/duplicates/deposit-copies")
@@ -277,7 +278,7 @@ entity.spoof = function(graph)
         if placed_name ~= nil and claimable_item(item) and claimable_entity(dutils.get_prot("entity", placed_name)) then
             local build_edge_key = gutils.ekey({
                 start = key("item", item.name),
-                stop = key("entity-build-item", placed_name),
+                stop = build_supply.key(graph, placed_name),
             })
 
             -- Mining a claimed entity gives back whichever item places it now (see reflect), while logic's edge from mining it goes to its vanilla item
@@ -415,7 +416,7 @@ entity.spoof = function(graph)
             end
         end
         for node_key, node in pairs(graph.nodes) do
-            if node.type == "entity-build-item" and lookups.unit_spawns_reverse[node.name] ~= nil and next(node.pre) == nil then
+            if build_supply.is_node(node) and lookups.unit_spawns_reverse[node.name] ~= nil and next(node.pre) == nil then
                 local edge = gutils.add_edge(graph, source_keys[1], node_key, acquisition.tag("build", {
                     friendly = true,
                     starts_detached = true,
@@ -503,7 +504,7 @@ entity.claim = function(graph, prereq, dep, edge)
         if edge.friendly ~= nil then
             return 1
         end
-        if dep.type ~= "entity-build-item" or prereq.type ~= "item" then
+        if not build_supply.is_node(dep) or prereq.type ~= "item" then
             return false
         end
         if edge.build_spoof ~= nil then
@@ -790,7 +791,7 @@ local function matched_search(params)
     if params.slot_to_trav ~= nil and params.split_graph ~= nil then
         for slot_key, trav_key in pairs(params.slot_to_trav) do
             local slot_node = params.split_graph.nodes[slot_key]
-            if slot_node ~= nil and slot_node.type == "entity-build-item" then
+            if build_supply.is_node(slot_node) then
                 identity_of_position[slot_node.name] = params.split_graph.nodes[params.split_graph.nodes[trav_key].old_slot].name
                 first_pass_entities = true
             end

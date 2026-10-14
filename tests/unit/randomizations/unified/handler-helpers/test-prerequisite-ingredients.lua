@@ -24,7 +24,7 @@ local function ing(name, amount)
     }
 end
 
-local function run(has_candidate)
+local function run(has_candidate, pool_only)
     data = { raw = { recipe = {} } }
     local graph = {
         nodes = {},
@@ -59,6 +59,12 @@ local function run(has_candidate)
     })
     recipe("candidate-source", { ing("unpriced-resource", 200) }, true)
     recipe("cycle-source", { ing("circular", 1) }, true)
+    if pool_only == true then
+        for _, base_key in pairs(candidates) do
+            graph.nodes[base_key].pool_only = true
+            graph.nodes[base_key].old_head = nil
+        end
+    end
     -- Circular first: selection must skip it rather than relying on pool order.
     candidates[1], candidates[2] = candidates[2], candidates[1]
     local resolved
@@ -93,3 +99,7 @@ assert(chosen[2].name == "healthy" and chosen[2].amount == 3, "A satisfied ingre
 print("ok - repair chooses an unpriced resource, skips a circular candidate and preserves satisfied ingredients")
 assert(run(false).target == nil, "An unavailable candidate must not produce a reflected change")
 print("ok - no available replacement preserves the original ingredients")
+
+local pooled = run(true, true).target
+assert(pooled[1].name == "unpriced-resource" and pooled[1].amount == 7, "repair must accept a pool source with no old head")
+print("ok - repair accepts metadata-only pool candidates without an old head")

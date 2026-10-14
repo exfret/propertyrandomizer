@@ -273,8 +273,9 @@ local function setup(options)
             name = "other-placer",
         }
         graph.nodes.buildtarget = {
-            type = "entity-build-item",
+            type = options.folded_supply == true and "entity-build-architecture" or "entity-build-item",
             name = "machine",
+            build_supply = options.folded_supply == true or nil,
         }
         graph.nodes.builddep = {key = "builddep"}
         graph.nodes.buildhead = {
@@ -356,3 +357,26 @@ lookups.buildables["combat-robot:robot"] = {candidate = "place_result"}
 assert(not entity.validate(graph, graph.nodes.maker, graph.nodes.head), "a building's trigger head cannot bypass the placement rule")
 assert(entity.validate(graph, graph.nodes.old, graph.nodes.head), "an existing acquisition stays valid")
 print("Entity effect reflection passed: direct placement without Vestiges, donor preservation, exclusions, occupied slots, costs, capsule fallback, and building acquisition guards")
+
+local folded_vestige = reflect({
+    vestige = true,
+    folded_supply = true,
+})
+assert(folded_vestige.place_result == "propertyrandomizer-effect-effect")
+assert(data.raw.item["other-placer"].place_result == "machine", "folded supply must preserve the building's new item")
+local placer = {
+    type = "item",
+    name = "candidate",
+}
+local target = {
+    type = "entity-build-architecture",
+    name = "machine",
+    build_supply = true,
+}
+local edge = {
+    acq_kind = "build",
+    build_spoof = true,
+}
+assert(entity.claim({}, placer, target, edge) == 1, "folded supply must accept a placement claim")
+target.build_supply = nil
+assert(entity.claim({}, placer, target, edge) == false, "an unrelated architecture node must not be claimed")

@@ -1,0 +1,5158 @@
+{
+  "settings": {
+    "modset": "sa",
+    "seed": 1,
+    "dupes": true,
+    "dupe-count": 2,
+    "unified-preview": true,
+    "dev-unified": true
+  },
+  "measurement_note": "First fresh complex sort with home sets. OR-expanded is before base/head subdivision; split-matching includes those nodes and item identity splitting. Stored pebbles count explicit sort records; represented contexts include inherited records. No load-time claim.",
+  "comparison": {
+    "before": {
+      "log_path": "/private/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/node-footprint-v4ezeinq/test-runs/run-20261012-180416-wam0me9e/runs/sa--node-footprint-probe@1/create.log",
+      "stages": {
+        "logic": {
+          "families": {
+            "agricultural-tower": {
+              "nodes": 1,
+              "stored_pebbles": 6,
+              "represented_contexts": 18
+            },
+            "ammo-category": {
+              "nodes": 17,
+              "stored_pebbles": 164,
+              "represented_contexts": 206
+            },
+            "asteroid-chunk": {
+              "nodes": 15,
+              "stored_pebbles": 7,
+              "represented_contexts": 17
+            },
+            "asteroid-chunk-mine": {
+              "nodes": 15,
+              "stored_pebbles": 7,
+              "represented_contexts": 17
+            },
+            "asteroid-collector": {
+              "nodes": 1,
+              "stored_pebbles": 2,
+              "represented_contexts": 5
+            },
+            "balance-gun-turret": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-ammo": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-construction-robot": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-crafting-automation": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-inserter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-logistic-storage": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "balance-mechanics-mining-drill": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-no-big-electric-pole": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-pipe": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-pipe-to-ground": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-pump": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-roboport": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "balance-mechanics-splitter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-storage": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "balance-mechanics-transport-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-underground-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-rocket": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "base": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "capture-robot": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 32
+            },
+            "capture-spawner": {
+              "nodes": 1,
+              "stored_pebbles": 6,
+              "represented_contexts": 12
+            },
+            "cargo-landing-pad": {
+              "nodes": 1,
+              "stored_pebbles": 24,
+              "represented_contexts": 55
+            },
+            "chemical-fuel": {
+              "nodes": 1,
+              "stored_pebbles": 48,
+              "represented_contexts": 60
+            },
+            "combat-encounter": {
+              "nodes": 81,
+              "stored_pebbles": 158,
+              "represented_contexts": 288
+            },
+            "combat-target": {
+              "nodes": 101,
+              "stored_pebbles": 2882,
+              "represented_contexts": 4142
+            },
+            "combat-weapon": {
+              "nodes": 139,
+              "stored_pebbles": 2329,
+              "represented_contexts": 3995
+            },
+            "cost-unit": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "create-platform": {
+              "nodes": 1,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "damage-type": {
+              "nodes": 8,
+              "stored_pebbles": 235,
+              "represented_contexts": 259
+            },
+            "deliver": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 34
+            },
+            "electric-pole": {
+              "nodes": 1,
+              "stored_pebbles": 30,
+              "represented_contexts": 60
+            },
+            "enemy-evolution": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "energy-source-burner": {
+              "nodes": 6,
+              "stored_pebbles": 186,
+              "represented_contexts": 268
+            },
+            "energy-source-electric": {
+              "nodes": 1,
+              "stored_pebbles": 29,
+              "represented_contexts": 60
+            },
+            "energy-source-electric-distribution": {
+              "nodes": 1,
+              "stored_pebbles": 29,
+              "represented_contexts": 60
+            },
+            "energy-source-electric-production": {
+              "nodes": 1,
+              "stored_pebbles": 29,
+              "represented_contexts": 60
+            },
+            "energy-source-electric-production-lightning": {
+              "nodes": 1,
+              "stored_pebbles": 6,
+              "represented_contexts": 12
+            },
+            "energy-source-electric-production-lightning-capture": {
+              "nodes": 1,
+              "stored_pebbles": 19,
+              "represented_contexts": 40
+            },
+            "energy-source-electric-production-lightning-existence": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 12
+            },
+            "energy-source-fluid": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 5
+            },
+            "energy-source-heat": {
+              "nodes": 1,
+              "stored_pebbles": 24,
+              "represented_contexts": 46
+            },
+            "energy-source-heat-distribution": {
+              "nodes": 1,
+              "stored_pebbles": 28,
+              "represented_contexts": 60
+            },
+            "energy-source-heat-production": {
+              "nodes": 1,
+              "stored_pebbles": 24,
+              "represented_contexts": 46
+            },
+            "energy-source-void": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "entity": {
+              "nodes": 729,
+              "stored_pebbles": 6423,
+              "represented_contexts": 11199
+            },
+            "entity-build": {
+              "nodes": 250,
+              "stored_pebbles": 5842,
+              "represented_contexts": 9562
+            },
+            "entity-build-architecture": {
+              "nodes": 250,
+              "stored_pebbles": 7447,
+              "represented_contexts": 10510
+            },
+            "entity-build-rail-group": {
+              "nodes": 1,
+              "stored_pebbles": 39,
+              "represented_contexts": 55
+            },
+            "entity-build-surface-condition": {
+              "nodes": 68,
+              "stored_pebbles": 839,
+              "represented_contexts": 3164
+            },
+            "entity-build-tile": {
+              "nodes": 3,
+              "stored_pebbles": 10,
+              "represented_contexts": 37
+            },
+            "entity-build-tile-layout": {
+              "nodes": 8,
+              "stored_pebbles": 61,
+              "represented_contexts": 157
+            },
+            "entity-build-tile-region": {
+              "nodes": 12,
+              "stored_pebbles": 268,
+              "represented_contexts": 787
+            },
+            "entity-capture-spawner": {
+              "nodes": 4,
+              "stored_pebbles": 12,
+              "represented_contexts": 24
+            },
+            "entity-character": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "entity-collision-group": {
+              "nodes": 37,
+              "stored_pebbles": 799,
+              "represented_contexts": 2348
+            },
+            "entity-harvest": {
+              "nodes": 3,
+              "stored_pebbles": 72,
+              "represented_contexts": 129
+            },
+            "entity-kill": {
+              "nodes": 87,
+              "stored_pebbles": 189,
+              "represented_contexts": 240
+            },
+            "entity-mine": {
+              "nodes": 444,
+              "stored_pebbles": 4749,
+              "represented_contexts": 5479
+            },
+            "entity-operate": {
+              "nodes": 729,
+              "stored_pebbles": 4678,
+              "represented_contexts": 9864
+            },
+            "entity-operate-fluid": {
+              "nodes": 21,
+              "stored_pebbles": 582,
+              "represented_contexts": 1056
+            },
+            "entity-own": {
+              "nodes": 729,
+              "stored_pebbles": 6031,
+              "represented_contexts": 9834
+            },
+            "entity-own-operable": {
+              "nodes": 729,
+              "stored_pebbles": 6069,
+              "represented_contexts": 10022
+            },
+            "entity-own-space": {
+              "nodes": 250,
+              "stored_pebbles": 262,
+              "represented_contexts": 705
+            },
+            "entity-rocket-silo": {
+              "nodes": 3,
+              "stored_pebbles": 88,
+              "represented_contexts": 161
+            },
+            "entity-spawn": {
+              "nodes": 21,
+              "stored_pebbles": 20,
+              "represented_contexts": 74
+            },
+            "false": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "fluid": {
+              "nodes": 33,
+              "stored_pebbles": 413,
+              "represented_contexts": 724
+            },
+            "fluid-craft": {
+              "nodes": 33,
+              "stored_pebbles": 366,
+              "represented_contexts": 616
+            },
+            "fluid-craft-temperature": {
+              "nodes": 35,
+              "stored_pebbles": 366,
+              "represented_contexts": 616
+            },
+            "fluid-create": {
+              "nodes": 33,
+              "stored_pebbles": 413,
+              "represented_contexts": 724
+            },
+            "fluid-create-offshore-temperature": {
+              "nodes": 4,
+              "stored_pebbles": 19,
+              "represented_contexts": 55
+            },
+            "fluid-create-temperature": {
+              "nodes": 35,
+              "stored_pebbles": 438,
+              "represented_contexts": 773
+            },
+            "fluid-hold": {
+              "nodes": 33,
+              "stored_pebbles": 924,
+              "represented_contexts": 1980
+            },
+            "fluid-identity-source": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "fluid-ingredient": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "fluid-temperature": {
+              "nodes": 35,
+              "stored_pebbles": 438,
+              "represented_contexts": 773
+            },
+            "fluid-temperature-range": {
+              "nodes": 54,
+              "stored_pebbles": 829,
+              "represented_contexts": 1455
+            },
+            "fuel-category": {
+              "nodes": 5,
+              "stored_pebbles": 138,
+              "represented_contexts": 208
+            },
+            "fuel-category-burn": {
+              "nodes": 5,
+              "stored_pebbles": 39,
+              "represented_contexts": 76
+            },
+            "group-construction-robot": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-crafting-automation": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-electric-mining-drill": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-inserter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-logistic-storage-chest": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "group-mining-drill": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-pump": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-repair-pack": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-roboport": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "group-rocket-turret": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 64
+            },
+            "group-splitter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-starter-ammo": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-storage": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "group-supply": {
+              "nodes": 15,
+              "stored_pebbles": 494,
+              "represented_contexts": 714
+            },
+            "group-transport-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-underground-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "head": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "item": {
+              "nodes": 503,
+              "stored_pebbles": 14421,
+              "represented_contexts": 20710
+            },
+            "item-ammo": {
+              "nodes": 19,
+              "stored_pebbles": 375,
+              "represented_contexts": 433
+            },
+            "item-burn": {
+              "nodes": 3,
+              "stored_pebbles": 59,
+              "represented_contexts": 116
+            },
+            "item-capsule": {
+              "nodes": 16,
+              "stored_pebbles": 437,
+              "represented_contexts": 565
+            },
+            "item-craft": {
+              "nodes": 26,
+              "stored_pebbles": 502,
+              "represented_contexts": 656
+            },
+            "item-deliver": {
+              "nodes": 491,
+              "stored_pebbles": 7831,
+              "represented_contexts": 14276
+            },
+            "item-gun": {
+              "nodes": 23,
+              "stored_pebbles": 436,
+              "represented_contexts": 519
+            },
+            "item-ingredient": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "item-launch": {
+              "nodes": 499,
+              "stored_pebbles": 8196,
+              "represented_contexts": 14532
+            },
+            "launch": {
+              "nodes": 1,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "lightning-safe": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "logic-and": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "logic-or": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "orand": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "planet": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "projectile-package": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "reachable-room": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "recipe": {
+              "nodes": 1117,
+              "stored_pebbles": 21180,
+              "represented_contexts": 31370
+            },
+            "recipe-category": {
+              "nodes": 35,
+              "stored_pebbles": 914,
+              "represented_contexts": 1760
+            },
+            "recipe-surface-condition": {
+              "nodes": 348,
+              "stored_pebbles": 392,
+              "represented_contexts": 1541
+            },
+            "recipe-tech-unlock": {
+              "nodes": 60,
+              "stored_pebbles": 1201,
+              "represented_contexts": 2522
+            },
+            "recipe-unlock": {
+              "nodes": 60,
+              "stored_pebbles": 1201,
+              "represented_contexts": 2522
+            },
+            "resource-category": {
+              "nodes": 12,
+              "stored_pebbles": 356,
+              "represented_contexts": 643
+            },
+            "rocket-silo": {
+              "nodes": 1,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "room": {
+              "nodes": 16,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "room-autoplace": {
+              "nodes": 16,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "room-create-platform": {
+              "nodes": 1,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "room-create-platform-starter-pack": {
+              "nodes": 1,
+              "stored_pebbles": 36,
+              "represented_contexts": 58
+            },
+            "room-launch": {
+              "nodes": 15,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "satisfied": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "science-pack-set-lab": {
+              "nodes": 92,
+              "stored_pebbles": 2760,
+              "represented_contexts": 5612
+            },
+            "science-pack-set-science": {
+              "nodes": 92,
+              "stored_pebbles": 1696,
+              "represented_contexts": 3176
+            },
+            "slot": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "space-connection": {
+              "nodes": 53,
+              "stored_pebbles": 123,
+              "represented_contexts": 211
+            },
+            "space-connection-asteroids": {
+              "nodes": 53,
+              "stored_pebbles": 123,
+              "represented_contexts": 211
+            },
+            "space-connection-discover": {
+              "nodes": 53,
+              "stored_pebbles": 939,
+              "represented_contexts": 2405
+            },
+            "space-connection-enter": {
+              "nodes": 53,
+              "stored_pebbles": 151,
+              "represented_contexts": 261
+            },
+            "space-location": {
+              "nodes": 18,
+              "stored_pebbles": 29,
+              "represented_contexts": 80
+            },
+            "space-location-discover": {
+              "nodes": 18,
+              "stored_pebbles": 378,
+              "represented_contexts": 897
+            },
+            "space-location-reachable": {
+              "nodes": 18,
+              "stored_pebbles": 308,
+              "represented_contexts": 592
+            },
+            "space-location-spaceship": {
+              "nodes": 18,
+              "stored_pebbles": 41,
+              "represented_contexts": 80
+            },
+            "space-surface": {
+              "nodes": 1,
+              "stored_pebbles": 2,
+              "represented_contexts": 5
+            },
+            "spaceship": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 5
+            },
+            "starting-character": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "starting-planet": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "technology": {
+              "nodes": 533,
+              "stored_pebbles": 13895,
+              "represented_contexts": 27535
+            },
+            "technology-trigger": {
+              "nodes": 94,
+              "stored_pebbles": 1697,
+              "represented_contexts": 2458
+            },
+            "thruster": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 5
+            },
+            "tile": {
+              "nodes": 195,
+              "stored_pebbles": 541,
+              "represented_contexts": 1624
+            },
+            "tile-build": {
+              "nodes": 13,
+              "stored_pebbles": 212,
+              "represented_contexts": 374
+            },
+            "tile-build-item": {
+              "nodes": 13,
+              "stored_pebbles": 377,
+              "represented_contexts": 615
+            },
+            "tile-build-item-place-as-tile": {
+              "nodes": 13,
+              "stored_pebbles": 212,
+              "represented_contexts": 374
+            },
+            "tile-build-item-place-as-tile-condition": {
+              "nodes": 13,
+              "stored_pebbles": 130,
+              "represented_contexts": 444
+            },
+            "tile-build-space": {
+              "nodes": 13,
+              "stored_pebbles": 2,
+              "represented_contexts": 5
+            },
+            "tile-collision-group": {
+              "nodes": 12,
+              "stored_pebbles": 51,
+              "represented_contexts": 168
+            },
+            "tile-fluid": {
+              "nodes": 67,
+              "stored_pebbles": 81,
+              "represented_contexts": 236
+            },
+            "tile-fluid-pump": {
+              "nodes": 67,
+              "stored_pebbles": 1267,
+              "represented_contexts": 3685
+            },
+            "tile-mine": {
+              "nodes": 23,
+              "stored_pebbles": 212,
+              "represented_contexts": 374
+            },
+            "traveler": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "true": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "unsatisfied": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "warmth": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 60
+            }
+          },
+          "nodes": 9946,
+          "stored_pebbles": 139496,
+          "represented_contexts": 241243,
+          "edges": 29152
+        },
+        "or-expanded": {
+          "families": {
+            "agricultural-tower": {
+              "nodes": 1,
+              "stored_pebbles": 13,
+              "represented_contexts": 26
+            },
+            "ammo-category": {
+              "nodes": 17,
+              "stored_pebbles": 190,
+              "represented_contexts": 207
+            },
+            "asteroid-chunk": {
+              "nodes": 15,
+              "stored_pebbles": 7,
+              "represented_contexts": 17
+            },
+            "asteroid-chunk-mine": {
+              "nodes": 15,
+              "stored_pebbles": 7,
+              "represented_contexts": 17
+            },
+            "asteroid-collector": {
+              "nodes": 1,
+              "stored_pebbles": 2,
+              "represented_contexts": 5
+            },
+            "balance-gun-turret": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-ammo": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-construction-robot": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-crafting-automation": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-inserter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-logistic-storage": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "balance-mechanics-mining-drill": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-no-big-electric-pole": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-pipe": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-pipe-to-ground": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-pump": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-roboport": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "balance-mechanics-splitter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-storage": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "balance-mechanics-transport-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-underground-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-rocket": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "base": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "capture-robot": {
+              "nodes": 1,
+              "stored_pebbles": 17,
+              "represented_contexts": 34
+            },
+            "capture-spawner": {
+              "nodes": 1,
+              "stored_pebbles": 7,
+              "represented_contexts": 14
+            },
+            "cargo-landing-pad": {
+              "nodes": 1,
+              "stored_pebbles": 27,
+              "represented_contexts": 55
+            },
+            "chemical-fuel": {
+              "nodes": 1,
+              "stored_pebbles": 42,
+              "represented_contexts": 60
+            },
+            "combat-encounter": {
+              "nodes": 81,
+              "stored_pebbles": 240,
+              "represented_contexts": 300
+            },
+            "combat-target": {
+              "nodes": 101,
+              "stored_pebbles": 3203,
+              "represented_contexts": 4147
+            },
+            "combat-weapon": {
+              "nodes": 139,
+              "stored_pebbles": 2142,
+              "represented_contexts": 3895
+            },
+            "cost-unit": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "create-platform": {
+              "nodes": 1,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "damage-type": {
+              "nodes": 8,
+              "stored_pebbles": 245,
+              "represented_contexts": 271
+            },
+            "deliver": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 34
+            },
+            "electric-pole": {
+              "nodes": 1,
+              "stored_pebbles": 28,
+              "represented_contexts": 60
+            },
+            "enemy-evolution": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "energy-source-burner": {
+              "nodes": 6,
+              "stored_pebbles": 191,
+              "represented_contexts": 278
+            },
+            "energy-source-electric": {
+              "nodes": 1,
+              "stored_pebbles": 30,
+              "represented_contexts": 60
+            },
+            "energy-source-electric-distribution": {
+              "nodes": 1,
+              "stored_pebbles": 28,
+              "represented_contexts": 60
+            },
+            "energy-source-electric-production": {
+              "nodes": 1,
+              "stored_pebbles": 30,
+              "represented_contexts": 60
+            },
+            "energy-source-electric-production-lightning": {
+              "nodes": 1,
+              "stored_pebbles": 6,
+              "represented_contexts": 12
+            },
+            "energy-source-electric-production-lightning-capture": {
+              "nodes": 1,
+              "stored_pebbles": 19,
+              "represented_contexts": 40
+            },
+            "energy-source-electric-production-lightning-existence": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 12
+            },
+            "energy-source-fluid": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 5
+            },
+            "energy-source-heat": {
+              "nodes": 1,
+              "stored_pebbles": 23,
+              "represented_contexts": 42
+            },
+            "energy-source-heat-distribution": {
+              "nodes": 1,
+              "stored_pebbles": 29,
+              "represented_contexts": 60
+            },
+            "energy-source-heat-production": {
+              "nodes": 1,
+              "stored_pebbles": 23,
+              "represented_contexts": 42
+            },
+            "energy-source-void": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "entity": {
+              "nodes": 729,
+              "stored_pebbles": 6498,
+              "represented_contexts": 10763
+            },
+            "entity-build": {
+              "nodes": 250,
+              "stored_pebbles": 5880,
+              "represented_contexts": 9111
+            },
+            "entity-build-architecture": {
+              "nodes": 250,
+              "stored_pebbles": 6400,
+              "represented_contexts": 9996
+            },
+            "entity-build-item": {
+              "nodes": 1,
+              "stored_pebbles": 45,
+              "represented_contexts": 63
+            },
+            "entity-build-rail-group": {
+              "nodes": 1,
+              "stored_pebbles": 39,
+              "represented_contexts": 55
+            },
+            "entity-build-surface-condition": {
+              "nodes": 68,
+              "stored_pebbles": 845,
+              "represented_contexts": 3188
+            },
+            "entity-build-tile": {
+              "nodes": 3,
+              "stored_pebbles": 10,
+              "represented_contexts": 37
+            },
+            "entity-build-tile-layout": {
+              "nodes": 8,
+              "stored_pebbles": 46,
+              "represented_contexts": 157
+            },
+            "entity-build-tile-region": {
+              "nodes": 12,
+              "stored_pebbles": 214,
+              "represented_contexts": 787
+            },
+            "entity-capture-spawner": {
+              "nodes": 4,
+              "stored_pebbles": 14,
+              "represented_contexts": 28
+            },
+            "entity-character": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "entity-collision-group": {
+              "nodes": 37,
+              "stored_pebbles": 638,
+              "represented_contexts": 2348
+            },
+            "entity-harvest": {
+              "nodes": 3,
+              "stored_pebbles": 93,
+              "represented_contexts": 141
+            },
+            "entity-kill": {
+              "nodes": 111,
+              "stored_pebbles": 336,
+              "represented_contexts": 421
+            },
+            "entity-mine": {
+              "nodes": 576,
+              "stored_pebbles": 6965,
+              "represented_contexts": 9262
+            },
+            "entity-operate": {
+              "nodes": 729,
+              "stored_pebbles": 4708,
+              "represented_contexts": 9409
+            },
+            "entity-operate-fluid": {
+              "nodes": 21,
+              "stored_pebbles": 513,
+              "represented_contexts": 990
+            },
+            "entity-own": {
+              "nodes": 731,
+              "stored_pebbles": 6035,
+              "represented_contexts": 9391
+            },
+            "entity-own-operable": {
+              "nodes": 729,
+              "stored_pebbles": 6013,
+              "represented_contexts": 9601
+            },
+            "entity-own-space": {
+              "nodes": 250,
+              "stored_pebbles": 232,
+              "represented_contexts": 681
+            },
+            "entity-rocket-silo": {
+              "nodes": 3,
+              "stored_pebbles": 80,
+              "represented_contexts": 142
+            },
+            "entity-spawn": {
+              "nodes": 21,
+              "stored_pebbles": 20,
+              "represented_contexts": 74
+            },
+            "false": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "fluid": {
+              "nodes": 33,
+              "stored_pebbles": 374,
+              "represented_contexts": 719
+            },
+            "fluid-craft": {
+              "nodes": 33,
+              "stored_pebbles": 336,
+              "represented_contexts": 618
+            },
+            "fluid-craft-temperature": {
+              "nodes": 35,
+              "stored_pebbles": 340,
+              "represented_contexts": 618
+            },
+            "fluid-create": {
+              "nodes": 33,
+              "stored_pebbles": 376,
+              "represented_contexts": 719
+            },
+            "fluid-create-offshore-temperature": {
+              "nodes": 4,
+              "stored_pebbles": 27,
+              "represented_contexts": 55
+            },
+            "fluid-create-temperature": {
+              "nodes": 35,
+              "stored_pebbles": 396,
+              "represented_contexts": 759
+            },
+            "fluid-hold": {
+              "nodes": 33,
+              "stored_pebbles": 957,
+              "represented_contexts": 1980
+            },
+            "fluid-identity-source": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "fluid-ingredient": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "fluid-temperature": {
+              "nodes": 35,
+              "stored_pebbles": 395,
+              "represented_contexts": 759
+            },
+            "fluid-temperature-range": {
+              "nodes": 54,
+              "stored_pebbles": 747,
+              "represented_contexts": 1436
+            },
+            "fuel-category": {
+              "nodes": 5,
+              "stored_pebbles": 152,
+              "represented_contexts": 218
+            },
+            "fuel-category-burn": {
+              "nodes": 5,
+              "stored_pebbles": 40,
+              "represented_contexts": 76
+            },
+            "group-construction-robot": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-crafting-automation": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-electric-mining-drill": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-inserter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-logistic-storage-chest": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "group-mining-drill": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-pump": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-repair-pack": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-roboport": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "group-rocket-turret": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 64
+            },
+            "group-splitter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-starter-ammo": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-storage": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "group-supply": {
+              "nodes": 15,
+              "stored_pebbles": 501,
+              "represented_contexts": 714
+            },
+            "group-transport-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-underground-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "head": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "item": {
+              "nodes": 503,
+              "stored_pebbles": 12676,
+              "represented_contexts": 20024
+            },
+            "item-ammo": {
+              "nodes": 19,
+              "stored_pebbles": 381,
+              "represented_contexts": 434
+            },
+            "item-burn": {
+              "nodes": 3,
+              "stored_pebbles": 58,
+              "represented_contexts": 108
+            },
+            "item-capsule": {
+              "nodes": 16,
+              "stored_pebbles": 383,
+              "represented_contexts": 575
+            },
+            "item-craft": {
+              "nodes": 26,
+              "stored_pebbles": 530,
+              "represented_contexts": 703
+            },
+            "item-deliver": {
+              "nodes": 491,
+              "stored_pebbles": 7485,
+              "represented_contexts": 14178
+            },
+            "item-gun": {
+              "nodes": 23,
+              "stored_pebbles": 319,
+              "represented_contexts": 510
+            },
+            "item-ingredient": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "item-launch": {
+              "nodes": 499,
+              "stored_pebbles": 7842,
+              "represented_contexts": 14434
+            },
+            "launch": {
+              "nodes": 1,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "lightning-safe": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "logic-and": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "logic-or": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "mining-fluid": {
+              "nodes": 133,
+              "stored_pebbles": 2108,
+              "represented_contexts": 4102
+            },
+            "orand": {
+              "nodes": 17582,
+              "stored_pebbles": 198331,
+              "represented_contexts": 327875
+            },
+            "planet": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "projectile-package": {
+              "nodes": 12,
+              "stored_pebbles": 172,
+              "represented_contexts": 201
+            },
+            "reachable-room": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "recipe": {
+              "nodes": 1415,
+              "stored_pebbles": 26294,
+              "represented_contexts": 37806
+            },
+            "recipe-category": {
+              "nodes": 35,
+              "stored_pebbles": 1037,
+              "represented_contexts": 1791
+            },
+            "recipe-ingredient-kept-spot": {
+              "nodes": 363,
+              "stored_pebbles": 10062,
+              "represented_contexts": 16723
+            },
+            "recipe-shape-fluid-slot": {
+              "nodes": 2,
+              "stored_pebbles": 6,
+              "represented_contexts": 10
+            },
+            "recipe-surface-condition": {
+              "nodes": 511,
+              "stored_pebbles": 955,
+              "represented_contexts": 3643
+            },
+            "recipe-tech-unlock": {
+              "nodes": 96,
+              "stored_pebbles": 2233,
+              "represented_contexts": 4488
+            },
+            "recipe-unlock": {
+              "nodes": 96,
+              "stored_pebbles": 2233,
+              "represented_contexts": 4488
+            },
+            "resource-category": {
+              "nodes": 12,
+              "stored_pebbles": 354,
+              "represented_contexts": 643
+            },
+            "rocket-silo": {
+              "nodes": 1,
+              "stored_pebbles": 32,
+              "represented_contexts": 55
+            },
+            "room": {
+              "nodes": 16,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "room-autoplace": {
+              "nodes": 16,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "room-create-platform": {
+              "nodes": 1,
+              "stored_pebbles": 32,
+              "represented_contexts": 55
+            },
+            "room-create-platform-starter-pack": {
+              "nodes": 1,
+              "stored_pebbles": 37,
+              "represented_contexts": 58
+            },
+            "room-launch": {
+              "nodes": 15,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "satisfied": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "science-pack-set-lab": {
+              "nodes": 111,
+              "stored_pebbles": 3663,
+              "represented_contexts": 7659
+            },
+            "science-pack-set-science": {
+              "nodes": 111,
+              "stored_pebbles": 2231,
+              "represented_contexts": 4060
+            },
+            "slot": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "space-connection": {
+              "nodes": 24,
+              "stored_pebbles": 42,
+              "represented_contexts": 81
+            },
+            "space-connection-asteroids": {
+              "nodes": 24,
+              "stored_pebbles": 54,
+              "represented_contexts": 93
+            },
+            "space-connection-discover": {
+              "nodes": 24,
+              "stored_pebbles": 412,
+              "represented_contexts": 821
+            },
+            "space-connection-enter": {
+              "nodes": 24,
+              "stored_pebbles": 38,
+              "represented_contexts": 103
+            },
+            "space-location": {
+              "nodes": 18,
+              "stored_pebbles": 21,
+              "represented_contexts": 72
+            },
+            "space-location-discover": {
+              "nodes": 18,
+              "stored_pebbles": 357,
+              "represented_contexts": 719
+            },
+            "space-location-reachable": {
+              "nodes": 18,
+              "stored_pebbles": 292,
+              "represented_contexts": 576
+            },
+            "space-location-spaceship": {
+              "nodes": 18,
+              "stored_pebbles": 25,
+              "represented_contexts": 72
+            },
+            "space-surface": {
+              "nodes": 1,
+              "stored_pebbles": 2,
+              "represented_contexts": 5
+            },
+            "spaceship": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 5
+            },
+            "starting-character": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "starting-planet": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "technology": {
+              "nodes": 819,
+              "stored_pebbles": 21376,
+              "represented_contexts": 43936
+            },
+            "technology-trigger": {
+              "nodes": 366,
+              "stored_pebbles": 9006,
+              "represented_contexts": 13857
+            },
+            "technology-trigger-sink": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "thruster": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 5
+            },
+            "tile": {
+              "nodes": 225,
+              "stored_pebbles": 597,
+              "represented_contexts": 1728
+            },
+            "tile-build": {
+              "nodes": 13,
+              "stored_pebbles": 231,
+              "represented_contexts": 350
+            },
+            "tile-build-item": {
+              "nodes": 13,
+              "stored_pebbles": 379,
+              "represented_contexts": 603
+            },
+            "tile-build-item-place-as-tile": {
+              "nodes": 13,
+              "stored_pebbles": 231,
+              "represented_contexts": 350
+            },
+            "tile-build-item-place-as-tile-condition": {
+              "nodes": 13,
+              "stored_pebbles": 117,
+              "represented_contexts": 444
+            },
+            "tile-build-space": {
+              "nodes": 13,
+              "stored_pebbles": 2,
+              "represented_contexts": 5
+            },
+            "tile-collision-group": {
+              "nodes": 12,
+              "stored_pebbles": 45,
+              "represented_contexts": 168
+            },
+            "tile-fluid": {
+              "nodes": 97,
+              "stored_pebbles": 177,
+              "represented_contexts": 364
+            },
+            "tile-fluid-pump": {
+              "nodes": 97,
+              "stored_pebbles": 2619,
+              "represented_contexts": 5335
+            },
+            "tile-mine": {
+              "nodes": 23,
+              "stored_pebbles": 230,
+              "represented_contexts": 350
+            },
+            "traveler": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "true": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "unsatisfied": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "warmth": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 60
+            }
+          },
+          "nodes": 29299,
+          "stored_pebbles": 373528,
+          "represented_contexts": 633216,
+          "edges": 51120
+        },
+        "split-matching": {
+          "families": {
+            "agricultural-tower": {
+              "nodes": 1,
+              "stored_pebbles": 13,
+              "represented_contexts": 26
+            },
+            "ammo-category": {
+              "nodes": 17,
+              "stored_pebbles": 194,
+              "represented_contexts": 207
+            },
+            "asteroid-chunk": {
+              "nodes": 15,
+              "stored_pebbles": 7,
+              "represented_contexts": 17
+            },
+            "asteroid-chunk-mine": {
+              "nodes": 15,
+              "stored_pebbles": 7,
+              "represented_contexts": 17
+            },
+            "asteroid-collector": {
+              "nodes": 1,
+              "stored_pebbles": 2,
+              "represented_contexts": 5
+            },
+            "balance-gun-turret": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-ammo": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-construction-robot": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-crafting-automation": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-inserter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-logistic-storage": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "balance-mechanics-mining-drill": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-no-big-electric-pole": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-pipe": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-pipe-to-ground": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-pump": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-roboport": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "balance-mechanics-splitter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-storage": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "balance-mechanics-transport-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-underground-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-rocket": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "base": {
+              "nodes": 5999,
+              "stored_pebbles": 181362,
+              "represented_contexts": 273364
+            },
+            "capture-robot": {
+              "nodes": 1,
+              "stored_pebbles": 17,
+              "represented_contexts": 34
+            },
+            "capture-spawner": {
+              "nodes": 1,
+              "stored_pebbles": 7,
+              "represented_contexts": 14
+            },
+            "cargo-landing-pad": {
+              "nodes": 1,
+              "stored_pebbles": 27,
+              "represented_contexts": 55
+            },
+            "chemical-fuel": {
+              "nodes": 1,
+              "stored_pebbles": 43,
+              "represented_contexts": 60
+            },
+            "combat-encounter": {
+              "nodes": 81,
+              "stored_pebbles": 250,
+              "represented_contexts": 300
+            },
+            "combat-target": {
+              "nodes": 101,
+              "stored_pebbles": 3341,
+              "represented_contexts": 4147
+            },
+            "combat-weapon": {
+              "nodes": 139,
+              "stored_pebbles": 2142,
+              "represented_contexts": 3895
+            },
+            "cost-unit": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "create-platform": {
+              "nodes": 1,
+              "stored_pebbles": 32,
+              "represented_contexts": 55
+            },
+            "damage-type": {
+              "nodes": 8,
+              "stored_pebbles": 245,
+              "represented_contexts": 271
+            },
+            "deliver": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 34
+            },
+            "electric-pole": {
+              "nodes": 1,
+              "stored_pebbles": 28,
+              "represented_contexts": 60
+            },
+            "enemy-evolution": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "energy-source-burner": {
+              "nodes": 6,
+              "stored_pebbles": 202,
+              "represented_contexts": 278
+            },
+            "energy-source-electric": {
+              "nodes": 1,
+              "stored_pebbles": 30,
+              "represented_contexts": 60
+            },
+            "energy-source-electric-distribution": {
+              "nodes": 1,
+              "stored_pebbles": 28,
+              "represented_contexts": 60
+            },
+            "energy-source-electric-production": {
+              "nodes": 1,
+              "stored_pebbles": 30,
+              "represented_contexts": 60
+            },
+            "energy-source-electric-production-lightning": {
+              "nodes": 1,
+              "stored_pebbles": 6,
+              "represented_contexts": 12
+            },
+            "energy-source-electric-production-lightning-capture": {
+              "nodes": 1,
+              "stored_pebbles": 19,
+              "represented_contexts": 40
+            },
+            "energy-source-electric-production-lightning-existence": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 12
+            },
+            "energy-source-fluid": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 5
+            },
+            "energy-source-heat": {
+              "nodes": 1,
+              "stored_pebbles": 24,
+              "represented_contexts": 42
+            },
+            "energy-source-heat-distribution": {
+              "nodes": 1,
+              "stored_pebbles": 29,
+              "represented_contexts": 60
+            },
+            "energy-source-heat-production": {
+              "nodes": 1,
+              "stored_pebbles": 24,
+              "represented_contexts": 42
+            },
+            "energy-source-void": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "entity": {
+              "nodes": 729,
+              "stored_pebbles": 6554,
+              "represented_contexts": 10763
+            },
+            "entity-build": {
+              "nodes": 250,
+              "stored_pebbles": 5942,
+              "represented_contexts": 9111
+            },
+            "entity-build-architecture": {
+              "nodes": 250,
+              "stored_pebbles": 6480,
+              "represented_contexts": 9996
+            },
+            "entity-build-item": {
+              "nodes": 1,
+              "stored_pebbles": 45,
+              "represented_contexts": 63
+            },
+            "entity-build-rail-group": {
+              "nodes": 1,
+              "stored_pebbles": 39,
+              "represented_contexts": 55
+            },
+            "entity-build-surface-condition": {
+              "nodes": 68,
+              "stored_pebbles": 845,
+              "represented_contexts": 3188
+            },
+            "entity-build-tile": {
+              "nodes": 3,
+              "stored_pebbles": 10,
+              "represented_contexts": 37
+            },
+            "entity-build-tile-layout": {
+              "nodes": 8,
+              "stored_pebbles": 46,
+              "represented_contexts": 157
+            },
+            "entity-build-tile-region": {
+              "nodes": 12,
+              "stored_pebbles": 214,
+              "represented_contexts": 787
+            },
+            "entity-capture-spawner": {
+              "nodes": 4,
+              "stored_pebbles": 14,
+              "represented_contexts": 28
+            },
+            "entity-character": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "entity-collision-group": {
+              "nodes": 37,
+              "stored_pebbles": 638,
+              "represented_contexts": 2348
+            },
+            "entity-harvest": {
+              "nodes": 3,
+              "stored_pebbles": 93,
+              "represented_contexts": 141
+            },
+            "entity-kill": {
+              "nodes": 111,
+              "stored_pebbles": 321,
+              "represented_contexts": 421
+            },
+            "entity-mine": {
+              "nodes": 576,
+              "stored_pebbles": 7067,
+              "represented_contexts": 9262
+            },
+            "entity-operate": {
+              "nodes": 729,
+              "stored_pebbles": 4740,
+              "represented_contexts": 9409
+            },
+            "entity-operate-fluid": {
+              "nodes": 21,
+              "stored_pebbles": 561,
+              "represented_contexts": 990
+            },
+            "entity-own": {
+              "nodes": 731,
+              "stored_pebbles": 6108,
+              "represented_contexts": 9391
+            },
+            "entity-own-operable": {
+              "nodes": 729,
+              "stored_pebbles": 6084,
+              "represented_contexts": 9601
+            },
+            "entity-own-space": {
+              "nodes": 250,
+              "stored_pebbles": 235,
+              "represented_contexts": 681
+            },
+            "entity-rocket-silo": {
+              "nodes": 3,
+              "stored_pebbles": 81,
+              "represented_contexts": 142
+            },
+            "entity-spawn": {
+              "nodes": 21,
+              "stored_pebbles": 20,
+              "represented_contexts": 74
+            },
+            "false": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "fluid": {
+              "nodes": 33,
+              "stored_pebbles": 409,
+              "represented_contexts": 719
+            },
+            "fluid-craft": {
+              "nodes": 33,
+              "stored_pebbles": 331,
+              "represented_contexts": 576
+            },
+            "fluid-craft-temperature": {
+              "nodes": 35,
+              "stored_pebbles": 333,
+              "represented_contexts": 576
+            },
+            "fluid-create": {
+              "nodes": 33,
+              "stored_pebbles": 399,
+              "represented_contexts": 719
+            },
+            "fluid-create-offshore-temperature": {
+              "nodes": 4,
+              "stored_pebbles": 27,
+              "represented_contexts": 55
+            },
+            "fluid-create-temperature": {
+              "nodes": 35,
+              "stored_pebbles": 423,
+              "represented_contexts": 759
+            },
+            "fluid-hold": {
+              "nodes": 33,
+              "stored_pebbles": 957,
+              "represented_contexts": 1980
+            },
+            "fluid-identity-source": {
+              "nodes": 7,
+              "stored_pebbles": 201,
+              "represented_contexts": 302
+            },
+            "fluid-ingredient": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "fluid-temperature": {
+              "nodes": 50,
+              "stored_pebbles": 690,
+              "represented_contexts": 1239
+            },
+            "fluid-temperature-range": {
+              "nodes": 54,
+              "stored_pebbles": 784,
+              "represented_contexts": 1436
+            },
+            "fuel-category": {
+              "nodes": 5,
+              "stored_pebbles": 158,
+              "represented_contexts": 218
+            },
+            "fuel-category-burn": {
+              "nodes": 5,
+              "stored_pebbles": 48,
+              "represented_contexts": 76
+            },
+            "group-construction-robot": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-crafting-automation": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-electric-mining-drill": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-inserter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-logistic-storage-chest": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "group-mining-drill": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-pump": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-repair-pack": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-roboport": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "group-rocket-turret": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 64
+            },
+            "group-splitter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-starter-ammo": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-storage": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "group-supply": {
+              "nodes": 15,
+              "stored_pebbles": 499,
+              "represented_contexts": 714
+            },
+            "group-transport-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-underground-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "head": {
+              "nodes": 5999,
+              "stored_pebbles": 155990,
+              "represented_contexts": 242932
+            },
+            "item": {
+              "nodes": 904,
+              "stored_pebbles": 24592,
+              "represented_contexts": 38283
+            },
+            "item-ammo": {
+              "nodes": 19,
+              "stored_pebbles": 383,
+              "represented_contexts": 434
+            },
+            "item-burn": {
+              "nodes": 3,
+              "stored_pebbles": 72,
+              "represented_contexts": 108
+            },
+            "item-capsule": {
+              "nodes": 16,
+              "stored_pebbles": 377,
+              "represented_contexts": 575
+            },
+            "item-craft": {
+              "nodes": 38,
+              "stored_pebbles": 528,
+              "represented_contexts": 703
+            },
+            "item-deliver": {
+              "nodes": 491,
+              "stored_pebbles": 7592,
+              "represented_contexts": 14178
+            },
+            "item-gun": {
+              "nodes": 23,
+              "stored_pebbles": 319,
+              "represented_contexts": 510
+            },
+            "item-ingredient": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "item-launch": {
+              "nodes": 499,
+              "stored_pebbles": 7906,
+              "represented_contexts": 14434
+            },
+            "launch": {
+              "nodes": 1,
+              "stored_pebbles": 32,
+              "represented_contexts": 55
+            },
+            "lightning-safe": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "logic-and": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "logic-or": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "mining-fluid": {
+              "nodes": 133,
+              "stored_pebbles": 2281,
+              "represented_contexts": 4102
+            },
+            "orand": {
+              "nodes": 17584,
+              "stored_pebbles": 199713,
+              "represented_contexts": 327791
+            },
+            "planet": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "projectile-package": {
+              "nodes": 12,
+              "stored_pebbles": 172,
+              "represented_contexts": 201
+            },
+            "reachable-room": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "recipe": {
+              "nodes": 1415,
+              "stored_pebbles": 26645,
+              "represented_contexts": 37806
+            },
+            "recipe-category": {
+              "nodes": 35,
+              "stored_pebbles": 1027,
+              "represented_contexts": 1791
+            },
+            "recipe-ingredient-kept-spot": {
+              "nodes": 363,
+              "stored_pebbles": 10142,
+              "represented_contexts": 16723
+            },
+            "recipe-shape-fluid-slot": {
+              "nodes": 2,
+              "stored_pebbles": 6,
+              "represented_contexts": 10
+            },
+            "recipe-surface-condition": {
+              "nodes": 511,
+              "stored_pebbles": 955,
+              "represented_contexts": 3643
+            },
+            "recipe-tech-unlock": {
+              "nodes": 96,
+              "stored_pebbles": 2231,
+              "represented_contexts": 4488
+            },
+            "recipe-unlock": {
+              "nodes": 96,
+              "stored_pebbles": 2228,
+              "represented_contexts": 4488
+            },
+            "resource-category": {
+              "nodes": 12,
+              "stored_pebbles": 358,
+              "represented_contexts": 643
+            },
+            "rocket-silo": {
+              "nodes": 1,
+              "stored_pebbles": 32,
+              "represented_contexts": 55
+            },
+            "room": {
+              "nodes": 16,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "room-autoplace": {
+              "nodes": 16,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "room-create-platform": {
+              "nodes": 1,
+              "stored_pebbles": 33,
+              "represented_contexts": 55
+            },
+            "room-create-platform-starter-pack": {
+              "nodes": 1,
+              "stored_pebbles": 39,
+              "represented_contexts": 58
+            },
+            "room-launch": {
+              "nodes": 15,
+              "stored_pebbles": 32,
+              "represented_contexts": 55
+            },
+            "satisfied": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "science-pack-set-lab": {
+              "nodes": 111,
+              "stored_pebbles": 3663,
+              "represented_contexts": 7659
+            },
+            "science-pack-set-science": {
+              "nodes": 111,
+              "stored_pebbles": 2313,
+              "represented_contexts": 4060
+            },
+            "slot": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "space-connection": {
+              "nodes": 24,
+              "stored_pebbles": 42,
+              "represented_contexts": 81
+            },
+            "space-connection-asteroids": {
+              "nodes": 24,
+              "stored_pebbles": 54,
+              "represented_contexts": 93
+            },
+            "space-connection-discover": {
+              "nodes": 24,
+              "stored_pebbles": 412,
+              "represented_contexts": 821
+            },
+            "space-connection-enter": {
+              "nodes": 24,
+              "stored_pebbles": 38,
+              "represented_contexts": 103
+            },
+            "space-location": {
+              "nodes": 18,
+              "stored_pebbles": 21,
+              "represented_contexts": 72
+            },
+            "space-location-discover": {
+              "nodes": 18,
+              "stored_pebbles": 355,
+              "represented_contexts": 719
+            },
+            "space-location-reachable": {
+              "nodes": 18,
+              "stored_pebbles": 292,
+              "represented_contexts": 576
+            },
+            "space-location-spaceship": {
+              "nodes": 18,
+              "stored_pebbles": 25,
+              "represented_contexts": 72
+            },
+            "space-surface": {
+              "nodes": 1,
+              "stored_pebbles": 2,
+              "represented_contexts": 5
+            },
+            "spaceship": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 5
+            },
+            "starting-character": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "starting-planet": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "technology": {
+              "nodes": 819,
+              "stored_pebbles": 21395,
+              "represented_contexts": 43936
+            },
+            "technology-trigger": {
+              "nodes": 366,
+              "stored_pebbles": 8928,
+              "represented_contexts": 13857
+            },
+            "technology-trigger-sink": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "thruster": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 5
+            },
+            "tile": {
+              "nodes": 225,
+              "stored_pebbles": 596,
+              "represented_contexts": 1728
+            },
+            "tile-build": {
+              "nodes": 13,
+              "stored_pebbles": 230,
+              "represented_contexts": 350
+            },
+            "tile-build-item": {
+              "nodes": 13,
+              "stored_pebbles": 380,
+              "represented_contexts": 603
+            },
+            "tile-build-item-place-as-tile": {
+              "nodes": 13,
+              "stored_pebbles": 231,
+              "represented_contexts": 350
+            },
+            "tile-build-item-place-as-tile-condition": {
+              "nodes": 13,
+              "stored_pebbles": 117,
+              "represented_contexts": 444
+            },
+            "tile-build-space": {
+              "nodes": 13,
+              "stored_pebbles": 2,
+              "represented_contexts": 5
+            },
+            "tile-collision-group": {
+              "nodes": 12,
+              "stored_pebbles": 45,
+              "represented_contexts": 168
+            },
+            "tile-fluid": {
+              "nodes": 97,
+              "stored_pebbles": 177,
+              "represented_contexts": 364
+            },
+            "tile-fluid-pump": {
+              "nodes": 97,
+              "stored_pebbles": 2619,
+              "represented_contexts": 5335
+            },
+            "tile-mine": {
+              "nodes": 23,
+              "stored_pebbles": 229,
+              "represented_contexts": 350
+            },
+            "traveler": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "true": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "unsatisfied": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "warmth": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 60
+            }
+          },
+          "nodes": 41731,
+          "stored_pebbles": 726252,
+          "represented_contexts": 1168319,
+          "edges": 64325
+        }
+      },
+      "intentional_stop": true
+    },
+    "after": {
+      "log_path": "/private/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/node-footprint-7yy_digm/test-runs/run-20261012-180416-82k1juy7/runs/sa--node-footprint-probe@1/create.log",
+      "stages": {
+        "logic": {
+          "families": {
+            "agricultural-tower": {
+              "nodes": 1,
+              "stored_pebbles": 6,
+              "represented_contexts": 18
+            },
+            "ammo-category": {
+              "nodes": 17,
+              "stored_pebbles": 164,
+              "represented_contexts": 206
+            },
+            "asteroid-chunk": {
+              "nodes": 15,
+              "stored_pebbles": 7,
+              "represented_contexts": 17
+            },
+            "asteroid-chunk-mine": {
+              "nodes": 15,
+              "stored_pebbles": 7,
+              "represented_contexts": 17
+            },
+            "asteroid-collector": {
+              "nodes": 1,
+              "stored_pebbles": 2,
+              "represented_contexts": 5
+            },
+            "balance-gun-turret": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-ammo": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-construction-robot": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-crafting-automation": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-inserter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-logistic-storage": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "balance-mechanics-mining-drill": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-no-big-electric-pole": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-pipe": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-pipe-to-ground": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-pump": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-roboport": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "balance-mechanics-splitter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-storage": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "balance-mechanics-transport-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-underground-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-rocket": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "base": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "capture-robot": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 32
+            },
+            "capture-spawner": {
+              "nodes": 1,
+              "stored_pebbles": 6,
+              "represented_contexts": 12
+            },
+            "cargo-landing-pad": {
+              "nodes": 1,
+              "stored_pebbles": 24,
+              "represented_contexts": 55
+            },
+            "chemical-fuel": {
+              "nodes": 1,
+              "stored_pebbles": 48,
+              "represented_contexts": 60
+            },
+            "combat-encounter": {
+              "nodes": 81,
+              "stored_pebbles": 158,
+              "represented_contexts": 288
+            },
+            "combat-target": {
+              "nodes": 101,
+              "stored_pebbles": 2882,
+              "represented_contexts": 4142
+            },
+            "combat-weapon": {
+              "nodes": 139,
+              "stored_pebbles": 2329,
+              "represented_contexts": 3995
+            },
+            "cost-unit": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "create-platform": {
+              "nodes": 1,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "damage-type": {
+              "nodes": 8,
+              "stored_pebbles": 235,
+              "represented_contexts": 259
+            },
+            "deliver": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 34
+            },
+            "electric-pole": {
+              "nodes": 1,
+              "stored_pebbles": 30,
+              "represented_contexts": 60
+            },
+            "enemy-evolution": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "energy-source-burner": {
+              "nodes": 6,
+              "stored_pebbles": 186,
+              "represented_contexts": 268
+            },
+            "energy-source-electric": {
+              "nodes": 1,
+              "stored_pebbles": 29,
+              "represented_contexts": 60
+            },
+            "energy-source-electric-distribution": {
+              "nodes": 1,
+              "stored_pebbles": 29,
+              "represented_contexts": 60
+            },
+            "energy-source-electric-production": {
+              "nodes": 1,
+              "stored_pebbles": 29,
+              "represented_contexts": 60
+            },
+            "energy-source-electric-production-lightning": {
+              "nodes": 1,
+              "stored_pebbles": 6,
+              "represented_contexts": 12
+            },
+            "energy-source-electric-production-lightning-capture": {
+              "nodes": 1,
+              "stored_pebbles": 19,
+              "represented_contexts": 40
+            },
+            "energy-source-electric-production-lightning-existence": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 12
+            },
+            "energy-source-fluid": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 5
+            },
+            "energy-source-heat": {
+              "nodes": 1,
+              "stored_pebbles": 24,
+              "represented_contexts": 46
+            },
+            "energy-source-heat-distribution": {
+              "nodes": 1,
+              "stored_pebbles": 28,
+              "represented_contexts": 60
+            },
+            "energy-source-heat-production": {
+              "nodes": 1,
+              "stored_pebbles": 24,
+              "represented_contexts": 46
+            },
+            "energy-source-void": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "entity": {
+              "nodes": 729,
+              "stored_pebbles": 6423,
+              "represented_contexts": 11199
+            },
+            "entity-build": {
+              "nodes": 250,
+              "stored_pebbles": 5842,
+              "represented_contexts": 9562
+            },
+            "entity-build-architecture": {
+              "nodes": 250,
+              "stored_pebbles": 7447,
+              "represented_contexts": 10510
+            },
+            "entity-build-rail-group": {
+              "nodes": 1,
+              "stored_pebbles": 39,
+              "represented_contexts": 55
+            },
+            "entity-build-surface-condition": {
+              "nodes": 68,
+              "stored_pebbles": 839,
+              "represented_contexts": 3164
+            },
+            "entity-build-tile": {
+              "nodes": 3,
+              "stored_pebbles": 10,
+              "represented_contexts": 37
+            },
+            "entity-build-tile-layout": {
+              "nodes": 8,
+              "stored_pebbles": 61,
+              "represented_contexts": 157
+            },
+            "entity-build-tile-region": {
+              "nodes": 12,
+              "stored_pebbles": 268,
+              "represented_contexts": 787
+            },
+            "entity-capture-spawner": {
+              "nodes": 4,
+              "stored_pebbles": 12,
+              "represented_contexts": 24
+            },
+            "entity-character": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "entity-collision-group": {
+              "nodes": 37,
+              "stored_pebbles": 799,
+              "represented_contexts": 2348
+            },
+            "entity-harvest": {
+              "nodes": 3,
+              "stored_pebbles": 72,
+              "represented_contexts": 129
+            },
+            "entity-kill": {
+              "nodes": 87,
+              "stored_pebbles": 189,
+              "represented_contexts": 240
+            },
+            "entity-mine": {
+              "nodes": 444,
+              "stored_pebbles": 4749,
+              "represented_contexts": 5479
+            },
+            "entity-operate": {
+              "nodes": 729,
+              "stored_pebbles": 4678,
+              "represented_contexts": 9864
+            },
+            "entity-operate-fluid": {
+              "nodes": 21,
+              "stored_pebbles": 582,
+              "represented_contexts": 1056
+            },
+            "entity-own": {
+              "nodes": 729,
+              "stored_pebbles": 6031,
+              "represented_contexts": 9834
+            },
+            "entity-own-operable": {
+              "nodes": 729,
+              "stored_pebbles": 6069,
+              "represented_contexts": 10022
+            },
+            "entity-own-space": {
+              "nodes": 250,
+              "stored_pebbles": 262,
+              "represented_contexts": 705
+            },
+            "entity-rocket-silo": {
+              "nodes": 3,
+              "stored_pebbles": 88,
+              "represented_contexts": 161
+            },
+            "entity-spawn": {
+              "nodes": 21,
+              "stored_pebbles": 20,
+              "represented_contexts": 74
+            },
+            "false": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "fluid": {
+              "nodes": 33,
+              "stored_pebbles": 413,
+              "represented_contexts": 724
+            },
+            "fluid-craft": {
+              "nodes": 33,
+              "stored_pebbles": 366,
+              "represented_contexts": 616
+            },
+            "fluid-craft-temperature": {
+              "nodes": 35,
+              "stored_pebbles": 366,
+              "represented_contexts": 616
+            },
+            "fluid-create": {
+              "nodes": 33,
+              "stored_pebbles": 413,
+              "represented_contexts": 724
+            },
+            "fluid-create-offshore-temperature": {
+              "nodes": 4,
+              "stored_pebbles": 19,
+              "represented_contexts": 55
+            },
+            "fluid-create-temperature": {
+              "nodes": 35,
+              "stored_pebbles": 438,
+              "represented_contexts": 773
+            },
+            "fluid-hold": {
+              "nodes": 33,
+              "stored_pebbles": 924,
+              "represented_contexts": 1980
+            },
+            "fluid-identity-source": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "fluid-ingredient": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "fluid-temperature": {
+              "nodes": 35,
+              "stored_pebbles": 438,
+              "represented_contexts": 773
+            },
+            "fluid-temperature-range": {
+              "nodes": 54,
+              "stored_pebbles": 829,
+              "represented_contexts": 1455
+            },
+            "fuel-category": {
+              "nodes": 5,
+              "stored_pebbles": 138,
+              "represented_contexts": 208
+            },
+            "fuel-category-burn": {
+              "nodes": 5,
+              "stored_pebbles": 39,
+              "represented_contexts": 76
+            },
+            "group-construction-robot": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-crafting-automation": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-electric-mining-drill": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-inserter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-logistic-storage-chest": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "group-mining-drill": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-pump": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-repair-pack": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-roboport": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "group-rocket-turret": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 64
+            },
+            "group-splitter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-starter-ammo": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-storage": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "group-supply": {
+              "nodes": 15,
+              "stored_pebbles": 494,
+              "represented_contexts": 714
+            },
+            "group-transport-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-underground-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "head": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "item": {
+              "nodes": 503,
+              "stored_pebbles": 14421,
+              "represented_contexts": 20710
+            },
+            "item-ammo": {
+              "nodes": 19,
+              "stored_pebbles": 375,
+              "represented_contexts": 433
+            },
+            "item-burn": {
+              "nodes": 3,
+              "stored_pebbles": 59,
+              "represented_contexts": 116
+            },
+            "item-capsule": {
+              "nodes": 16,
+              "stored_pebbles": 437,
+              "represented_contexts": 565
+            },
+            "item-craft": {
+              "nodes": 26,
+              "stored_pebbles": 502,
+              "represented_contexts": 656
+            },
+            "item-deliver": {
+              "nodes": 491,
+              "stored_pebbles": 7831,
+              "represented_contexts": 14276
+            },
+            "item-gun": {
+              "nodes": 23,
+              "stored_pebbles": 436,
+              "represented_contexts": 519
+            },
+            "item-ingredient": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "item-launch": {
+              "nodes": 499,
+              "stored_pebbles": 8196,
+              "represented_contexts": 14532
+            },
+            "launch": {
+              "nodes": 1,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "lightning-safe": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "logic-and": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "logic-or": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "orand": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "planet": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "projectile-package": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "reachable-room": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "recipe": {
+              "nodes": 1117,
+              "stored_pebbles": 21180,
+              "represented_contexts": 31370
+            },
+            "recipe-category": {
+              "nodes": 35,
+              "stored_pebbles": 914,
+              "represented_contexts": 1760
+            },
+            "recipe-surface-condition": {
+              "nodes": 348,
+              "stored_pebbles": 392,
+              "represented_contexts": 1541
+            },
+            "recipe-tech-unlock": {
+              "nodes": 60,
+              "stored_pebbles": 1201,
+              "represented_contexts": 2522
+            },
+            "recipe-unlock": {
+              "nodes": 60,
+              "stored_pebbles": 1201,
+              "represented_contexts": 2522
+            },
+            "resource-category": {
+              "nodes": 12,
+              "stored_pebbles": 356,
+              "represented_contexts": 643
+            },
+            "rocket-silo": {
+              "nodes": 1,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "room": {
+              "nodes": 16,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "room-autoplace": {
+              "nodes": 16,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "room-create-platform": {
+              "nodes": 1,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "room-create-platform-starter-pack": {
+              "nodes": 1,
+              "stored_pebbles": 36,
+              "represented_contexts": 58
+            },
+            "room-launch": {
+              "nodes": 15,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "satisfied": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "science-pack-set-lab": {
+              "nodes": 92,
+              "stored_pebbles": 2760,
+              "represented_contexts": 5612
+            },
+            "science-pack-set-science": {
+              "nodes": 92,
+              "stored_pebbles": 1696,
+              "represented_contexts": 3176
+            },
+            "slot": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "space-connection": {
+              "nodes": 53,
+              "stored_pebbles": 123,
+              "represented_contexts": 211
+            },
+            "space-connection-asteroids": {
+              "nodes": 53,
+              "stored_pebbles": 123,
+              "represented_contexts": 211
+            },
+            "space-connection-discover": {
+              "nodes": 53,
+              "stored_pebbles": 939,
+              "represented_contexts": 2405
+            },
+            "space-connection-enter": {
+              "nodes": 53,
+              "stored_pebbles": 151,
+              "represented_contexts": 261
+            },
+            "space-location": {
+              "nodes": 18,
+              "stored_pebbles": 29,
+              "represented_contexts": 80
+            },
+            "space-location-discover": {
+              "nodes": 18,
+              "stored_pebbles": 378,
+              "represented_contexts": 897
+            },
+            "space-location-reachable": {
+              "nodes": 18,
+              "stored_pebbles": 308,
+              "represented_contexts": 592
+            },
+            "space-location-spaceship": {
+              "nodes": 18,
+              "stored_pebbles": 41,
+              "represented_contexts": 80
+            },
+            "space-surface": {
+              "nodes": 1,
+              "stored_pebbles": 2,
+              "represented_contexts": 5
+            },
+            "spaceship": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 5
+            },
+            "starting-character": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "starting-planet": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "technology": {
+              "nodes": 533,
+              "stored_pebbles": 13895,
+              "represented_contexts": 27535
+            },
+            "technology-trigger": {
+              "nodes": 94,
+              "stored_pebbles": 1697,
+              "represented_contexts": 2458
+            },
+            "thruster": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 5
+            },
+            "tile": {
+              "nodes": 195,
+              "stored_pebbles": 541,
+              "represented_contexts": 1624
+            },
+            "tile-build": {
+              "nodes": 13,
+              "stored_pebbles": 212,
+              "represented_contexts": 374
+            },
+            "tile-build-item": {
+              "nodes": 13,
+              "stored_pebbles": 377,
+              "represented_contexts": 615
+            },
+            "tile-build-item-place-as-tile": {
+              "nodes": 13,
+              "stored_pebbles": 212,
+              "represented_contexts": 374
+            },
+            "tile-build-item-place-as-tile-condition": {
+              "nodes": 13,
+              "stored_pebbles": 130,
+              "represented_contexts": 444
+            },
+            "tile-build-space": {
+              "nodes": 13,
+              "stored_pebbles": 2,
+              "represented_contexts": 5
+            },
+            "tile-collision-group": {
+              "nodes": 12,
+              "stored_pebbles": 51,
+              "represented_contexts": 168
+            },
+            "tile-fluid": {
+              "nodes": 67,
+              "stored_pebbles": 81,
+              "represented_contexts": 236
+            },
+            "tile-fluid-pump": {
+              "nodes": 67,
+              "stored_pebbles": 1267,
+              "represented_contexts": 3685
+            },
+            "tile-mine": {
+              "nodes": 23,
+              "stored_pebbles": 212,
+              "represented_contexts": 374
+            },
+            "traveler": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "true": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "unsatisfied": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "warmth": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 60
+            }
+          },
+          "nodes": 9946,
+          "stored_pebbles": 139496,
+          "represented_contexts": 241243,
+          "edges": 29152
+        },
+        "or-expanded": {
+          "families": {
+            "agricultural-tower": {
+              "nodes": 1,
+              "stored_pebbles": 13,
+              "represented_contexts": 26
+            },
+            "ammo-category": {
+              "nodes": 17,
+              "stored_pebbles": 191,
+              "represented_contexts": 207
+            },
+            "asteroid-chunk": {
+              "nodes": 15,
+              "stored_pebbles": 7,
+              "represented_contexts": 17
+            },
+            "asteroid-chunk-mine": {
+              "nodes": 15,
+              "stored_pebbles": 7,
+              "represented_contexts": 17
+            },
+            "asteroid-collector": {
+              "nodes": 1,
+              "stored_pebbles": 2,
+              "represented_contexts": 5
+            },
+            "balance-gun-turret": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-ammo": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-construction-robot": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-crafting-automation": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-inserter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-logistic-storage": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "balance-mechanics-mining-drill": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-no-big-electric-pole": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-pipe": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-pipe-to-ground": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-pump": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-roboport": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "balance-mechanics-splitter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-storage": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "balance-mechanics-transport-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-underground-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-rocket": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "base": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "capture-robot": {
+              "nodes": 1,
+              "stored_pebbles": 17,
+              "represented_contexts": 34
+            },
+            "capture-spawner": {
+              "nodes": 1,
+              "stored_pebbles": 7,
+              "represented_contexts": 14
+            },
+            "cargo-landing-pad": {
+              "nodes": 1,
+              "stored_pebbles": 25,
+              "represented_contexts": 55
+            },
+            "chemical-fuel": {
+              "nodes": 1,
+              "stored_pebbles": 42,
+              "represented_contexts": 60
+            },
+            "combat-encounter": {
+              "nodes": 81,
+              "stored_pebbles": 240,
+              "represented_contexts": 300
+            },
+            "combat-target": {
+              "nodes": 101,
+              "stored_pebbles": 3458,
+              "represented_contexts": 4147
+            },
+            "combat-weapon": {
+              "nodes": 139,
+              "stored_pebbles": 2161,
+              "represented_contexts": 3895
+            },
+            "cost-unit": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "create-platform": {
+              "nodes": 1,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "damage-type": {
+              "nodes": 8,
+              "stored_pebbles": 247,
+              "represented_contexts": 271
+            },
+            "deliver": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 34
+            },
+            "electric-pole": {
+              "nodes": 1,
+              "stored_pebbles": 28,
+              "represented_contexts": 60
+            },
+            "enemy-evolution": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "energy-source-burner": {
+              "nodes": 6,
+              "stored_pebbles": 196,
+              "represented_contexts": 278
+            },
+            "energy-source-electric": {
+              "nodes": 1,
+              "stored_pebbles": 30,
+              "represented_contexts": 60
+            },
+            "energy-source-electric-distribution": {
+              "nodes": 1,
+              "stored_pebbles": 27,
+              "represented_contexts": 60
+            },
+            "energy-source-electric-production": {
+              "nodes": 1,
+              "stored_pebbles": 30,
+              "represented_contexts": 60
+            },
+            "energy-source-electric-production-lightning": {
+              "nodes": 1,
+              "stored_pebbles": 6,
+              "represented_contexts": 12
+            },
+            "energy-source-electric-production-lightning-capture": {
+              "nodes": 1,
+              "stored_pebbles": 19,
+              "represented_contexts": 40
+            },
+            "energy-source-electric-production-lightning-existence": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 12
+            },
+            "energy-source-fluid": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 5
+            },
+            "energy-source-heat": {
+              "nodes": 1,
+              "stored_pebbles": 24,
+              "represented_contexts": 42
+            },
+            "energy-source-heat-distribution": {
+              "nodes": 1,
+              "stored_pebbles": 29,
+              "represented_contexts": 60
+            },
+            "energy-source-heat-production": {
+              "nodes": 1,
+              "stored_pebbles": 24,
+              "represented_contexts": 42
+            },
+            "energy-source-void": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "entity": {
+              "nodes": 729,
+              "stored_pebbles": 6541,
+              "represented_contexts": 10763
+            },
+            "entity-build": {
+              "nodes": 250,
+              "stored_pebbles": 5945,
+              "represented_contexts": 9111
+            },
+            "entity-build-architecture": {
+              "nodes": 250,
+              "stored_pebbles": 6478,
+              "represented_contexts": 9996
+            },
+            "entity-build-item": {
+              "nodes": 1,
+              "stored_pebbles": 45,
+              "represented_contexts": 63
+            },
+            "entity-build-rail-group": {
+              "nodes": 1,
+              "stored_pebbles": 39,
+              "represented_contexts": 55
+            },
+            "entity-build-surface-condition": {
+              "nodes": 68,
+              "stored_pebbles": 845,
+              "represented_contexts": 3188
+            },
+            "entity-build-tile": {
+              "nodes": 3,
+              "stored_pebbles": 10,
+              "represented_contexts": 37
+            },
+            "entity-build-tile-layout": {
+              "nodes": 8,
+              "stored_pebbles": 46,
+              "represented_contexts": 157
+            },
+            "entity-build-tile-region": {
+              "nodes": 12,
+              "stored_pebbles": 214,
+              "represented_contexts": 787
+            },
+            "entity-capture-spawner": {
+              "nodes": 4,
+              "stored_pebbles": 14,
+              "represented_contexts": 28
+            },
+            "entity-character": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "entity-collision-group": {
+              "nodes": 37,
+              "stored_pebbles": 638,
+              "represented_contexts": 2348
+            },
+            "entity-harvest": {
+              "nodes": 3,
+              "stored_pebbles": 93,
+              "represented_contexts": 141
+            },
+            "entity-kill": {
+              "nodes": 111,
+              "stored_pebbles": 318,
+              "represented_contexts": 421
+            },
+            "entity-mine": {
+              "nodes": 576,
+              "stored_pebbles": 7038,
+              "represented_contexts": 9262
+            },
+            "entity-operate": {
+              "nodes": 729,
+              "stored_pebbles": 4749,
+              "represented_contexts": 9409
+            },
+            "entity-operate-fluid": {
+              "nodes": 21,
+              "stored_pebbles": 552,
+              "represented_contexts": 990
+            },
+            "entity-own": {
+              "nodes": 731,
+              "stored_pebbles": 6103,
+              "represented_contexts": 9391
+            },
+            "entity-own-operable": {
+              "nodes": 729,
+              "stored_pebbles": 6072,
+              "represented_contexts": 9601
+            },
+            "entity-own-space": {
+              "nodes": 250,
+              "stored_pebbles": 234,
+              "represented_contexts": 681
+            },
+            "entity-rocket-silo": {
+              "nodes": 3,
+              "stored_pebbles": 78,
+              "represented_contexts": 142
+            },
+            "entity-spawn": {
+              "nodes": 21,
+              "stored_pebbles": 20,
+              "represented_contexts": 74
+            },
+            "false": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "fluid": {
+              "nodes": 33,
+              "stored_pebbles": 392,
+              "represented_contexts": 719
+            },
+            "fluid-craft": {
+              "nodes": 33,
+              "stored_pebbles": 346,
+              "represented_contexts": 618
+            },
+            "fluid-craft-temperature": {
+              "nodes": 35,
+              "stored_pebbles": 348,
+              "represented_contexts": 618
+            },
+            "fluid-create": {
+              "nodes": 33,
+              "stored_pebbles": 391,
+              "represented_contexts": 719
+            },
+            "fluid-create-offshore-temperature": {
+              "nodes": 4,
+              "stored_pebbles": 27,
+              "represented_contexts": 55
+            },
+            "fluid-create-temperature": {
+              "nodes": 35,
+              "stored_pebbles": 414,
+              "represented_contexts": 759
+            },
+            "fluid-hold": {
+              "nodes": 33,
+              "stored_pebbles": 962,
+              "represented_contexts": 1980
+            },
+            "fluid-identity-source": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "fluid-ingredient": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "fluid-temperature": {
+              "nodes": 35,
+              "stored_pebbles": 414,
+              "represented_contexts": 759
+            },
+            "fluid-temperature-range": {
+              "nodes": 54,
+              "stored_pebbles": 783,
+              "represented_contexts": 1436
+            },
+            "fuel-category": {
+              "nodes": 5,
+              "stored_pebbles": 155,
+              "represented_contexts": 218
+            },
+            "fuel-category-burn": {
+              "nodes": 5,
+              "stored_pebbles": 48,
+              "represented_contexts": 76
+            },
+            "group-construction-robot": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-crafting-automation": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-electric-mining-drill": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-inserter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-logistic-storage-chest": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "group-mining-drill": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-pump": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-repair-pack": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-roboport": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "group-rocket-turret": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 64
+            },
+            "group-splitter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-starter-ammo": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-storage": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "group-supply": {
+              "nodes": 15,
+              "stored_pebbles": 502,
+              "represented_contexts": 714
+            },
+            "group-transport-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-underground-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "head": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "item": {
+              "nodes": 503,
+              "stored_pebbles": 12913,
+              "represented_contexts": 20024
+            },
+            "item-ammo": {
+              "nodes": 19,
+              "stored_pebbles": 377,
+              "represented_contexts": 434
+            },
+            "item-burn": {
+              "nodes": 3,
+              "stored_pebbles": 73,
+              "represented_contexts": 108
+            },
+            "item-capsule": {
+              "nodes": 16,
+              "stored_pebbles": 398,
+              "represented_contexts": 575
+            },
+            "item-craft": {
+              "nodes": 26,
+              "stored_pebbles": 533,
+              "represented_contexts": 703
+            },
+            "item-deliver": {
+              "nodes": 491,
+              "stored_pebbles": 7571,
+              "represented_contexts": 14178
+            },
+            "item-gun": {
+              "nodes": 23,
+              "stored_pebbles": 323,
+              "represented_contexts": 510
+            },
+            "item-ingredient": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "item-launch": {
+              "nodes": 499,
+              "stored_pebbles": 8002,
+              "represented_contexts": 14434
+            },
+            "launch": {
+              "nodes": 1,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "lightning-safe": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "logic-and": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "logic-or": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "mining-fluid": {
+              "nodes": 133,
+              "stored_pebbles": 2181,
+              "represented_contexts": 4102
+            },
+            "orand": {
+              "nodes": 17582,
+              "stored_pebbles": 199695,
+              "represented_contexts": 327875
+            },
+            "planet": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "projectile-package": {
+              "nodes": 12,
+              "stored_pebbles": 171,
+              "represented_contexts": 201
+            },
+            "reachable-room": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "recipe": {
+              "nodes": 1415,
+              "stored_pebbles": 26497,
+              "represented_contexts": 37806
+            },
+            "recipe-category": {
+              "nodes": 35,
+              "stored_pebbles": 1026,
+              "represented_contexts": 1791
+            },
+            "recipe-shape-fluid-slot": {
+              "nodes": 2,
+              "stored_pebbles": 6,
+              "represented_contexts": 10
+            },
+            "recipe-surface-condition": {
+              "nodes": 511,
+              "stored_pebbles": 955,
+              "represented_contexts": 3643
+            },
+            "recipe-tech-unlock": {
+              "nodes": 96,
+              "stored_pebbles": 2237,
+              "represented_contexts": 4488
+            },
+            "recipe-unlock": {
+              "nodes": 96,
+              "stored_pebbles": 2236,
+              "represented_contexts": 4488
+            },
+            "resource-category": {
+              "nodes": 12,
+              "stored_pebbles": 352,
+              "represented_contexts": 643
+            },
+            "rocket-silo": {
+              "nodes": 1,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "room": {
+              "nodes": 16,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "room-autoplace": {
+              "nodes": 16,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "room-create-platform": {
+              "nodes": 1,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "room-create-platform-starter-pack": {
+              "nodes": 1,
+              "stored_pebbles": 39,
+              "represented_contexts": 58
+            },
+            "room-launch": {
+              "nodes": 15,
+              "stored_pebbles": 30,
+              "represented_contexts": 55
+            },
+            "satisfied": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "science-pack-set-lab": {
+              "nodes": 111,
+              "stored_pebbles": 3663,
+              "represented_contexts": 7659
+            },
+            "science-pack-set-science": {
+              "nodes": 111,
+              "stored_pebbles": 2347,
+              "represented_contexts": 4060
+            },
+            "slot": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "space-connection": {
+              "nodes": 24,
+              "stored_pebbles": 42,
+              "represented_contexts": 81
+            },
+            "space-connection-asteroids": {
+              "nodes": 24,
+              "stored_pebbles": 54,
+              "represented_contexts": 93
+            },
+            "space-connection-discover": {
+              "nodes": 24,
+              "stored_pebbles": 412,
+              "represented_contexts": 821
+            },
+            "space-connection-enter": {
+              "nodes": 24,
+              "stored_pebbles": 38,
+              "represented_contexts": 103
+            },
+            "space-location": {
+              "nodes": 18,
+              "stored_pebbles": 21,
+              "represented_contexts": 72
+            },
+            "space-location-discover": {
+              "nodes": 18,
+              "stored_pebbles": 359,
+              "represented_contexts": 719
+            },
+            "space-location-reachable": {
+              "nodes": 18,
+              "stored_pebbles": 292,
+              "represented_contexts": 576
+            },
+            "space-location-spaceship": {
+              "nodes": 18,
+              "stored_pebbles": 25,
+              "represented_contexts": 72
+            },
+            "space-surface": {
+              "nodes": 1,
+              "stored_pebbles": 2,
+              "represented_contexts": 5
+            },
+            "spaceship": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 5
+            },
+            "starting-character": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "starting-planet": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "technology": {
+              "nodes": 819,
+              "stored_pebbles": 21379,
+              "represented_contexts": 43936
+            },
+            "technology-trigger": {
+              "nodes": 366,
+              "stored_pebbles": 9091,
+              "represented_contexts": 13857
+            },
+            "technology-trigger-sink": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "thruster": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 5
+            },
+            "tile": {
+              "nodes": 225,
+              "stored_pebbles": 597,
+              "represented_contexts": 1728
+            },
+            "tile-build": {
+              "nodes": 13,
+              "stored_pebbles": 231,
+              "represented_contexts": 350
+            },
+            "tile-build-item": {
+              "nodes": 13,
+              "stored_pebbles": 388,
+              "represented_contexts": 603
+            },
+            "tile-build-item-place-as-tile": {
+              "nodes": 13,
+              "stored_pebbles": 231,
+              "represented_contexts": 350
+            },
+            "tile-build-item-place-as-tile-condition": {
+              "nodes": 13,
+              "stored_pebbles": 117,
+              "represented_contexts": 444
+            },
+            "tile-build-space": {
+              "nodes": 13,
+              "stored_pebbles": 2,
+              "represented_contexts": 5
+            },
+            "tile-collision-group": {
+              "nodes": 12,
+              "stored_pebbles": 45,
+              "represented_contexts": 168
+            },
+            "tile-fluid": {
+              "nodes": 97,
+              "stored_pebbles": 177,
+              "represented_contexts": 364
+            },
+            "tile-fluid-pump": {
+              "nodes": 97,
+              "stored_pebbles": 2619,
+              "represented_contexts": 5335
+            },
+            "tile-mine": {
+              "nodes": 23,
+              "stored_pebbles": 228,
+              "represented_contexts": 350
+            },
+            "traveler": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "true": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "unsatisfied": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "warmth": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 60
+            }
+          },
+          "nodes": 28936,
+          "stored_pebbles": 366697,
+          "represented_contexts": 616493,
+          "edges": 50757
+        },
+        "split-matching": {
+          "families": {
+            "agricultural-tower": {
+              "nodes": 1,
+              "stored_pebbles": 13,
+              "represented_contexts": 26
+            },
+            "ammo-category": {
+              "nodes": 17,
+              "stored_pebbles": 191,
+              "represented_contexts": 207
+            },
+            "asteroid-chunk": {
+              "nodes": 15,
+              "stored_pebbles": 7,
+              "represented_contexts": 17
+            },
+            "asteroid-chunk-mine": {
+              "nodes": 15,
+              "stored_pebbles": 7,
+              "represented_contexts": 17
+            },
+            "asteroid-collector": {
+              "nodes": 1,
+              "stored_pebbles": 2,
+              "represented_contexts": 5
+            },
+            "balance-gun-turret": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-ammo": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-construction-robot": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-crafting-automation": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-inserter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-logistic-storage": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "balance-mechanics-mining-drill": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-no-big-electric-pole": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-pipe": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-pipe-to-ground": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-pump": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-roboport": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "balance-mechanics-splitter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-storage": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "balance-mechanics-transport-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-mechanics-underground-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "balance-rocket": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "base": {
+              "nodes": 5636,
+              "stored_pebbles": 171319,
+              "represented_contexts": 256641
+            },
+            "base-pool-only": {
+              "nodes": 32,
+              "stored_pebbles": 752,
+              "represented_contexts": 1260
+            },
+            "capture-robot": {
+              "nodes": 1,
+              "stored_pebbles": 17,
+              "represented_contexts": 34
+            },
+            "capture-spawner": {
+              "nodes": 1,
+              "stored_pebbles": 7,
+              "represented_contexts": 14
+            },
+            "cargo-landing-pad": {
+              "nodes": 1,
+              "stored_pebbles": 26,
+              "represented_contexts": 55
+            },
+            "chemical-fuel": {
+              "nodes": 1,
+              "stored_pebbles": 42,
+              "represented_contexts": 60
+            },
+            "combat-encounter": {
+              "nodes": 81,
+              "stored_pebbles": 242,
+              "represented_contexts": 300
+            },
+            "combat-target": {
+              "nodes": 101,
+              "stored_pebbles": 3480,
+              "represented_contexts": 4147
+            },
+            "combat-weapon": {
+              "nodes": 139,
+              "stored_pebbles": 2150,
+              "represented_contexts": 3895
+            },
+            "cost-unit": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "create-platform": {
+              "nodes": 1,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "damage-type": {
+              "nodes": 8,
+              "stored_pebbles": 246,
+              "represented_contexts": 271
+            },
+            "deliver": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 34
+            },
+            "electric-pole": {
+              "nodes": 1,
+              "stored_pebbles": 28,
+              "represented_contexts": 60
+            },
+            "enemy-evolution": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "energy-source-burner": {
+              "nodes": 6,
+              "stored_pebbles": 199,
+              "represented_contexts": 278
+            },
+            "energy-source-electric": {
+              "nodes": 1,
+              "stored_pebbles": 30,
+              "represented_contexts": 60
+            },
+            "energy-source-electric-distribution": {
+              "nodes": 1,
+              "stored_pebbles": 28,
+              "represented_contexts": 60
+            },
+            "energy-source-electric-production": {
+              "nodes": 1,
+              "stored_pebbles": 30,
+              "represented_contexts": 60
+            },
+            "energy-source-electric-production-lightning": {
+              "nodes": 1,
+              "stored_pebbles": 6,
+              "represented_contexts": 12
+            },
+            "energy-source-electric-production-lightning-capture": {
+              "nodes": 1,
+              "stored_pebbles": 19,
+              "represented_contexts": 40
+            },
+            "energy-source-electric-production-lightning-existence": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 12
+            },
+            "energy-source-fluid": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 5
+            },
+            "energy-source-heat": {
+              "nodes": 1,
+              "stored_pebbles": 24,
+              "represented_contexts": 42
+            },
+            "energy-source-heat-distribution": {
+              "nodes": 1,
+              "stored_pebbles": 29,
+              "represented_contexts": 60
+            },
+            "energy-source-heat-production": {
+              "nodes": 1,
+              "stored_pebbles": 24,
+              "represented_contexts": 42
+            },
+            "energy-source-void": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "entity": {
+              "nodes": 729,
+              "stored_pebbles": 6547,
+              "represented_contexts": 10763
+            },
+            "entity-build": {
+              "nodes": 250,
+              "stored_pebbles": 5942,
+              "represented_contexts": 9111
+            },
+            "entity-build-architecture": {
+              "nodes": 250,
+              "stored_pebbles": 6483,
+              "represented_contexts": 9996
+            },
+            "entity-build-item": {
+              "nodes": 1,
+              "stored_pebbles": 45,
+              "represented_contexts": 63
+            },
+            "entity-build-rail-group": {
+              "nodes": 1,
+              "stored_pebbles": 39,
+              "represented_contexts": 55
+            },
+            "entity-build-surface-condition": {
+              "nodes": 68,
+              "stored_pebbles": 845,
+              "represented_contexts": 3188
+            },
+            "entity-build-tile": {
+              "nodes": 3,
+              "stored_pebbles": 10,
+              "represented_contexts": 37
+            },
+            "entity-build-tile-layout": {
+              "nodes": 8,
+              "stored_pebbles": 49,
+              "represented_contexts": 157
+            },
+            "entity-build-tile-region": {
+              "nodes": 12,
+              "stored_pebbles": 222,
+              "represented_contexts": 787
+            },
+            "entity-capture-spawner": {
+              "nodes": 4,
+              "stored_pebbles": 14,
+              "represented_contexts": 28
+            },
+            "entity-character": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "entity-collision-group": {
+              "nodes": 37,
+              "stored_pebbles": 660,
+              "represented_contexts": 2348
+            },
+            "entity-harvest": {
+              "nodes": 3,
+              "stored_pebbles": 93,
+              "represented_contexts": 141
+            },
+            "entity-kill": {
+              "nodes": 111,
+              "stored_pebbles": 325,
+              "represented_contexts": 421
+            },
+            "entity-mine": {
+              "nodes": 576,
+              "stored_pebbles": 6994,
+              "represented_contexts": 9262
+            },
+            "entity-operate": {
+              "nodes": 729,
+              "stored_pebbles": 4738,
+              "represented_contexts": 9409
+            },
+            "entity-operate-fluid": {
+              "nodes": 21,
+              "stored_pebbles": 525,
+              "represented_contexts": 990
+            },
+            "entity-own": {
+              "nodes": 731,
+              "stored_pebbles": 6103,
+              "represented_contexts": 9391
+            },
+            "entity-own-operable": {
+              "nodes": 729,
+              "stored_pebbles": 6080,
+              "represented_contexts": 9601
+            },
+            "entity-own-space": {
+              "nodes": 250,
+              "stored_pebbles": 234,
+              "represented_contexts": 681
+            },
+            "entity-rocket-silo": {
+              "nodes": 3,
+              "stored_pebbles": 77,
+              "represented_contexts": 142
+            },
+            "entity-spawn": {
+              "nodes": 21,
+              "stored_pebbles": 20,
+              "represented_contexts": 74
+            },
+            "false": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "fluid": {
+              "nodes": 33,
+              "stored_pebbles": 375,
+              "represented_contexts": 719
+            },
+            "fluid-craft": {
+              "nodes": 33,
+              "stored_pebbles": 318,
+              "represented_contexts": 576
+            },
+            "fluid-craft-temperature": {
+              "nodes": 35,
+              "stored_pebbles": 319,
+              "represented_contexts": 576
+            },
+            "fluid-create": {
+              "nodes": 33,
+              "stored_pebbles": 377,
+              "represented_contexts": 719
+            },
+            "fluid-create-offshore-temperature": {
+              "nodes": 4,
+              "stored_pebbles": 27,
+              "represented_contexts": 55
+            },
+            "fluid-create-temperature": {
+              "nodes": 35,
+              "stored_pebbles": 401,
+              "represented_contexts": 759
+            },
+            "fluid-hold": {
+              "nodes": 33,
+              "stored_pebbles": 957,
+              "represented_contexts": 1980
+            },
+            "fluid-identity-source": {
+              "nodes": 7,
+              "stored_pebbles": 185,
+              "represented_contexts": 302
+            },
+            "fluid-ingredient": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "fluid-temperature": {
+              "nodes": 50,
+              "stored_pebbles": 652,
+              "represented_contexts": 1239
+            },
+            "fluid-temperature-range": {
+              "nodes": 54,
+              "stored_pebbles": 753,
+              "represented_contexts": 1436
+            },
+            "fuel-category": {
+              "nodes": 5,
+              "stored_pebbles": 158,
+              "represented_contexts": 218
+            },
+            "fuel-category-burn": {
+              "nodes": 5,
+              "stored_pebbles": 48,
+              "represented_contexts": 76
+            },
+            "group-construction-robot": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-crafting-automation": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-electric-mining-drill": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-inserter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-logistic-storage-chest": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "group-mining-drill": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-pump": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-repair-pack": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-roboport": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "group-rocket-turret": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 64
+            },
+            "group-splitter": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-starter-ammo": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-storage": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "group-supply": {
+              "nodes": 15,
+              "stored_pebbles": 498,
+              "represented_contexts": 714
+            },
+            "group-transport-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "group-underground-belt": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "head": {
+              "nodes": 5636,
+              "stored_pebbles": 145935,
+              "represented_contexts": 226209
+            },
+            "item": {
+              "nodes": 904,
+              "stored_pebbles": 24737,
+              "represented_contexts": 38283
+            },
+            "item-ammo": {
+              "nodes": 19,
+              "stored_pebbles": 383,
+              "represented_contexts": 434
+            },
+            "item-burn": {
+              "nodes": 3,
+              "stored_pebbles": 73,
+              "represented_contexts": 108
+            },
+            "item-capsule": {
+              "nodes": 16,
+              "stored_pebbles": 395,
+              "represented_contexts": 575
+            },
+            "item-craft": {
+              "nodes": 38,
+              "stored_pebbles": 535,
+              "represented_contexts": 703
+            },
+            "item-deliver": {
+              "nodes": 491,
+              "stored_pebbles": 7550,
+              "represented_contexts": 14178
+            },
+            "item-gun": {
+              "nodes": 23,
+              "stored_pebbles": 322,
+              "represented_contexts": 510
+            },
+            "item-ingredient": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "item-launch": {
+              "nodes": 499,
+              "stored_pebbles": 7970,
+              "represented_contexts": 14434
+            },
+            "launch": {
+              "nodes": 1,
+              "stored_pebbles": 30,
+              "represented_contexts": 55
+            },
+            "lightning-safe": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "logic-and": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "logic-or": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "mining-fluid": {
+              "nodes": 133,
+              "stored_pebbles": 2120,
+              "represented_contexts": 4102
+            },
+            "orand": {
+              "nodes": 17584,
+              "stored_pebbles": 199384,
+              "represented_contexts": 327791
+            },
+            "planet": {
+              "nodes": 1,
+              "stored_pebbles": 16,
+              "represented_contexts": 61
+            },
+            "projectile-package": {
+              "nodes": 12,
+              "stored_pebbles": 171,
+              "represented_contexts": 201
+            },
+            "reachable-room": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "recipe": {
+              "nodes": 1415,
+              "stored_pebbles": 26567,
+              "represented_contexts": 37806
+            },
+            "recipe-category": {
+              "nodes": 35,
+              "stored_pebbles": 1036,
+              "represented_contexts": 1791
+            },
+            "recipe-shape-fluid-slot": {
+              "nodes": 2,
+              "stored_pebbles": 6,
+              "represented_contexts": 10
+            },
+            "recipe-surface-condition": {
+              "nodes": 511,
+              "stored_pebbles": 955,
+              "represented_contexts": 3643
+            },
+            "recipe-tech-unlock": {
+              "nodes": 96,
+              "stored_pebbles": 2226,
+              "represented_contexts": 4488
+            },
+            "recipe-unlock": {
+              "nodes": 96,
+              "stored_pebbles": 2225,
+              "represented_contexts": 4488
+            },
+            "resource-category": {
+              "nodes": 12,
+              "stored_pebbles": 353,
+              "represented_contexts": 643
+            },
+            "rocket-silo": {
+              "nodes": 1,
+              "stored_pebbles": 30,
+              "represented_contexts": 55
+            },
+            "room": {
+              "nodes": 16,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "room-autoplace": {
+              "nodes": 16,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "room-create-platform": {
+              "nodes": 1,
+              "stored_pebbles": 31,
+              "represented_contexts": 55
+            },
+            "room-create-platform-starter-pack": {
+              "nodes": 1,
+              "stored_pebbles": 40,
+              "represented_contexts": 58
+            },
+            "room-launch": {
+              "nodes": 15,
+              "stored_pebbles": 30,
+              "represented_contexts": 55
+            },
+            "satisfied": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "science-pack-set-lab": {
+              "nodes": 111,
+              "stored_pebbles": 3663,
+              "represented_contexts": 7659
+            },
+            "science-pack-set-science": {
+              "nodes": 111,
+              "stored_pebbles": 2372,
+              "represented_contexts": 4060
+            },
+            "slot": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "space-connection": {
+              "nodes": 24,
+              "stored_pebbles": 42,
+              "represented_contexts": 81
+            },
+            "space-connection-asteroids": {
+              "nodes": 24,
+              "stored_pebbles": 54,
+              "represented_contexts": 93
+            },
+            "space-connection-discover": {
+              "nodes": 24,
+              "stored_pebbles": 412,
+              "represented_contexts": 821
+            },
+            "space-connection-enter": {
+              "nodes": 24,
+              "stored_pebbles": 38,
+              "represented_contexts": 103
+            },
+            "space-location": {
+              "nodes": 18,
+              "stored_pebbles": 21,
+              "represented_contexts": 72
+            },
+            "space-location-discover": {
+              "nodes": 18,
+              "stored_pebbles": 356,
+              "represented_contexts": 719
+            },
+            "space-location-reachable": {
+              "nodes": 18,
+              "stored_pebbles": 292,
+              "represented_contexts": 576
+            },
+            "space-location-spaceship": {
+              "nodes": 18,
+              "stored_pebbles": 25,
+              "represented_contexts": 72
+            },
+            "space-surface": {
+              "nodes": 1,
+              "stored_pebbles": 2,
+              "represented_contexts": 5
+            },
+            "spaceship": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 5
+            },
+            "starting-character": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "starting-planet": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "technology": {
+              "nodes": 819,
+              "stored_pebbles": 21380,
+              "represented_contexts": 43936
+            },
+            "technology-trigger": {
+              "nodes": 366,
+              "stored_pebbles": 8942,
+              "represented_contexts": 13857
+            },
+            "technology-trigger-sink": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "thruster": {
+              "nodes": 1,
+              "stored_pebbles": 3,
+              "represented_contexts": 5
+            },
+            "tile": {
+              "nodes": 225,
+              "stored_pebbles": 597,
+              "represented_contexts": 1728
+            },
+            "tile-build": {
+              "nodes": 13,
+              "stored_pebbles": 230,
+              "represented_contexts": 350
+            },
+            "tile-build-item": {
+              "nodes": 13,
+              "stored_pebbles": 379,
+              "represented_contexts": 603
+            },
+            "tile-build-item-place-as-tile": {
+              "nodes": 13,
+              "stored_pebbles": 230,
+              "represented_contexts": 350
+            },
+            "tile-build-item-place-as-tile-condition": {
+              "nodes": 13,
+              "stored_pebbles": 117,
+              "represented_contexts": 444
+            },
+            "tile-build-space": {
+              "nodes": 13,
+              "stored_pebbles": 2,
+              "represented_contexts": 5
+            },
+            "tile-collision-group": {
+              "nodes": 12,
+              "stored_pebbles": 46,
+              "represented_contexts": 168
+            },
+            "tile-fluid": {
+              "nodes": 97,
+              "stored_pebbles": 177,
+              "represented_contexts": 364
+            },
+            "tile-fluid-pump": {
+              "nodes": 97,
+              "stored_pebbles": 2619,
+              "represented_contexts": 5335
+            },
+            "tile-mine": {
+              "nodes": 23,
+              "stored_pebbles": 230,
+              "represented_contexts": 350
+            },
+            "traveler": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "true": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 66
+            },
+            "unsatisfied": {
+              "nodes": 1,
+              "stored_pebbles": 0,
+              "represented_contexts": 0
+            },
+            "warmth": {
+              "nodes": 1,
+              "stored_pebbles": 18,
+              "represented_contexts": 60
+            }
+          },
+          "nodes": 40674,
+          "stored_pebbles": 696288,
+          "represented_contexts": 1119410,
+          "edges": 63268
+        }
+      },
+      "intentional_stop": true
+    }
+  },
+  "savings": {
+    "nodes": 1057,
+    "edges": 1057,
+    "stored_pebbles": 29964,
+    "represented_contexts": 48909
+  },
+  "kept_uses": {
+    "selected_reachable_uses": 363,
+    "shared_source_bases": 32,
+    "old_destination_nodes": 363,
+    "old_head_nodes": 363,
+    "old_base_nodes": 363,
+    "surviving_family_represented_contexts_unchanged": true
+  },
+  "source_note": "The frozen before and after snapshots also straddle concurrent changes to rebuild/init.lua and rebuild/starting-recipes.lua. These changes occur after unified randomization; footprint and UNIFIEDCHECK comparisons precede that stage, but final rebuild outcomes are not an isolated A/B comparison. These historical full-preview failures used snapshots taken before the live rebuild files changed at 18:08 on 2026-10-12. They do not establish a failure in the current rebuild version; the fresh current-tree full-preview run passed, including rebuilding and the final reachability audit.",
+  "historical_full_preview_runs": {
+    "after": {
+      "source_snapshot": "/private/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/node-footprint-60apnewx/source",
+      "verdicts": [
+        "397.754 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: UNIFIEDCHECK verdict: ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, rebuild failures 0, not counting unprotected isolatability)",
+        "585.079 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK verdict: FAILED (unreachable recipes 243, lost contexts 3056, missing promised pebbles 6068, furnace collisions 0, rebuild failures 39411, not counting unprotected isolatability)"
+      ],
+      "log_note": "Shared runner cache was subsequently cleaned by another chat; verdicts were captured before cleanup."
+    },
+    "before": {
+      "source_snapshot": "/private/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/node-footprint-fqkanlx2/source",
+      "full_run": {
+        "status": "WIP failure after map creation and control ran",
+        "UNIFIEDCHECK": "ok, zero losses",
+        "MECHCHECK": "FAILED: 2 lost contexts and 2 missing promised pebbles",
+        "missing_promises": [
+          "technology: defender @ planet: vulcanus | 10",
+          "technology: defender @ planet: vulcanus | 11"
+        ],
+        "planetary_final_failures": 2
+      },
+      "log_note": "Runner cache cleanup removed this log directory; totals and verdicts were captured before cleanup."
+    }
+  },
+  "validation": {
+    "unit_test_files_passed": 34,
+    "additional_checks": "Six ingredient pool regressions and prerequisite repair with headless pool candidates pass on the final tree.",
+    "owned_lua_style_errors": 0,
+    "hardcoded_unapproved_tables": 0,
+    "global_style_note": "Whole-tree style check and full require audit pass after restoring the patch (0 errors).",
+    "requires_audit": "python3 dev/style-check.py --requires-only --all: passed",
+    "style_errors": 0,
+    "probe_python_syntax": "python3 -m py_compile dev/experiments/run-node-footprint-probe.py: passed",
+    "final_lua_syntax": "luac -p src/randomizations/unified/execute.lua: passed after guarding the generic acceptance log for headless pool entries"
+  },
+  "next_targets": [
+    {
+      "family": "entity-own-operable",
+      "nodes": 729,
+      "stored_pebbles": 6080,
+      "represented_contexts": 9601,
+      "reason": "Audit sharing its OR with entity-own where the extra space/bootstrap alternatives are absent; preserve context, acquisition, cost and handler semantics."
+    },
+    {
+      "family": "item-launch",
+      "nodes": 499,
+      "stored_pebbles": 7970,
+      "represented_contexts": 14434,
+      "reason": "Large family, but launching is a context/research transformation. Elimination needs an edge model that preserves that transformation and delivery reachability."
+    },
+    {
+      "family": "item-deliver",
+      "nodes": 491,
+      "stored_pebbles": 7550,
+      "represented_contexts": 14178,
+      "reason": "Large family. Actual node elimination must retain both launch and destination-reachability requirements; connector fusion alone does not remove this family."
+    },
+    {
+      "family": "recipe-unlock",
+      "nodes": 96,
+      "stored_pebbles": 2225,
+      "represented_contexts": 4488,
+      "reason": "Potential sharing with recipe-tech-unlock for recipes without independent fixed-machine alternatives; preserve claiming and research-home semantics."
+    },
+    {
+      "family": "technology-trigger",
+      "nodes": 366,
+      "stored_pebbles": 8942,
+      "represented_contexts": 13857,
+      "reason": "Largest remaining semantic family after recipes/items/technologies, but trigger and research-home semantics make it a higher-risk audit."
+    }
+  ],
+  "diagnostic_without_rebuild": {
+    "log_path": "/private/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/node-footprint-0buhi0ol/test-runs/run-20261012-180441-w7vmn9v7/runs/sa--node-footprint-probe@1/create.log",
+    "settings_note": "unified-preview=false; dev-unified, entity, biters and planetary preview features enabled explicitly; tech-tree-rebuild/technology/recipe/item/recipe-tech-unlock/recipe-science-pack disabled. Preview otherwise forces rebuild on.",
+    "verdicts": [
+      "285.001 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: UNIFIEDCHECK verdict: ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, rebuild failures 0, not counting unprotected isolatability)",
+      "298.049 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK verdict: ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, rebuild failures 0, not counting unprotected isolatability)"
+    ],
+    "harness_outcome": "Map creation failed after production checks: current test helper required newer biome-collision.lua absent from frozen source. Probe wrapper now uses the frozen source helper and the diagnostic is being rerun.",
+    "matched_helper_rerun": {
+      "log_path": "/private/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/node-footprint-fcc47muc/test-runs/run-20261012-181413-rwvww14x/runs/sa--node-footprint-probe@1/create.log",
+      "source_snapshot": "/private/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/node-footprint-fcc47muc/source",
+      "verdicts": [
+        "399.204 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: UNIFIEDCHECK verdict: ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, rebuild failures 0, not counting unprotected isolatability)",
+        "420.113 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK verdict: ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, rebuild failures 0, not counting unprotected isolatability)"
+      ],
+      "harness_outcome": "Passed map creation and control-stage harness; 1/1 diagnostic run passed, runner exit 0. UNIFIEDCHECK and final MECHCHECK report zero losses.",
+      "summary_path": "/private/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/node-footprint-fcc47muc/test-runs/run-20261012-181413-rwvww14x/summary.txt"
+    }
+  },
+  "current_full_preview": {
+    "source_snapshot": "/private/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/node-footprint-3__vdx8b/source",
+    "log_path": "/private/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/node-footprint-3__vdx8b/test-runs/run-20261012-182333-_8m7tlbp/runs/sa--node-footprint-probe@1/create.log",
+    "settings": {
+      "modset": "sa",
+      "seed": 1,
+      "dupes": true,
+      "dupe-count": 2,
+      "unified-preview": true,
+      "dev-unified": true
+    },
+    "status": "passed",
+    "rebuild_source_sha256": {
+      "src/randomizations/rebuild/init.lua": "76a617b6a9a5be09b4559690869e05e01bc62301856296f98d52b493fc156638",
+      "src/randomizations/rebuild/starting-recipes.lua": "5b74532a176d178b2d173ecf40ba6fe0fa373960a53b685e133959c52cd91051"
+    },
+    "verdicts": [
+      "361.567 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: UNIFIEDCHECK verdict: ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, not counting unprotected isolatability)",
+      "434.178 Script @__propertyrandomizer__/src/randomizations/unified/skeleton/check.lua:41: MECHCHECK verdict: ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, not counting unprotected isolatability)"
+    ],
+    "rebuild_files_still_match_live": true,
+    "harness_outcome": "Passed full preview with technology rebuilding enabled: map creation and control-stage harness complete; 1/1 passed, runner exit 0. UNIFIEDCHECK and final MECHCHECK report zero losses.",
+    "summary_path": "/private/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/node-footprint-3__vdx8b/test-runs/run-20261012-182333-_8m7tlbp/summary.txt"
+  }
+}

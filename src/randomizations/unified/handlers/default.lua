@@ -42,6 +42,12 @@ end
 default.spoof = function(graph)
 end
 
+-- Additional pool entries with no gameplay destination to randomize, added after ordinary claiming.
+-- Returns { base_key, num_copies } records; can_claim(prereq, dep) applies the ordinary selection/blacklist policy to a metadata destination.
+default.pool_entries = function(graph, sort_info, can_claim)
+    return {}
+end
+
 -- Mandatory
 -- Returns a num_copies of each prereq/base to add (usually 1); falsey returns mean "not claimed"
 -- Having num_copies more than one adds more prereqs to the pool for flexibility or to bias the pool one way

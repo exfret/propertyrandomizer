@@ -38,6 +38,7 @@ local sticks_with_trav = {
     },
     dep = {
         ["entity-build-item"] = true,
+        ["entity-build-architecture"] = true,
         ["tile-build-item"] = true,
         ["tile-build-item-place-as-tile"] = true,
         ["equipment-place"] = true,

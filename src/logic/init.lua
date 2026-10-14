@@ -119,6 +119,7 @@ local reductions = require("src/logic/analysis/reductions")
 local reduction_check = require("src/logic/analysis/reduction-check")
 local unlock_contraction = require("src/logic/analysis/unlock-contraction")
 local item_craft = require("src/logic/builders/item-craft")
+local build_supply = require("src/logic/analysis/entity-build-item")
 
 local key = gutils.key
 
@@ -257,11 +258,15 @@ local function build(extra_params)
     graph_setup.build(logic)
 
     -- The reduced graph (src/logic/analysis/reductions.lua): nodes that only pass on their one way in are left out (src/logic/analysis/pass-through.lua)
+    -- Building supply shares entity-build-architecture; placement slots keep their acquisition fields (src/logic/analysis/entity-build-item.lua)
     -- A recipe one technology unlocks, with nothing else unlocking it, gets that technology's edge directly (src/logic/analysis/unlock-contraction.lua), and so do the dependents of the types declared pass-through
+    -- Other technology-only recipe unlocks share their existing technology OR; empty ORs still keep their recipes locked.
     if reductions.enabled then
         unlock_contraction.contract(logic.graph)
+        unlock_contraction.share_forwarders(logic.graph)
         pass_through.contract(logic.graph)
         item_craft.contract(logic.graph)
+        build_supply.contract(logic.graph)
     end
 
 ----------------------------------------------------------------------------------------------------

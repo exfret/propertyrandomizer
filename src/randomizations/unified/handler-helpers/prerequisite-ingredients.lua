@@ -1,4 +1,5 @@
 -- Choose missing prerequisite ingredients without the ordinary shuffle's eligibility or cost policy.
+local ingredient_pool = require("src/randomizations/unified/handler-helpers/ingredient-pool")
 local gutils = require("src/lib/graph/graph-utils")
 local furnace_selection = require("src/prototypes/entities/furnace-selection")
 local lu = require("src/prototypes/lookup/init")
@@ -56,18 +57,22 @@ prerequisite_ingredients.choose = function(params)
             local base = graph.nodes[base_key]
             local owner = gutils.get_owner(graph, base)
             local material = material_of(owner)
-            local old_recipe = gutils.get_owner(graph, graph.nodes[base.old_head])
             local entry
-            if old_recipe.spoof == true then
-                entry = {
-                    type = material.type,
-                    name = material.name,
-                    amount = 1,
-                }
+            if base.pool_only == true then
+                entry = ingredient_pool.ingredient(graph, base, material, data.raw.recipe)
             else
-                for index, _ in pairs(base.inds) do
-                    entry = data.raw.recipe[old_recipe.name].ingredients[index]
-                    break
+                local old_recipe = gutils.get_owner(graph, graph.nodes[base.old_head])
+                if old_recipe.spoof == true then
+                    entry = {
+                        type = material.type,
+                        name = material.name,
+                        amount = 1,
+                    }
+                else
+                    for index, _ in pairs(base.inds) do
+                        entry = data.raw.recipe[old_recipe.name].ingredients[index]
+                        break
+                    end
                 end
             end
             table.insert(candidates, {

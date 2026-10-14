@@ -37,7 +37,7 @@ superpose.union = function(new_graph, old_graph)
     -- Both games have every node logic.build left out (src/logic/analysis/pass-through.lua), so their edges line up: a recipe whose technology changed between them is unlocked by either, not only with both
     -- Graphs taking the debt need that shape too (superpose.add_debt)
     reductions.expand_all(graph)
-    if #pass_through.joined_edges(old_graph) > 0 or next(old_graph.item_craft_nodes or {}) ~= nil then
+    if #pass_through.joined_edges(old_graph) > 0 or next(old_graph.item_craft_nodes or {}) ~= nil or next(old_graph.entity_build_item_nodes or {}) ~= nil then
         old_graph = table.deepcopy(old_graph)
         reductions.expand_all(old_graph)
     end

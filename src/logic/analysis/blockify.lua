@@ -5,6 +5,7 @@
 -- Also, keep some dependencies between blocks (a very light amount), like most things shouldn't even be available until after power
 -- Basically just coding in the very basic game mechanics that I can't change anyways
 
+local reductions = require("src/logic/analysis/reductions")
 local gutils = require("src/lib/graph/graph-utils")
 local lu = require("src/prototypes/lookup/init")
 local logic = require("src/logic/init")
@@ -35,6 +36,9 @@ end
 -- Segment a logic graph into "blocks", sections of nodes that serve a common game mechanic, with special emphasis on vanilla feature units
 -- For example: Steam power block has boiler, steam engine, offshore pump, with in-edges for the items to build these and fuel for boiler
 blockify.get = function(graph)
+    -- Blocks refer to the original node names, so work on an expanded private copy.
+    graph = table.deepcopy(graph)
+    reductions.expand_all(graph)
     blockify.group_node_set = {}
     blockify.node_to_group = {}
 

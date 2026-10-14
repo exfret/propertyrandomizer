@@ -1,4 +1,5 @@
 local gutils = require("src/lib/graph/graph-utils")
+local unlock_contraction = require("src/logic/analysis/unlock-contraction")
 
 local recipe_tech_unlocks = {}
 
@@ -12,7 +13,8 @@ recipe_tech_unlocks.initialize = function()
 end
 
 recipe_tech_unlocks.claim = function(graph, prereq, dep, edge)
-    if prereq.type == "recipe-tech-unlock" and dep.type == "recipe" then
+    -- A spliced recipe-unlock remains the original unclaimed boundary, even though its physical edge now comes from recipe-tech-unlock.
+    if prereq.type == "recipe-tech-unlock" and dep.type == "recipe" and not unlock_contraction.forwards_unlock(edge) then
         -- Just get a random tech
         if prereq.num_pre > 1 then
             return 1

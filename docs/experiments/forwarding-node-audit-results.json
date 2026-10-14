@@ -1,0 +1,202 @@
+{
+  "date": "2026-10-13",
+  "scope": "Read-only investigation. No production reduction implemented. Candidate footprint is not measured before/after savings or a runtime benchmark.",
+  "settings": {
+    "modset": "sa",
+    "seed": 1,
+    "dupes": true,
+    "dupe_count": 2,
+    "unified_preview": true,
+    "dev_unified": true
+  },
+  "source_snapshot": "/private/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/node-footprint-11ihwe39/source",
+  "create_log": "/private/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/node-footprint-11ihwe39/test-runs/run-20261013-185206-6felx6zo/runs/sa--node-footprint-probe@1/create.log",
+  "harness_outcome": "Intentionally stopped with NODEPROBE_STOP after the first fully split complex+home matching sort; map creation/control and final rebuilt-graph audits were not run.",
+  "frozen_audit_sha256": "a74077ec6e6b2882b245db54cf2e38ba5045a991475575d46af9e4aa9648a326",
+  "raw_audit_lines": [
+    "  12.291 Script @__propertyrandomizer__/dev/experiments/forwarding-node-audit.lua:111: FORWARDINGAUDIT logic entity-own-operable alternatives nodes=250 stored=5880 represented=9766 connector_stored=0 connector_represented=0 differing=0",
+    "  12.291 Script @__propertyrandomizer__/dev/experiments/forwarding-node-audit.lua:111: FORWARDINGAUDIT logic entity-own-operable forwarding nodes=479 stored=189 represented=272 connector_stored=0 connector_represented=0 differing=0",
+    "  12.291 Script @__propertyrandomizer__/dev/experiments/forwarding-node-audit.lua:111: FORWARDINGAUDIT logic recipe-unlock forwarding-empty nodes=8 stored=0 represented=0 connector_stored=0 connector_represented=0 differing=0",
+    "  12.291 Script @__propertyrandomizer__/dev/experiments/forwarding-node-audit.lua:111: FORWARDINGAUDIT logic recipe-unlock forwarding-multiple nodes=52 stored=1201 represented=2522 connector_stored=0 connector_represented=0 differing=0",
+    " 180.507 Script @__propertyrandomizer__/dev/experiments/forwarding-node-audit.lua:111: FORWARDINGAUDIT or-expanded entity-own-operable alternatives nodes=250 stored=6443 represented=9924 connector_stored=0 connector_represented=0 differing=0",
+    " 180.508 Script @__propertyrandomizer__/dev/experiments/forwarding-node-audit.lua:111: FORWARDINGAUDIT or-expanded entity-own-operable forwarding nodes=479 stored=166 represented=276 connector_stored=166 connector_represented=276 differing=0",
+    " 180.508 Script @__propertyrandomizer__/dev/experiments/forwarding-node-audit.lua:111: FORWARDINGAUDIT or-expanded recipe-unlock forwarding-empty nodes=8 stored=0 represented=0 connector_stored=0 connector_represented=0 differing=0",
+    " 180.508 Script @__propertyrandomizer__/dev/experiments/forwarding-node-audit.lua:111: FORWARDINGAUDIT or-expanded recipe-unlock forwarding-multiple nodes=88 stored=2276 represented=4576 connector_stored=2276 connector_represented=4576 differing=0",
+    " 195.163 Script @__propertyrandomizer__/dev/experiments/forwarding-node-audit.lua:111: FORWARDINGAUDIT split-matching entity-own-operable alternatives nodes=250 stored=6457 represented=9924 connector_stored=0 connector_represented=0 differing=0",
+    " 195.164 Script @__propertyrandomizer__/dev/experiments/forwarding-node-audit.lua:111: FORWARDINGAUDIT split-matching entity-own-operable forwarding nodes=479 stored=164 represented=276 connector_stored=164 connector_represented=276 differing=0",
+    " 195.164 Script @__propertyrandomizer__/dev/experiments/forwarding-node-audit.lua:111: FORWARDINGAUDIT split-matching recipe-unlock forwarding-empty nodes=8 stored=0 represented=0 connector_stored=0 connector_represented=0 differing=0",
+    " 195.164 Script @__propertyrandomizer__/dev/experiments/forwarding-node-audit.lua:111: FORWARDINGAUDIT split-matching recipe-unlock forwarding-multiple nodes=88 stored=2277 represented=4576 connector_stored=2277 connector_represented=4576 differing=0"
+  ],
+  "stages": {
+    "logic": {
+      "entity-own-operable": {
+        "alternatives": {
+          "nodes": 250,
+          "stored": 5880,
+          "represented": 9766,
+          "connector_stored": 0,
+          "connector_represented": 0,
+          "differing": 0
+        },
+        "forwarding": {
+          "nodes": 479,
+          "stored": 189,
+          "represented": 272,
+          "connector_stored": 0,
+          "connector_represented": 0,
+          "differing": 0
+        }
+      },
+      "recipe-unlock": {
+        "forwarding-empty": {
+          "nodes": 8,
+          "stored": 0,
+          "represented": 0,
+          "connector_stored": 0,
+          "connector_represented": 0,
+          "differing": 0
+        },
+        "forwarding-multiple": {
+          "nodes": 52,
+          "stored": 1201,
+          "represented": 2522,
+          "connector_stored": 0,
+          "connector_represented": 0,
+          "differing": 0
+        }
+      },
+      "totals": {
+        "nodes": 9932,
+        "edges": 29069,
+        "stored": 139002,
+        "represented": 240801
+      }
+    },
+    "or-expanded": {
+      "entity-own-operable": {
+        "alternatives": {
+          "nodes": 250,
+          "stored": 6443,
+          "represented": 9924,
+          "connector_stored": 0,
+          "connector_represented": 0,
+          "differing": 0
+        },
+        "forwarding": {
+          "nodes": 479,
+          "stored": 166,
+          "represented": 276,
+          "connector_stored": 166,
+          "connector_represented": 276,
+          "differing": 0
+        }
+      },
+      "recipe-unlock": {
+        "forwarding-empty": {
+          "nodes": 8,
+          "stored": 0,
+          "represented": 0,
+          "connector_stored": 0,
+          "connector_represented": 0,
+          "differing": 0
+        },
+        "forwarding-multiple": {
+          "nodes": 88,
+          "stored": 2276,
+          "represented": 4576,
+          "connector_stored": 2276,
+          "connector_represented": 4576,
+          "differing": 0
+        }
+      },
+      "totals": {
+        "nodes": 28876,
+        "edges": 50155,
+        "stored": 386864,
+        "represented": 638414
+      }
+    },
+    "split-matching": {
+      "entity-own-operable": {
+        "alternatives": {
+          "nodes": 250,
+          "stored": 6457,
+          "represented": 9924,
+          "connector_stored": 0,
+          "connector_represented": 0,
+          "differing": 0
+        },
+        "forwarding": {
+          "nodes": 479,
+          "stored": 164,
+          "represented": 276,
+          "connector_stored": 164,
+          "connector_represented": 276,
+          "differing": 0
+        }
+      },
+      "recipe-unlock": {
+        "forwarding-empty": {
+          "nodes": 8,
+          "stored": 0,
+          "represented": 0,
+          "connector_stored": 0,
+          "connector_represented": 0,
+          "differing": 0
+        },
+        "forwarding-multiple": {
+          "nodes": 88,
+          "stored": 2277,
+          "represented": 4576,
+          "connector_stored": 2277,
+          "connector_represented": 4576,
+          "differing": 0
+        }
+      },
+      "totals": {
+        "nodes": 40614,
+        "edges": 62666,
+        "stored": 724224,
+        "represented": 1149578
+      }
+    }
+  },
+  "observations": [
+    "Entity-own-operable: 479 forwarding-only nodes plus their 479 input OR connectors hold 328 stored pebbles and 552 represented contexts in split matching. The other 250 nodes hold 6457 stored pebbles and must keep their space/bootstrap alternatives.",
+    "Recipe-unlock: 88 multi-input technology-only forwarding nodes plus their 88 input OR connectors hold 4554 stored pebbles and 9152 represented contexts in split matching. Eight further forwarding nodes have empty technology ORs and no pebbles; removing a forwarder must retain the empty OR as a lock.",
+    "All audited forwarding nodes have exactly the same represented context set as their source in each measured stage. This is baseline observational evidence, not proof of equivalence after changing topology or scheduling.",
+    "The initial reduced logic has 52 multi-input recipe unlock groups; after planetary changes/expansion the matching graph has 88. Counts from those stages must not be conflated.",
+    "Existing single-technology contraction already removes both recipe unlock nodes where eligible. The remaining opportunity is sharing recipe-unlock with its existing recipe-tech-unlock OR."
+  ],
+  "integration_requirements": {
+    "entity-own-operable": [
+      "Redirect only identity input cases; retain downstream ability changes, amounts and used_payback. Keep alternative-bearing nodes explicit.",
+      "Provide reversible expansion and include it in reduction-check/superposition; reductions expanded for planetary debt otherwise return before matching.",
+      "Update explorer root filtering and skipped-row behavior for ownership standing in for operable ownership."
+    ],
+    "recipe-unlock": [
+      "Preserve the recipe-tech-unlock OR and every alternative. Keep fixed-machine alternatives explicit.",
+      "Preserve the claiming boundary: removing recipe-unlock exposes recipe-tech-unlock -> recipe, which recipe-tech-unlocks.claim recognizes. Do not accidentally activate that handler on previously unclaimed edges, especially empty ORs.",
+      "Extend unlock expansion/query handling for partially contracted groups; current expand returns immediately when recipe-tech-unlock already exists.",
+      "Preserve capability pricing: the removed OR input has no consumed amount. The live audit now rejects consuming downstream outputs as well; that additional guard was added after this frozen probe and has unit coverage.",
+      "Validate restored topology, costs, surviving contexts, claiming/customization, debt/promotion and both final audits before integrating."
+    ]
+  },
+  "recommendation": "Prioritize recipe-unlock by stored pebbles; entity-own-operable is a small secondary cleanup. First design reversible sharing that preserves claiming and debt identities.",
+  "item_deliver": {
+    "review": "docs/experiments/transport-elimination.md",
+    "status": "Earlier connector-only fusion was discarded by the user; actual transport-node elimination prototype was rejected before integration.",
+    "reasons": [
+      "Order-sensitive discovery counterexample",
+      "Launch fanout used about 52% more instructions in the synthetic comparison",
+      "Production witness/debt integration remains unproven"
+    ],
+    "decision": "Do not revive either discarded implementation. A new attempt needs production scheduling and multiple-witness gated-edge support, with total bookkeeping measured."
+  },
+  "validation": {
+    "unit_test_files_passed": 2,
+    "style_errors": 0,
+    "full_require_audit": "passed",
+    "unapproved_name_tables": 0
+  }
+}

@@ -6,6 +6,7 @@ local top = require("src/lib/sort/context-sort")
 local acquisition = require("src/logic/builders/acquisition")
 local cutils = require("src/cost/cost-utils")
 local dutils = require("src/prototypes/data-utils")
+local build_supply = require("src/logic/analysis/entity-build-item")
 
 local key = gutils.key
 local concat = gutils.concat
@@ -28,7 +29,7 @@ local function count(tbl)
 end
 
 -- Every edge into an entity node (or its entity-own node, for ways that make it ours) is a way of acquiring it
--- The exceptions link those nodes: entity-own --> entity, and entity-build --> entity-own, whose acquisition edges are the item edges into entity-build-item
+-- The exceptions link those nodes: entity-own --> entity, and entity-build --> entity-own, whose acquisition edges go into the declared build-supply OR.
 local function is_acquisition_edge(graph, edge)
     local start_type = graph.nodes[edge.start].type
     local stop_type = graph.nodes[edge.stop].type
@@ -38,7 +39,7 @@ local function is_acquisition_edge(graph, edge)
     if stop_type == "entity-own" then
         return start_type ~= "entity-build"
     end
-    return stop_type == "entity-build-item"
+    return build_supply.is_node(graph.nodes[edge.stop])
 end
 
 local function contexts_of(sort_info, node_key)
@@ -160,7 +161,7 @@ test.run = function(graph)
         local usable_entities = {}
         local num_usable = 0
         for _, edge in pairs(edges_by_kind[kind]) do
-            -- The stop is an entity node, or for build, the entity-build-item node of the same name
+            -- The stop is an entity node, or for build, the declared supply OR of the same name.
             local entity_name = graph.nodes[edge.stop].name
             entities[entity_name] = true
             if is_reachable(sort_info, edge.start) then

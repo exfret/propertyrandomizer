@@ -10,6 +10,7 @@
 --   * and heat must then keep itself going: heat has a context there that's both isolatable and automatable in the sort with the remaining grants (fuel mined and fed by the now warm machines, no hand-feeding), which is pruned like the pairs
 -- These conditions are checked when the logic is built, not in the graph, so randomization's model counts a kept grant as fixed; bootstrap.justifications names what must stay true for each, which randomization keeps (src/randomizations/unified/skeleton/protection.lua)
 
+local build_supply = require("src/logic/analysis/entity-build-item")
 local gutils = require("src/lib/graph/graph-utils")
 local top = require("src/lib/sort/context-sort")
 
@@ -45,7 +46,7 @@ bootstrap.justifications = function(graph)
                     edge_key = edge_key,
                     room = graph.nodes[original_edge(graph, edge_key).start].name,
                     name = node.name,
-                    node_key = gutils.key("entity-build-item", node.name),
+                    node_key = build_supply.key(graph, node.name),
                     ability_inds = { top.ISOLATABILITY },
                 })
             end

@@ -1,7 +1,7 @@
 -- The both-ways check of graph reductions (src/logic/analysis/reductions.lua), with the hidden test-reductions setting: logic.build makes every graph twice from the same data.raw, full and reduced, and this compares them
 -- A REDUCTIONCHECK line per build says ok or FAILED, which dev/run-tests.py fails a run for:
 --   * The full graph, with each spoofed recipe category's node renamed to its group's (lutils.group_rcats), is the reduced graph with its reductions expanded: the same nodes, edges and fields.
---   * Every surviving node and every crafting query gets the same contexts in a simple sort and in one with complex and home contexts; left-out pass-through nodes have no query to compare.
+--   * Every surviving node and every crafting/supply/shared-unlock query gets the same contexts in simple and complex+home sorts; other left-out pass-through nodes have no query to compare.
 -- Home contexts are recorded without letting a smaller set's context stand for a bigger one's (top.implied_home_contexts), since which of those gets recorded depends on the order pebbles arrive in, and the two graphs reach things in different orders
 -- (Complex contexts without home contexts aren't compared: their discovery rule depends on the order too, and no data-stage sort uses them)
 
@@ -9,7 +9,9 @@ local gutils = require("src/lib/graph/graph-utils")
 local top = require("src/lib/sort/context-sort")
 local lutils = require("src/logic/logic-utils")
 local reductions = require("src/logic/analysis/reductions")
+local build_supply = require("src/logic/analysis/entity-build-item")
 local item_craft = require("src/logic/builders/item-craft")
+local unlock_contraction = require("src/logic/analysis/unlock-contraction")
 
 local reduction_check = {}
 
@@ -70,7 +72,13 @@ end
 -- A node's contexts' names, as one string
 local function contexts_text(graph, sort_info, node_key)
     local names = {}
-    for context, _ in pairs(item_craft.context_inds(graph, sort_info, node_key)) do
+    local contexts = item_craft.context_inds(graph, sort_info, node_key)
+    if gutils.deconstruct(node_key).type == "entity-build-item" then
+        contexts = build_supply.context_inds(graph, sort_info, node_key)
+    elseif gutils.deconstruct(node_key).type == "recipe-unlock" then
+        contexts = unlock_contraction.context_inds(graph, sort_info, node_key)
+    end
+    for context, _ in pairs(contexts) do
         table.insert(names, top.context_name(context))
     end
     table.sort(names)
@@ -113,7 +121,8 @@ reduction_check.compare = function(full, reduced, home_sets, where)
         local differing = {}
         for node_key, _ in pairs(full.nodes) do
             local reduced_key = stand_in(node_key)
-            if reduced.nodes[reduced_key] ~= nil or (reduced.item_craft_nodes or {})[reduced_key] ~= nil then
+            local forwarded_unlock = gutils.deconstruct(node_key).type == "recipe-unlock" and unlock_contraction.forwarding_key(reduced, full.nodes[node_key].name) ~= nil
+            if reduced.nodes[reduced_key] ~= nil or (reduced.item_craft_nodes or {})[reduced_key] ~= nil or (reduced.entity_build_item_nodes or {})[reduced_key] ~= nil or forwarded_unlock then
                 local full_text = contexts_text(full, full_sort, node_key)
                 local reduced_text = contexts_text(reduced, reduced_sort, reduced_key)
                 if full_text ~= reduced_text then
