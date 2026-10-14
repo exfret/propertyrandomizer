@@ -341,6 +341,28 @@ test("every target gets a node with the weapons that kill it on its own in time"
     assert(edge(graph, key("combat-target", "test-big"), key("entity-kill", "test-big")) ~= nil)
 end)
 
+test("only combat targets keep fixed inputs, including empty and segment targets", function()
+    local graph = build()
+    local target_edges = {}
+    for node_key, node in pairs(graph.nodes) do
+        assert((node.fixed_inputs == true) == (node.type == "combat-target"), node_key)
+        if node.fixed_inputs then
+            for edge_key, _ in pairs(node.pre) do
+                target_edges[edge_key] = graph.edges[edge_key]
+            end
+        end
+    end
+    gutils.make_orands(graph)
+    for edge_key, original in pairs(target_edges) do
+        assert(graph.edges[edge_key] == original, "a fixed combat input was subdivided")
+        assert(next(graph.node_to_orands[original.stop]) == nil)
+        assert(graph.orand_to_parent[key("orand", edge_key)] == nil)
+        assert(graph.orand_to_child[key("orand", edge_key)] == nil)
+    end
+    assert(next(graph.node_to_orands[key("combat-target", "test-regenerator")]) == nil)
+    assert(edge(graph, key("combat-target", "test-crawler"), key("combat-target", "test-crawler-segment")) ~= nil)
+end)
+
 test("a weapon needs its turret or gun and its ammo, and one whose turret the logic lacks isn't used", function()
     local graph = build()
     assert(edge(graph, key("entity-operate", "test-turret"), turret_weapon) ~= nil)

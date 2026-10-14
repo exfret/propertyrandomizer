@@ -164,7 +164,8 @@ combat.build = function(graph, lu, extra_params)
         -- Pointing at the entity lets the panel show its name
         set_prot(entities[name])
         ----------------------------------------
-        add_node("combat-target", "OR", nil, name)
+        -- These alternatives are checked, never shuffled; keep their OR edges without matching connectors.
+        add_node("combat-target", "OR", nil, name, { fixed_inputs = true })
         ----------------------------------------
         -- Can some weapon kill this on its own, ten turrets of it or one in hand, within the time limit?
         -- In the final check, more turrets of a weapon count too, so only a target nothing damages is lost

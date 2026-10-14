@@ -322,6 +322,16 @@ for _, contract in pairs({
     reductions.enabled = contract
     local label = contract and "contracted" or "full"
     main_world()
+    -- Unified may have promised a technology already named by an earlier rebuild; this rebuild deletes it when discovery takes its recipe.
+    local fuel_tech_name = "exfret-rebuilt-test-fuel-suffix"
+    local fuel_tech = data.raw.technology["test-fuel-tech"]
+    data.raw.technology["test-fuel-tech"] = nil
+    fuel_tech.name = fuel_tech_name
+    data.raw.technology[fuel_tech_name] = fuel_tech
+    UNIFIED_TRIGGER_TAKERS = {
+        [fuel_tech_name] = { fuel_tech_name },
+        ["test-drill-tech"] = { "test-drill-tech" },
+    }
     logic.contexts = {
         [ROOM_A] = true,
         [ROOM_B] = true,
@@ -330,9 +340,11 @@ for _, contract in pairs({
     local isolatable = top.context_key(ROOM_B, fx.mask("10"))
     assert(top.isolatable_in(before.node_to_context_inds[gutils.key("energy-source-electric", "")], ROOM_B), label .. ": the fixture makes electricity in room B from its own resources")
     assert(before.node_to_context_inds[gutils.key("technology-trigger", "test-drill-tech")][isolatable] ~= nil, label .. ": room B meets the drill's trigger itself")
-    assert(top.isolatable_in(before.node_to_context_inds[gutils.key("technology-trigger", "test-fuel-tech")], ROOM_B) == false, label .. ": room B can't meet the fuel's trigger itself")
+    assert(top.isolatable_in(before.node_to_context_inds[gutils.key("technology-trigger", fuel_tech_name)], ROOM_B) == false, label .. ": room B can't meet the fuel's trigger itself")
     logged = {}
     randomizations.rebuild_tech_tree()
+    assert(#UNIFIED_TRIGGER_TAKERS[fuel_tech_name] == 0, label .. ": packaging the recipe retires its deliberately deleted trigger carrier")
+    assert(table.concat(UNIFIED_TRIGGER_TAKERS["test-drill-tech"], ",") == "exfret-rebuilt-test-drill-suffix", label .. ": the surviving trigger's rebuilt carrier still owes its promises")
     local discover = data.raw.technology["test-zdiscover"]
     for _, recipe_name in pairs({
         "test-generator",
@@ -368,6 +380,8 @@ for _, contract in pairs({
     logged = {}
     before = sort()
     randomizations.rebuild_tech_tree()
+    assert(#UNIFIED_TRIGGER_TAKERS[fuel_tech_name] == 0, label .. ", again: a retired trigger carrier stays retired")
+    assert(table.concat(UNIFIED_TRIGGER_TAKERS["test-drill-tech"], ",") == "exfret-rebuilt-test-drill-suffix", label .. ", again: the surviving trigger remains checked")
     discover = data.raw.technology["test-zdiscover"]
     for _, recipe_name in pairs({
         "test-generator",
@@ -381,6 +395,7 @@ for _, contract in pairs({
     assert(rebuilt("test-drill") ~= nil and rebuilt("test-drill").research_trigger ~= nil, label .. ", again: the drill stays a trigger tech")
     assert_kept(before, sort(), label .. ", again")
 end
+UNIFIED_TRIGGER_TAKERS = nil
 reductions.enabled = true
 print("ok - a planet's starting recipes become prerequisites of its discovery, stay triggers it meets, or come with it")
 print("ok - a second rebuild keeps them with the discovery")

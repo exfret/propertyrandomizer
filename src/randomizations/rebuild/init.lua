@@ -735,6 +735,7 @@ randomizations.rebuild_tech_tree = function()
     -- Rebuilt tech --> the recipe it unlocks
     local new_tech_recipes = {}
     local copied_trigger_sources = {}
+    local retired_trigger_takers = {}
     for recipe_name, prev_recipes in pairs(recipe_to_prev) do
         local recipe = data.raw.recipe[recipe_name]
 
@@ -1073,6 +1074,7 @@ randomizations.rebuild_tech_tree = function()
                 data.raw.technology[discovery].essential = true
             end
             data.raw.technology[tech_name] = nil
+            retired_trigger_takers[tech_name] = true
             is_new_tech[tech_name] = nil
             new_tech_sources[tech_name] = nil
             new_tech_recipes[tech_name] = nil
@@ -1461,7 +1463,7 @@ randomizations.rebuild_tech_tree = function()
         undiscovered_message = undiscovered_message .. " (e.g. " .. table.concat(undiscovered_examples, ", ") .. ")"
     end
     log(undiscovered_message)
-    trigger_promises.rebuild(data.raw.technology, copied_trigger_sources)
+    trigger_promises.rebuild(data.raw.technology, copied_trigger_sources, retired_trigger_takers)
 end
 
 -- Recycling recipes as the recycler would generate them from the game as it is now (see src/prototypes/recipes/recycling.lua)

@@ -1,0 +1,75 @@
+{
+  "date": "2026-10-13",
+  "measurement": "Like-for-like saved-settings snapshot comparison; not a native replay of the integrated parent commit.",
+  "measured_snapshot_base_commit": "c29e07b66b5a314dd96701fd64db2ee39889129e",
+  "measured_snapshot_included_preexisting_uncommitted_changes": true,
+  "integration_parent": "ba0f2add4746c6ec2cb87cf2ddb812dec31583e9",
+  "settings_sha256": "8255776cad0d83bff5cbac32fea2dd26c3c5b37a8363ab974d94aabe5924df01",
+  "claiming_pebbles": {
+    "before": 288260,
+    "after": 240446,
+    "delta": -47814,
+    "percent_change": -16.587108860056894
+  },
+  "combat_pebbles": {
+    "before": 51228,
+    "after": 3414
+  },
+  "combat_nodes": {
+    "before": 4155,
+    "after": 321,
+    "weapon_nodes": 139,
+    "target_nodes": 101,
+    "encounter_nodes": 81,
+    "removed_connectors": 3834
+  },
+  "instruction_profile": {
+    "sample_interval": 1000000,
+    "before_samples": 33030,
+    "after_samples": 32447,
+    "before_estimated_instructions": 33030000000,
+    "after_estimated_instructions": 32447000000,
+    "percent_change": -1.7650620647895854,
+    "complete": true
+  },
+  "native_saved_settings_validation": {
+    "unified_attempts": 1,
+    "unified_check": "ok",
+    "final_mechanic_check": "ok",
+    "unreachable_recipes": 0,
+    "lost_contexts": 0,
+    "missing_promised_pebbles": 0,
+    "furnace_collisions": 0,
+    "control_ticks": 600,
+    "passed": true
+  },
+  "integration_validation": {
+    "focused_unit_files_passed": 17,
+    "focused_unit_files_failed": 0,
+    "style_errors": 0,
+    "require_placement_errors": 0,
+    "unapproved_hardcoded_tables": 0,
+    "unapproved_node_types_or_dynamic_sites": 0,
+    "independent_compatibility_review": "no blockers",
+    "native_replay_after_intervening_commits": false,
+    "hook_skip": "User explicitly authorized --no-verify based on the completed saved-settings replay."
+  },
+  "notes": [
+    "Full loading evidence predates the intervening first-pass, graph-reduction, and module-effect commits. Do not treat these absolute counts as a measurement of their combined result.",
+    "Runtime and test files exactly match the saved-settings candidate; none overlap intervening commit changes.",
+    "The trigger bookkeeping fix retires only explicitly removed carriers. Unexpected missing carriers and surviving copies remain checked.",
+    "Wall-clock timings are affected by concurrent Factorio runs; instruction samples provide the reported work comparison."
+  ],
+  "local_evidence_directory": ".git/performance-regression/compact-combat-2026-10-13",
+  "owned_source_sha256": {
+    "src/lib/graph/graph-utils.lua": "3d05092424ca3635178110e556c32f3e8b72e78c7bcfd1ae2c6433c0753792b1",
+    "src/logic/builders/combat-encounters.lua": "22b8f9d748168f633468c265ba668cf5fa1d7cd1c7ecac6722a9ed770a75ab7e",
+    "tests/unit/logic/builders/test-combat-encounters.lua": "71c450204cc274780fed045778979f2d62f66ca455fc0ca1f710159f30d5574d",
+    "tests/unit/lib/graph/test-fixed-inputs.lua": "03f0b201b9d8673e7f076cd2ef5ce58eccf0ff84be242b1cd66d4095ddf5e6ce",
+    "tests/unit/lib/graph/test-fixed-input-debt.lua": "5ca6e32609eabcf6191804def5d7acffa638bca6e87bb8d7a729e6f9e74ee650",
+    "src/prototypes/technology/technology-trigger-promises.lua": "6254c07e0addf314246583730c4bbada8f06ebb7d29a141f77b243b7e5b52e07",
+    "src/randomizations/rebuild/init.lua": "1a43052c2995381f9849e7936af3beb8a7746990094555d6d2cec67f63eb6cf6",
+    "tests/unit/prototypes/technology/test-technology-trigger-promises.lua": "b11ae4277cdef31f0e8aaaabf3d3049cd868db08ef52a8c23147ca5e1f162c94",
+    "tests/unit/randomizations/rebuild/test-rebuild-starting-recipes.lua": "4f4df6ab2fa1e6365b0570962aee903e984c2659f942f0e85bdd82998d0231ba"
+  }
+}

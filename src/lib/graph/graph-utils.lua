@@ -449,8 +449,11 @@ gutils.make_orands = function(graph)
     for _, node in pairs(graph.nodes) do
         if node.op == "OR" then
             graph.node_to_orands[gutils.key(node)] = {}
-            for pre, _ in pairs(node.pre) do
-                table.insert(edges_to_subdivide, pre)
+            -- Fixed alternatives need no claimable AND connector; their original edge abilities still apply.
+            if node.fixed_inputs ~= true then
+                for pre, _ in pairs(node.pre) do
+                    table.insert(edges_to_subdivide, pre)
+                end
             end
         else
             -- Treat AND nodes as their own ORAND

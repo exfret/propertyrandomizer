@@ -2,10 +2,11 @@
 -- Rebuilding the tree copies research methods to per-recipe technologies and hides emptied originals.
 local trigger_promises = {}
 
-trigger_promises.rebuild = function(technologies, copied_from)
+trigger_promises.rebuild = function(technologies, copied_from, retired_takers)
     if UNIFIED_TRIGGER_TAKERS == nil then
         return
     end
+    retired_takers = retired_takers or {}
     local sources_of = {}
     for source, takers in pairs(UNIFIED_TRIGGER_TAKERS) do
         for _, taker in pairs(takers) do
@@ -18,8 +19,8 @@ trigger_promises.rebuild = function(technologies, copied_from)
         updated[source] = {}
         for _, taker in pairs(takers) do
             local technology = technologies[taker]
-            -- Only deliberate hiding retires a promise; an unexpectedly missing technology still fails the check.
-            if technology == nil or technology.hidden ~= true then
+            -- Deliberately hidden or removed carriers retire; an unexpectedly missing technology still fails the check.
+            if (technology == nil and retired_takers[taker] ~= true) or (technology ~= nil and technology.hidden ~= true) then
                 updated[source][taker] = true
             end
         end
