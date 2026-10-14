@@ -254,7 +254,8 @@ test("surviving contexts, supply witnesses and ordinary/slot costs agree with ex
         end
         for _, entry in pairs(entries) do
             for _, rank in pairs(b.node_to_context_inds[entry.base_key] or {}) do
-                assert(b.pebble_keys[rank] == entry.base_key)
+                local alias = (b.base_aliases or {})[entry.base_key]
+                assert(b.pebble_keys[rank] == (alias ~= nil and alias.source or entry.base_key))
                 local path = top.path(reduced, { rank }, b)
                 assert(path ~= nil)
             end

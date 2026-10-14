@@ -1,0 +1,326 @@
+{
+  "scope": "Validation performed in frozen scratch copies of the working tree and saved current settings. The tested final implementation was then applied to the live source for commit. Ordinary base metadata stays in graph.nodes; only independent sorting state is removed.",
+  "manifest": {
+    "root": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx",
+    "baseline": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx/baseline-v3",
+    "candidate": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx/candidate-v3",
+    "head": "df13ef30c7e70e1c2fc7902b01d3a5be2c299c67",
+    "settings": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx/current-settings.dat",
+    "settings_sha256": "b3a634bb831c2cecb83fa0f7f38fbe370b46729dc03fd10ca31c29d654075581",
+    "patch_sha256": "7b5192e32c57ee4d0ad44d3e864b29e4413ca5e31cfaeaa9c0c9fc4eae1b427d",
+    "cohort": "refreshed together after shared augmenting-search update",
+    "discarded_baseline_log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx/current-before-runs/run-20261013-224616-unh03tq_/runs/current--saved-settings@0/create.log",
+    "original_patch_sha256": "db2f3bd47a465dc931c546f2585d0305231fd6c6353e84e62a46946404588b64",
+    "sort_sharing_modes": "simple, and complex with home contexts; complex without home contexts retains explicit bases"
+  },
+  "cases": [
+    {
+      "case": "current--saved-settings@0",
+      "group": "current-after-runs",
+      "log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx/current-after-runs/run-20261013-235935-7x_p21rw/runs/current--saved-settings@0/create.log",
+      "control_log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx/current-after-runs/run-20261013-235935-7x_p21rw/runs/current--saved-settings@0/control.log",
+      "unified_verdicts": [],
+      "final_verdicts": [],
+      "reachability": [],
+      "control_complete": false,
+      "unified_attempts": [],
+      "reductions": [],
+      "errors": [],
+      "status": "stopped_before_final_audit",
+      "source_cohort": "final guarded candidate / paired baseline"
+    },
+    {
+      "case": "current--saved-settings@0",
+      "group": "current-before-runs",
+      "log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx/current-before-runs/run-20261013-224616-unh03tq_/runs/current--saved-settings@0/create.log",
+      "control_log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx/current-before-runs/run-20261013-224616-unh03tq_/runs/current--saved-settings@0/control.log",
+      "unified_verdicts": [],
+      "final_verdicts": [],
+      "reachability": [],
+      "control_complete": false,
+      "unified_attempts": [
+        "1"
+      ],
+      "reductions": [],
+      "errors": [],
+      "status": "stopped_before_final_audit",
+      "source_cohort": "earlier snapshot"
+    },
+    {
+      "case": "current--saved-settings@0",
+      "group": "current-before-runs",
+      "log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx/current-before-runs/run-20261013-231423-qts8lbqr/runs/current--saved-settings@0/create.log",
+      "control_log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx/current-before-runs/run-20261013-231423-qts8lbqr/runs/current--saved-settings@0/control.log",
+      "unified_verdicts": [],
+      "final_verdicts": [],
+      "reachability": [],
+      "control_complete": false,
+      "unified_attempts": [
+        "1"
+      ],
+      "reductions": [],
+      "errors": [],
+      "profile": {
+        "file": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx/current-before-runs/run-20261013-231423-qts8lbqr/runs/current--saved-settings@0/profile.json",
+        "samples": 27007,
+        "interval": 1000000,
+        "complete": false,
+        "instructions": 27007000000,
+        "phases_instructions": {
+          "data stage before the randomizer's data-final-fixes": 5000000,
+          "randomizer: reformat, shared references": 12000000,
+          "randomizer: config, duplicates, planetary stages": 1770000000,
+          "randomizer: planetary repairs, deposits, graph setup": 16768000000,
+          "randomizer: initial logic, sorts and costs": 1319000000,
+          "unified: graph prep": 558000000,
+          "unified: claiming": 213000000,
+          "unified: pools": 116000000,
+          "unified: first pass": 5066000000,
+          "unified: shuffle": 1180000000
+        },
+        "sort_instructions": 19213000000,
+        "lua_sampled_peak_mib": 4722.1,
+        "lua_live_peak_mib": 1692.0,
+        "rss_peak_mib": 3128.25,
+        "footprint_peak_mib": 4925.0
+      },
+      "status": "failed_or_timed_out",
+      "source_cohort": "final guarded candidate / paired baseline"
+    },
+    {
+      "case": "current--saved-settings@0",
+      "group": "current-before-runs",
+      "log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx/current-before-runs/run-20261014-000353-c1n51irn/runs/current--saved-settings@0/create.log",
+      "control_log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx/current-before-runs/run-20261014-000353-c1n51irn/runs/current--saved-settings@0/control.log",
+      "unified_verdicts": [],
+      "final_verdicts": [],
+      "reachability": [],
+      "control_complete": false,
+      "unified_attempts": [
+        "1"
+      ],
+      "reductions": [],
+      "errors": [],
+      "status": "stopped_before_final_audit",
+      "source_cohort": "final guarded candidate / paired baseline"
+    },
+    {
+      "case": "sa--base-descriptor-two-dupes@2",
+      "group": "sa-other-seeds-runs",
+      "log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx/sa-other-seeds-runs/run-20261013-221807-aodp58c4/runs/sa--base-descriptor-two-dupes@2/create.log",
+      "control_log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx/sa-other-seeds-runs/run-20261013-221807-aodp58c4/runs/sa--base-descriptor-two-dupes@2/control.log",
+      "unified_verdicts": [
+        "ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, not counting unprotected isolatability)"
+      ],
+      "final_verdicts": [
+        "ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, not counting unprotected isolatability)"
+      ],
+      "reachability": [
+        [
+          "26",
+          "26"
+        ]
+      ],
+      "control_complete": true,
+      "unified_attempts": [
+        "1"
+      ],
+      "reductions": [],
+      "errors": [],
+      "status": "passed",
+      "source_cohort": "earlier snapshot"
+    },
+    {
+      "case": "sa--base-descriptor-two-dupes@3",
+      "group": "sa-other-seeds-runs",
+      "log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx/sa-other-seeds-runs/run-20261013-221807-aodp58c4/runs/sa--base-descriptor-two-dupes@3/create.log",
+      "control_log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx/sa-other-seeds-runs/run-20261013-221807-aodp58c4/runs/sa--base-descriptor-two-dupes@3/control.log",
+      "unified_verdicts": [],
+      "final_verdicts": [],
+      "reachability": [],
+      "control_complete": false,
+      "unified_attempts": [],
+      "reductions": [],
+      "errors": [],
+      "status": "stopped_before_final_audit",
+      "source_cohort": "earlier snapshot"
+    }
+  ],
+  "runner_results": [
+    {
+      "ok": false,
+      "problems": [
+        "map creation failed (exit timeout after 45 minutes)"
+      ],
+      "hard_problems": [],
+      "dir": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/base-descriptors-validation-_0nfwmfx/current-before-runs/run-20261013-231423-qts8lbqr/runs/current--saved-settings@0",
+      "seconds": 2700.8565351963043,
+      "science_costs": "",
+      "dump_hash": null,
+      "name": "current/saved-settings@0",
+      "label": "current-before",
+      "variant": "baseline",
+      "settings": {
+        "test-unit": false,
+        "preset": "default",
+        "bias": "default",
+        "chaos": "default",
+        "dupes": true,
+        "logistic": "more",
+        "production": "more",
+        "military": "more",
+        "misc": "more",
+        "technology": true,
+        "recipe": false,
+        "recipe-science-pack": false,
+        "recipe-tech-unlock": false,
+        "recipe-tech-unlock-duplicates": false,
+        "item": false,
+        "item-percent": 100.0,
+        "item-retries": 10,
+        "unified-retries": 10,
+        "unified-tech-prereqs": false,
+        "unified-recipe-tech-unlocks": false,
+        "unified-spoiling": false,
+        "unified-tech-science-packs": false,
+        "unified-entity-operation-fluid": false,
+        "unified-mining-fluid-required": false,
+        "unified-entity-autoplace": false,
+        "unified-recipe-ingredients": false,
+        "unified-item-ingredients": false,
+        "unified-item": false,
+        "unified-technology-delinearization": "some",
+        "tech-tree-rebuild": true,
+        "icon": false,
+        "sound": false,
+        "gui": false,
+        "locale": false,
+        "colors": "no",
+        "numerical-algorithm": "exfret-random-walk",
+        "overrides": "",
+        "unified-entity": true,
+        "planetary-oceans": true,
+        "unified-entity-biters": true,
+        "planetary-resources": true,
+        "planetary-lightning": true,
+        "planetary-freezing": false,
+        "dev-unified": false,
+        "planetary-locks": false,
+        "extra-starting-items": true,
+        "unified-preview": true,
+        "planetary-rewards": false,
+        "planetary-connections": true,
+        "military-rebalance": true,
+        "planetary-rewards-only": "",
+        "planetary-rewards-rehome": false,
+        "planetary-fix-pass": true,
+        "dump-data-raw": true,
+        "dupe-count": 2,
+        "planetary-enemies": true,
+        "planetary-biomes": true,
+        "military-difficulty": "normal",
+        "military-clear-time": 20.0,
+        "independent-deposits": true,
+        "test-reductions": false,
+        "planetary-biome-placement": true
+      },
+      "seed": 0
+    }
+  ],
+  "compatibility_fix": "Represented-context counts and room/watched requirement analysis include descriptor-only bases. A missing room-requirement entry was reproduced before this fix; fixed comparison covers 40 DAGs and 20 cyclic variants. Sharing is disabled for complex sorts without home contexts: actual discovery comparisons reproduced context loss in that mode. The guarded implementation passes 120 discovery comparisons; simple sorts and complex sorts with home contexts retain the optimization.",
+  "validation": {
+    "descriptor_cases": 10,
+    "discovery_comparisons": 120,
+    "discovery_modes": [
+      "simple",
+      "complex without home contexts",
+      "complex with home contexts"
+    ],
+    "generated_dags": 40,
+    "cyclic_variants": 20,
+    "original_targeted_files": {
+      "pass": 11,
+      "timeout": 1
+    },
+    "extended_implied_context_suite": {
+      "baseline": "pass, 334 seconds",
+      "candidate": "pass, 333 seconds"
+    },
+    "additional_api_rebuild_files": {
+      "pass": 12,
+      "timeout": 1,
+      "timeout_details": "Unrelated experimental test-rebuild-proof-sort.py invokes its implied-context suite with a hardcoded 120-second timeout. No changes made to that experiment."
+    },
+    "scratch_style_errors": 0,
+    "require_audit": "passed",
+    "style_checker_regression": "passed",
+    "name_audit": "0 unapproved tables",
+    "node_type_audit": "0 unapproved types or dynamic sites"
+  },
+  "limitations": [
+    "Instruction counts are sampled Lua VM instructions, not machine instructions.",
+    "Memory profiles change GC timing; native peaks and elapsed times are diagnostic under host contention.",
+    "Whole-load before/after randomization choices differ because shared witnesses change ranks and random-number consumption.",
+    "Initial SA two-dupe seed 2 passed on the earlier source snapshot before helper corrections and the home-context guard. It is additional compatibility evidence, not a validation of the final frozen source cohort.",
+    "Discarded setup attempts launched no Factorio loads; initial unprofiled seed 3 was stopped only through verified own runner PID before meaningful validation."
+  ],
+  "wall_time_diagnostic": {
+    "same_baseline_and_profiler": {
+      "previous_first_20G_seconds": 2191.157,
+      "current_first_20G_seconds": 646.591,
+      "previous_10G_collection_seconds": 43.703,
+      "current_10G_collection_seconds": 1.99
+    },
+    "interpretation": "Large timing differences with identical code and instrumentation indicate varying host conditions. This does not measure profiler overhead. User reports 8 minutes normally, 12 minutes under comparable load. No wall-time speedup claim."
+  },
+  "host_memory_pressure_diagnostic": {
+    "sample_seconds": 10.023526208999101,
+    "page_size": 16384,
+    "delta_pages": {
+      "Swapins": 148742,
+      "Swapouts": 158912,
+      "Decompressions": 746949,
+      "Compressions": 804205
+    },
+    "swap_usage": "vm.swapusage: total = 12288.00M  used = 11577.38M  free = 710.62M  (encrypted)",
+    "logical_page_mib_per_second": {
+      "Swapins": 231.86388717310217,
+      "Swapouts": 247.71721530201296,
+      "Decompressions": 1164.3684948438336,
+      "Compressions": 1253.6210174936778
+    }
+  },
+  "implementation_sha256": {
+    "src/lib/sort/context-sort.lua": "c5e3536e0abfb7a65517f095017ead4236bb4e8fe6e5a363fb68678caf6eb121",
+    "src/lib/sort/base-descriptors.lua": "1038a44992edb5d32a0ce45f5a780b245dbe864b927cb5b03303d9d82ed8d9d0",
+    "tests/unit/lib/sort/test-base-descriptors.lua": "dbc437a1212e36f7aecec53384b962e517372d3d6bc7f42f6340315a7e3579fe",
+    "tests/unit/randomizations/unified/handler-helpers/test-ingredient-pool.lua": "68909316007e1001649db609a972f9c54f35d7f623b3506af352a04293e4476f"
+  },
+  "patch_sha256": "7b5192e32c57ee4d0ad44d3e864b29e4413ca5e31cfaeaa9c0c9fc4eae1b427d",
+  "completion": "Remaining full-load checks stopped at user request on 2026-10-14; earlier measured benefits and completed regression evidence accepted for commit.",
+  "cancelled_full_load_checks": [
+    "current settings baseline retry (stopped before final audit)",
+    "current settings candidate",
+    "current settings candidate seeds 2 and 3",
+    "remaining Space Age configurations",
+    "base-only configuration"
+  ],
+  "accepted_benchmark_report": "docs/experiments/ordinary-base-descriptors-results.json",
+  "current_settings_comparison_status": "No completed current-settings before/after pair; no performance or final-audit claim for those runs.",
+  "live_applied_sha256": {
+    "src/lib/sort/context-sort.lua": "c5e3536e0abfb7a65517f095017ead4236bb4e8fe6e5a363fb68678caf6eb121",
+    "src/lib/sort/base-descriptors.lua": "1038a44992edb5d32a0ce45f5a780b245dbe864b927cb5b03303d9d82ed8d9d0",
+    "tests/unit/lib/sort/test-base-descriptors.lua": "dbc437a1212e36f7aecec53384b962e517372d3d6bc7f42f6340315a7e3579fe",
+    "tests/unit/randomizations/unified/handler-helpers/test-ingredient-pool.lua": "68909316007e1001649db609a972f9c54f35d7f623b3506af352a04293e4476f"
+  },
+  "integration_validation": {
+    "targeted_live_unit_files": 7,
+    "passed": 7,
+    "failed": 0,
+    "style": "0 errors",
+    "requires_only_full_tree": "passed",
+    "hardcoded_names": "0 unapproved tables",
+    "node_types": "0 unapproved types or dynamic sites",
+    "precommit_full_loads": "Not rerun: user requested stopping own Factorio and accepting earlier benchmark/validation evidence."
+  }
+}

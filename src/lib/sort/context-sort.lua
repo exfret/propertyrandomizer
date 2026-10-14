@@ -16,6 +16,7 @@ local gutils = require("src/lib/graph/graph-utils")
 local rng = require("src/lib/random/rng")
 -- Used for contexts and such; actual logic dependency graph is passed in
 local logic = require("src/logic/state")
+local base_descriptors = require("src/lib/sort/base-descriptors")
 
 -- Shortcuts
 local key = gutils.key
@@ -28,6 +29,9 @@ local FORWARD_MASKS = ctx.FORWARD_MASKS
 local INVERSE_MASKS = ctx.INVERSE_MASKS
 
 local top = {}
+
+-- Ordinary base metadata points at existing source witnesses; only tests disable this comparison switch.
+top.share_base_contexts = true
 
 top.ISOLATABILITY = ISOLATABILITY
 -- Whether home contexts are kept to their home set's own rooms (see Home contexts above), rather than every room; false only to compare with how sorts used to be
@@ -162,6 +166,12 @@ top.num_contexts = function(sort_info)
     local count = 0
     for _, inds in pairs(sort_info.node_to_context_inds) do
         for _, _ in pairs(inds) do
+            count = count + 1
+        end
+    end
+    -- Descriptor queries are absent from the raw index table, but still represent node contexts.
+    for node_key, _ in pairs(sort_info.base_aliases or {}) do
+        for _, _ in pairs(sort_info.node_to_context_inds[node_key] or {}) do
             count = count + 1
         end
     end
@@ -1227,7 +1237,7 @@ local function compute_rooms_needed(graph, watched, sort_info)
     -- node_key --> context --> rooms needed, for every pebble the sort reached
     -- Pebbles start at all rooms (sources at their final sets), so a prerequisite pebble has a set exactly when the sort reached it
     local needed = {}
-    for node_key, inds in pairs(sort_info.node_to_context_inds) do
+    local function initialize_needed(node_key, inds)
         if next(inds) ~= nil then
             local node = graph.nodes[node_key]
             local start_set = all_rooms
@@ -1245,6 +1255,14 @@ local function compute_rooms_needed(graph, watched, sort_info)
                 needed[node_key][context] = start_set
             end
         end
+    end
+
+    for node_key, inds in pairs(sort_info.node_to_context_inds) do
+        initialize_needed(node_key, inds)
+    end
+    -- Room requirements describe the physical graph, including bases with shared sort witnesses.
+    for node_key, _ in pairs(sort_info.base_aliases or {}) do
+        initialize_needed(node_key, sort_info.node_to_context_inds[node_key] or {})
     end
 
     -- Node key --> the sets in needed of its prerequisites the sort reached, found once rather than through the edges on every update, or false for an AND node with one it never reached (never satisfied)
@@ -1347,6 +1365,14 @@ local function compute_rooms_needed(graph, watched, sort_info)
         local node_key = pebble_keys[ind]
         if first_ind[node_key] == nil then
             first_ind[node_key] = ind
+        end
+    end
+    -- Shared witnesses give bases the same sweep priority as their source; equal-priority dependents can wait for the next sweep.
+    for node_key, _ in pairs(sort_info.base_aliases or {}) do
+        for _, ind in pairs(sort_info.node_to_context_inds[node_key] or {}) do
+            if first_ind[node_key] == nil or ind < first_ind[node_key] then
+                first_ind[node_key] = ind
+            end
         end
     end
     local heap_inds = {}
@@ -2045,9 +2071,18 @@ top.sort = function(graph, state, new_conn, extra)
     -- Initialize node_to_context_inds on *all* nodes, etc.
     -- Only do this on new sorts
     -- We'll actually populate initial "open" list later
+    local base_aliases, base_forwarded = {}, {}
+    local invalidate_base_contexts
+    -- Without home contexts, discovery can add outgoing contexts after a base last received them; those sorts need explicit base state.
+    if top.share_base_contexts and (not complex or home_sets ~= nil) then
+        base_aliases, base_forwarded = base_descriptors.prepare(graph, state, new_conn, carries_home)
+        invalidate_base_contexts = base_descriptors.attach(node_to_context_inds, base_aliases, context_info)
+    end
     if new_conn == nil then
         for node_key, _ in pairs(graph.nodes) do
-            node_to_context_inds[node_key] = {}
+            if base_aliases[node_key] == nil then
+                node_to_context_inds[node_key] = {}
+            end
         end
     end
     -- A sort always empties open, but whatever a state still has open goes in the heap too
@@ -2470,6 +2505,7 @@ top.sort = function(graph, state, new_conn, extra)
                     -- Add the context
                     local inds = node_to_context_inds[node_key]
                     inds[context] = ind
+                    if invalidate_base_contexts ~= nil then invalidate_base_contexts(node_key) end
                     -- And the weaker contexts of its room it stands for, at their own ranks just below it, unless the node had them already (top.implied_ability_contexts)
                     if implied_abilities and home_id == nil then
                         for _, mask in pairs(WEAKER_MASKS[context_info.mask[context] + 1]) do
@@ -2486,7 +2522,7 @@ top.sort = function(graph, state, new_conn, extra)
                     local passes_unchanged = not complex or home_id ~= nil
                     -- What an isolatable pebble beyond the core's rooms, or a core one, gives research (top.research_home_contexts), found when an edge to research first asks
                     local gives_research
-                    for dep, _ in pairs(node.dep) do
+                    for dep, _ in pairs(base_forwarded[node_key] or node.dep) do
                         local edge = graph.edges[dep]
                         local depnode = graph.nodes[edge.stop]
                         if passes_unchanged or edge.abilities == nil then
@@ -2574,7 +2610,10 @@ top.sort = function(graph, state, new_conn, extra)
         end
     end
 
+    if invalidate_base_contexts ~= nil then invalidate_base_contexts(nil) end
     return {
+        base_aliases = base_aliases,
+        base_forwarded = base_forwarded,
         node_to_context_inds = node_to_context_inds,
         pebble_keys = pebble_keys,
         pebble_contexts = pebble_contexts,

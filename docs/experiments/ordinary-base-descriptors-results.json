@@ -1,0 +1,291 @@
+{
+  "date": "2026-10-13",
+  "implementation": "Ordinary base connector metadata and physical ownership links remain available to existing handlers. Base context arrays and pebbles are replaced by shared source-witness queries in the sorter. This measures the expensive state removal; it does not yet delete descriptor objects from graph.nodes.",
+  "scope": "Measurements collected in scratch before integration. Ordinary base records still exist in graph.nodes as compatibility metadata; they have no independent context arrays, pebbles or sorting steps. Production aggregator OR bases, canonical bases, transformed inputs and mechanic bases remain explicit.",
+  "baseline_source": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/ordinary-base-descriptors-yahflrhx/baseline",
+  "candidate_source": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/ordinary-base-descriptors-yahflrhx/candidate",
+  "source_head": "c6f5d842d8422460eac4c8186930d92d077d21e4",
+  "settings": {
+    "modset": "sa",
+    "seed": 1,
+    "dupes": true,
+    "dupe_count": 2,
+    "unified_preview": true,
+    "dev_unified": true
+  },
+  "controlled": {
+    "scope": "Three alternating pairs of fresh complex/home-context sorts on exactly the same two-dupe matching graph. Sort instruction samples exclude post-sort query enumeration and forced collection; retained memory includes materialized descriptor queries. Peak is sampled Lua heap growth, with profiler GC diagnostics enabled, not process RSS. Existing connector objects remain metadata in graph.nodes; ordinary bases have no independent context maps or pebbles. Sorting order is random: DO_FRODO_FIXES=false overrides the requested choose_randomly=false. Same input graph and exact represented-context membership are compared, not deterministic ordering.",
+    "log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/ordinary-base-descriptors-yahflrhx/controlled-runs/run-20261013-211953-n5jlywn_/runs/sa--ordinary-base-bench@1/create.log",
+    "interval": 1000000,
+    "context_comparison": {
+      "lost": 0,
+      "gained": 0
+    },
+    "measurements": [
+      {
+        "variant": "before",
+        "round": 1,
+        "start": 623.815,
+        "before_kb": 1861478.0009766,
+        "samples": 248,
+        "peak_kb": 2416260.46875,
+        "seconds": 15.83299999999997,
+        "peak_delta_mib": 541.779753684961,
+        "instructions": 248000000,
+        "live_delta_mib": 217.02099704742187,
+        "stored": 634522,
+        "represented": 1022044,
+        "aliases": 0
+      },
+      {
+        "variant": "after",
+        "round": 1,
+        "start": 649.564,
+        "before_kb": 1861486.7050781,
+        "samples": 215,
+        "peak_kb": 2246122.0527344,
+        "seconds": 9.343000000000075,
+        "peak_delta_mib": 375.6204566956055,
+        "instructions": 215000000,
+        "live_delta_mib": 142.214593887334,
+        "stored": 484836,
+        "represented": 1022044,
+        "aliases": 5013
+      },
+      {
+        "variant": "after",
+        "round": 2,
+        "start": 664.111,
+        "before_kb": 1861489.3085938,
+        "samples": 210,
+        "peak_kb": 2280437.984375,
+        "seconds": 11.628000000000043,
+        "peak_delta_mib": 409.12956619257807,
+        "instructions": 210000000,
+        "live_delta_mib": 142.21611309051758,
+        "stored": 480486,
+        "represented": 1022044,
+        "aliases": 5013
+      },
+      {
+        "variant": "before",
+        "round": 2,
+        "start": 680.101,
+        "before_kb": 1861491.1708984,
+        "samples": 247,
+        "peak_kb": 2410642.8154297,
+        "seconds": 11.051000000000045,
+        "peak_delta_mib": 536.2809028625977,
+        "instructions": 247000000,
+        "live_delta_mib": 217.01820468902343,
+        "stored": 635451,
+        "represented": 1022044,
+        "aliases": 0
+      },
+      {
+        "variant": "before",
+        "round": 3,
+        "start": 694.997,
+        "before_kb": 1861492.640625,
+        "samples": 248,
+        "peak_kb": 2419492.8935547,
+        "seconds": 8.908999999999992,
+        "peak_delta_mib": 544.9221220016602,
+        "instructions": 248000000,
+        "live_delta_mib": 217.12410926819337,
+        "stored": 642639,
+        "represented": 1022044,
+        "aliases": 0
+      },
+      {
+        "variant": "after",
+        "round": 3,
+        "start": 711.218,
+        "before_kb": 1861493.6191406,
+        "samples": 213,
+        "peak_kb": 2266160.1113281,
+        "seconds": 6.918000000000006,
+        "peak_delta_mib": 395.18212127685524,
+        "instructions": 213000000,
+        "live_delta_mib": 142.2169847488379,
+        "stored": 487365,
+        "represented": 1022044,
+        "aliases": 5013
+      }
+    ],
+    "summary": {
+      "before": {
+        "instructions": 248000000,
+        "live_delta_mib": 217.02099704742187,
+        "peak_delta_mib": 541.779753684961,
+        "stored": 635451,
+        "seconds": 11.051000000000045
+      },
+      "after": {
+        "instructions": 213000000,
+        "live_delta_mib": 142.21611309051758,
+        "peak_delta_mib": 395.18212127685524,
+        "stored": 484836,
+        "seconds": 9.343000000000075
+      },
+      "reduction_percent": {
+        "instructions": 14.112903225806454,
+        "live_delta_mib": 34.46896151737726,
+        "peak_delta_mib": 27.05852911833812,
+        "stored": 23.70206357374526
+      }
+    }
+  },
+  "full_load": {
+    "before": {
+      "log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/ordinary-base-descriptors-yahflrhx/baseline-runs/run-20261013-204739-n4_vgotx/runs/sa--ordinary-base-bench@1/create.log",
+      "profile": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/ordinary-base-descriptors-yahflrhx/baseline-runs/run-20261013-204739-n4_vgotx/runs/sa--ordinary-base-bench@1/profile.txt",
+      "instruction_json": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/ordinary-base-descriptors-yahflrhx/baseline-runs/run-20261013-204739-n4_vgotx/runs/sa--ordinary-base-bench@1/profile.json",
+      "summary": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/ordinary-base-descriptors-yahflrhx/baseline-runs/run-20261013-204739-n4_vgotx/summary.txt",
+      "complete_profile": true,
+      "samples": 18879,
+      "interval": 1000000,
+      "instructions": 18879000000,
+      "lua_sampled_peak_mib": 4746.2,
+      "lua_post_collection_live_peak_mib": 1757.6,
+      "rss_sampled_peak_mib": 3393.5625,
+      "footprint_sampled_peak_mib": 4730.0,
+      "phases_instructions": {
+        "data stage before the randomizer's data-final-fixes": 4000000,
+        "randomizer: reformat, shared references": 12000000,
+        "randomizer: config, duplicates, planetary stages": 4434000000,
+        "randomizer: planetary repairs, deposits, graph setup": 72000000,
+        "randomizer: initial logic, sorts and costs": 897000000,
+        "unified: graph prep": 131000000,
+        "unified: claiming": 179000000,
+        "unified: pools": 103000000,
+        "unified: first pass": 2702000000,
+        "unified: shuffle": 7709000000,
+        "unified: reflect, recycling, UNIFIEDCHECK": 332000000,
+        "randomizer: old logic graph": 130000000,
+        "randomizer: old graph randomizations": 73000000,
+        "randomizer: numerical": 26000000,
+        "randomizer: recycling, extra randomizations": 1000000,
+        "randomizer: fixes, final checks": 1000000,
+        "randomizer: tech tree rebuild": 1437000000,
+        "randomizer: other graph work, final checks": 491000000,
+        "randomizer: result summary": 28000000,
+        "randomizer: control stage info": 116000000,
+        "after the randomizer": 1000000
+      },
+      "unified_attempts": [
+        1
+      ],
+      "unified_verdicts": [
+        "ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, not counting unprotected isolatability)"
+      ],
+      "final_verdicts": [
+        "ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, not counting unprotected isolatability)"
+      ]
+    },
+    "after": {
+      "log": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/ordinary-base-descriptors-yahflrhx/candidate-runs/run-20261013-214438-me3wcczh/runs/sa--ordinary-base-bench@1/create.log",
+      "profile": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/ordinary-base-descriptors-yahflrhx/candidate-runs/run-20261013-214438-me3wcczh/runs/sa--ordinary-base-bench@1/profile.txt",
+      "instruction_json": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/ordinary-base-descriptors-yahflrhx/candidate-runs/run-20261013-214438-me3wcczh/runs/sa--ordinary-base-bench@1/profile.json",
+      "summary": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/ordinary-base-descriptors-yahflrhx/candidate-runs/run-20261013-214438-me3wcczh/summary.txt",
+      "complete_profile": true,
+      "samples": 18396,
+      "interval": 1000000,
+      "instructions": 18396000000,
+      "lua_sampled_peak_mib": 4380.9,
+      "lua_post_collection_live_peak_mib": 1681.7,
+      "rss_sampled_peak_mib": 3806.828125,
+      "footprint_sampled_peak_mib": 4237.0,
+      "phases_instructions": {
+        "data stage before the randomizer's data-final-fixes": 4000000,
+        "randomizer: reformat, shared references": 12000000,
+        "randomizer: config, duplicates, planetary stages": 4466000000,
+        "randomizer: planetary repairs, deposits, graph setup": 71000000,
+        "randomizer: initial logic, sorts and costs": 901000000,
+        "unified: graph prep": 131000000,
+        "unified: claiming": 182000000,
+        "unified: pools": 94000000,
+        "unified: first pass": 2496000000,
+        "unified: shuffle": 7262000000,
+        "unified: reflect, recycling, UNIFIEDCHECK": 338000000,
+        "randomizer: old logic graph": 181000000,
+        "randomizer: old graph randomizations": 73000000,
+        "randomizer: numerical": 27000000,
+        "randomizer: recycling, extra randomizations": 1000000,
+        "randomizer: tech tree rebuild": 1482000000,
+        "randomizer: other graph work, final checks": 529000000,
+        "randomizer: result summary": 28000000,
+        "randomizer: control stage info": 118000000
+      },
+      "unified_attempts": [
+        1
+      ],
+      "unified_verdicts": [
+        "ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, not counting unprotected isolatability)"
+      ],
+      "final_verdicts": [
+        "ok (unreachable recipes 0, lost contexts 0, missing promised pebbles 0, furnace collisions 0, not counting unprotected isolatability)"
+      ]
+    },
+    "reduction_percent": {
+      "instructions": 2.5583982202447166,
+      "lua_sampled_peak_mib": 7.696683662719654,
+      "lua_post_collection_live_peak_mib": 4.3183887118798285
+    }
+  },
+  "validation": {
+    "sort_and_matching_files": 9,
+    "new_fixture_cases": 8,
+    "broader_files": {
+      "pass": 30,
+      "fail": 2,
+      "failures": [
+        "Pre-existing pass-through-names failure reproduced in frozen baseline.",
+        "Ingredient-pool test required updating a physical-base witness assertion to a source-witness assertion; it passes after update."
+      ]
+    },
+    "targeted_rerun_files": 5,
+    "targeted_rerun_pass": 5,
+    "scratch_style_errors": 0,
+    "require_placement": "Full live --requires-only --all passed; changed scratch source files passed explicit audit.",
+    "hardcoded_names": "New descriptor module has no flagged tables.",
+    "node_types": "Live checker: 0 unapproved. No new node types in candidate.",
+    "random_graph_comparisons": 40,
+    "final_targeted_files": 11,
+    "final_targeted_pass": 11,
+    "final_live_hardcoded_names": "0 unapproved tables; no approvals made by this experiment.",
+    "patch_dry_run": "Passed against frozen baseline; live source untouched."
+  },
+  "cached_normal_edge_fix": "Regression reproduced an ordinary added edge missing later source contexts in the cached forwarding view. Forwarding is now refreshed for real sources as well as alias bases; the regression passes. The fresh-sort path measured in controlled-results.json is unchanged. Final full candidate validation uses the corrected module.",
+  "fresh_sort_benchmark_paths_unchanged_after_fix": true,
+  "limitations": [
+    "Instruction figures are sampled Lua VM instructions, not CPU machine instructions; interval is one million.",
+    "Memory measurements use diagnostic GC windows and forced collections; native memory is separate.",
+    "Full runs use different seeded matching/recipe choices after removing sorting steps, so full-load differences are one observed configuration, not isolated savings.",
+    "Multiple other Factorio processes ran on the host and the initial candidate overlapped part of the baseline. Wall-time and process RSS/footprint comparisons are diagnostic only, not speedup claims.",
+    "Controlled benchmark intentionally stopped after complete measured segments and exact context comparisons; it is not a full-game validation pass. Separate full baseline and corrected candidate loads both passed map/control and UNIFIEDCHECK/MECHCHECK verdicts.",
+    "A pre-existing pass-through-names unit failure is reproduced in the frozen baseline. Live checker failures from other ongoing work were not changed or approved."
+  ],
+  "files": [
+    "src/lib/sort/context-sort.lua",
+    "src/lib/sort/base-descriptors.lua",
+    "tests/unit/lib/sort/test-base-descriptors.lua",
+    "tests/unit/randomizations/unified/handler-helpers/test-ingredient-pool.lua"
+  ],
+  "sha256": {
+    "src/lib/sort/context-sort.lua": "2c55113a72764f7cba12ba32daffc0ae78cb5dc5b9b35413aee75f7c69a4d5ef",
+    "src/lib/sort/base-descriptors.lua": "1038a44992edb5d32a0ce45f5a780b245dbe864b927cb5b03303d9d82ed8d9d0",
+    "tests/unit/lib/sort/test-base-descriptors.lua": "fa6595d2b91116dc0da0cb355bf02da1863fe646e6ec24bd9501c5d0fd56fd6c",
+    "tests/unit/randomizations/unified/handler-helpers/test-ingredient-pool.lua": "68909316007e1001649db609a972f9c54f35d7f623b3506af352a04293e4476f"
+  },
+  "patch_sha256": "db2f3bd47a465dc931c546f2585d0305231fd6c6353e84e62a46946404588b64",
+  "reproduction": {
+    "runner": "/private/tmp/base-descriptors-bench.py",
+    "manifest": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/ordinary-base-descriptors-yahflrhx/manifest.json",
+    "controlled_probe": "/var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/ordinary-base-descriptors-yahflrhx/controlled/dev/experiments/base-descriptor-benchmark.lua"
+  },
+  "followup_validation": {
+    "report": "docs/experiments/ordinary-base-descriptors-validation.json",
+    "note": "The patch artifact has been updated with represented-context/room-analysis fixes and a guard preserving explicit bases for complex sorts without home contexts. Original measurements and hashes above describe the original benchmark cohort, not the updated patch. The updated implementation was applied to the live source and committed at the user's request after stopping the remaining full-load tests."
+  }
+}
