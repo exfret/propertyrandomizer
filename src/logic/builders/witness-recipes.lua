@@ -216,6 +216,9 @@ local function expansions_for(graph, sort_info, rank_key)
     cache.ranks[rank_key] = cache.ranks[rank_key] or {}
     return cache.ranks[rank_key], cache
 end
+-- The tech tree rebuild's own witnesses rank ties and share expansions the same way (src/randomizations/rebuild/needs.lua)
+witness_recipes.tie_rank = tie_rank
+witness_recipes.expansions_for = expansions_for
 
 -- The names of the recipes the pebble at ind in sort_info directly needs, as a set; gets_tech(recipe_name) says whether a recipe gets a tech
 -- With local_sort_info (a sort of the same graph with complex contexts), where the witness has a choice in the room of the pebble at ind, it takes what that room can make from its own resources, rather than what comes earliest

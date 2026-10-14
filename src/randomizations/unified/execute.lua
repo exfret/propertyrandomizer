@@ -35,6 +35,8 @@ local graph_customization = require("src/config/graph-customization")
 local localised_text = require("src/localisation/localised-text")
 local rng = require("src/lib/random/rng")
 local dutils = require("src/prototypes/data-utils")
+-- The planet copies' technologies keep the discoveries they follow when tech prerequisites are cleared
+local dupe_branches = require("src/prototypes/duplicates/dupe-branches")
 local gutils = require("src/lib/graph/graph-utils")
 local orand_policy = require("src/randomizations/unified/orand-policy")
 local item_fluid = require("src/randomizations/unified/item-fluid")
@@ -219,12 +221,14 @@ local function attempt(options)
     end
 
     if REMOVE_TECH_PREREQS and not repair_only then
+        -- A planet copy's technologies keep the discoveries their parallel tree follows (dupe_branches.copy_gates), so that randomization never makes something early need a copied item: the copies belong to their planet copies (user, 2026-10-12), which the tech tree rebuild keeps them behind
+        local copy_gates = dupe_branches.copy_gates(data.raw.technology)
         for _, tech in pairs(data.raw.technology) do
             if not graph_customization.excluded("tech-prereqs", {
                 type = "technology",
                 name = tech.name,
             }) then
-                tech.prerequisites = {}
+                tech.prerequisites = table.deepcopy(copy_gates[tech.name] or {})
             end
         end
     end

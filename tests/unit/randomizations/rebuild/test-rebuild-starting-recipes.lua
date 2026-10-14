@@ -371,10 +371,9 @@ for _, contract in pairs({
         end
     end
     assert_kept(before, sort(), label)
-    local summary = logged_line("Tech tree rebuild: planets' starting recipes: ")
-    assert(summary ~= nil and string.find(summary, "1 techs made prerequisites of the discovery, 1 left as triggers the planet meets, 3 recipes unlocked by the discovery instead of a tech of their own, 0 unlocked by the discovery and still by their own tech", 1, true) ~= nil, label .. ": the rebuild says what it did: " .. tostring(summary))
-    local kept = logged_line("starting recipes' techs made prerequisites of their discovery were left out by the check")
-    assert(kept ~= nil and string.find(kept, "Tech tree rebuild: 0 of 1 ", 1, true) ~= nil, label .. ": the check keeps the pole's tech before the discovery: " .. tostring(kept))
+    local summary = logged_line("Tech tree rebuild: ")
+    assert(summary ~= nil and string.find(summary, "3 starting recipes and 0 a discovery unlocked come with the discovery", 1, true) ~= nil and string.find(summary, "1 starting recipes researched before their discovery", 1, true) ~= nil, label .. ": the rebuild says what it did: " .. tostring(summary))
+    assert(logged_line("REBUILDCHECK verdict: ok") ~= nil, label .. ": the rebuild's checks pass")
 
     -- A second rebuild, like the one after the rest of randomization, finds the same: the discovery's research doesn't come back as the packaged recipes' own techs
     logged = {}
@@ -466,8 +465,9 @@ for _, contract in pairs({
     assert(unlocks(discover, "test-xcable"), label .. ": room B's discovery unlocks the cable")
     assert(not needs("test-zdiscover", "test-cdiscover"), label .. ": room B's discovery doesn't wait for room C's")
     assert_kept(before, sort(), label .. ", old unlocks")
-    local summary = logged_line("Tech tree rebuild: planets' starting recipes: ")
-    assert(summary ~= nil and string.find(summary, "1 recipes unlocked by the discovery instead of a tech of their own, 1 unlocked by the discovery and still by their own tech", 1, true) ~= nil, label .. ": the rebuild says what it did: " .. tostring(summary))
+    local summary = logged_line("Tech tree rebuild: ")
+    assert(summary ~= nil and string.find(summary, "1 starting recipes and 1 a discovery unlocked come with the discovery", 1, true) ~= nil, label .. ": the rebuild says what it did: " .. tostring(summary))
+    assert(logged_line("REBUILDCHECK verdict: ok") ~= nil, label .. ": the rebuild's checks pass")
 end
 reductions.enabled = true
 print("ok - a starting recipe the discovery already unlocked stays with it")

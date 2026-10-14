@@ -33,9 +33,9 @@ end
 
 -- graph: final logic graph; init_sort_info / final_sort_info: sorts of the original and final graphs (with complex contexts, so abilities like isolatability are checked too)
 -- Only the protected part of each mechanic context counts (see protection.lua), and every context of a planet-locked recipe, including isolatability.
--- The optional label replaces MECHCHECK in the log lines
+-- The optional label replaces MECHCHECK in the log lines, and options.furnaces = false leaves out the furnace check, for a stage that changes no recipes (the tech tree rebuild's check, src/randomizations/rebuild/tree.lua)
 -- Returns the verdict: { ok = whether every check passed, unreachable = number of recipes, lost = number of protected mechanic and planet-locked recipe contexts lost, missing = number of promised pebbles missing beyond allowed isolatability losses, furnace_collisions = number of ingredients some furnace can't pick a recipe by }
-check.run = function(graph, init_sort_info, final_sort_info, label)
+check.run = function(graph, init_sort_info, final_sort_info, label, options)
     label = label or "MECHCHECK"
     local function log_check(message)
         log(label .. " " .. message)
@@ -154,27 +154,41 @@ check.run = function(graph, init_sort_info, final_sort_info, label)
                     num_compared = num_compared + 1
                     local final_contexts = final_sort_info.node_to_context_inds[final_node_key] or {}
                     if final_contexts[pebble.context] == nil then
-                        table.insert(mismatches, {
+                        local mismatch = {
                             node_key = final_node_key,
                             model_key = pebble.node_key,
                             context = pebble.context,
                             rank = pebble.rank,
-                        })
+                        }
+                        table.insert(mismatches, mismatch)
                         local protects_isolatability = (planet_locked[final_node_key] or {})[pebble.context] ~= nil or (node.mechanic == true and protection.protects_isolatability(node) and top.context_home(pebble.context) == nil)
                         if protects_isolatability == true or not only_isolatability_lost(pebble.context, function(other)
                             return final_contexts[other] ~= nil
                         end) then
                             num_hard_missing = num_hard_missing + 1
+                            mismatch.protected = true
                         end
                     end
                 end
             end
         end
         log_check("promised pebbles compared " .. num_compared .. "; missing in final game " .. #mismatches .. " (" .. num_hard_missing .. " protected losses)")
-        for i = 1, math.min(20, #mismatches) do
-            local mismatch = mismatches[i]
+        -- Protected losses first, since they're what fails the verdict
+        local listed = {}
+        for _, mismatch in pairs(mismatches) do
+            if mismatch.protected then
+                table.insert(listed, mismatch)
+            end
+        end
+        for _, mismatch in pairs(mismatches) do
+            if not mismatch.protected then
+                table.insert(listed, mismatch)
+            end
+        end
+        for i = 1, math.min(20, #listed) do
+            local mismatch = listed[i]
             local model_note = mismatch.model_key ~= mismatch.node_key and ("; the model's " .. mismatch.model_key) or ""
-            log_check("promised but missing: " .. mismatch.node_key .. " @ " .. top.context_name(mismatch.context) .. " (model rank " .. mismatch.rank .. model_note .. ")")
+            log_check("promised but missing" .. (mismatch.protected and " (protected)" or "") .. ": " .. mismatch.node_key .. " @ " .. top.context_name(mismatch.context) .. " (model rank " .. mismatch.rank .. model_note .. ")")
         end
     end
 
@@ -256,8 +270,11 @@ check.run = function(graph, init_sort_info, final_sort_info, label)
 
     -- Furnaces (the recycler too) pick their recipe by ingredient, which the logic graph doesn't model, so check the game itself
     -- Two recipes one furnace can craft that share an ingredient can't both be used there; only collisions the original game (old_data_raw) didn't have count
-    local furnace_collisions = furnace_selection.new_collisions(old_data_raw)
-    log_check("checked furnace recipe selection; collisions " .. #furnace_collisions)
+    local furnace_collisions = {}
+    if (options or {}).furnaces ~= false then
+        furnace_collisions = furnace_selection.new_collisions(old_data_raw)
+        log_check("checked furnace recipe selection; collisions " .. #furnace_collisions)
+    end
     for _, collision in pairs(furnace_collisions) do
         log_check("furnace collision on " .. collision.ingredient .. ": " .. table.concat(collision.recipes, ", "))
     end

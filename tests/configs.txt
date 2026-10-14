@@ -73,7 +73,7 @@ pin unified-spoiling=true unified-all
 pin dev-unified=false preview preview-with-graph preview-rewards reduction-check
 
 # config NAME SUITE [seeds=A,B,...] [nocheck=CHECK,...] SETTING=VALUE...: a hand-picked config (no spaces inside a value)
-# nocheck turns off reachability, mechcheck, control or science-cost (see dev/run-tests.py)
+# nocheck turns off reachability, mechcheck, rebuildcheck, control or science-cost (see dev/run-tests.py)
 # In-game unit tests (tests/execute.lua); they stop before randomization, so there's no reachability data or MECHCHECK verdict
 config unit-tests smoke nocheck=reachability,mechcheck test-unit=true
 # The unified preview as releases have it (dev-unified off), so the preview alone has to turn on the unified randomizations still in development

@@ -150,10 +150,20 @@ local function fixture(techs, build_world)
             return key
         end
         build_world(node)
+        -- Trigger nodes, which the rebuild may make for research fitting a room, keep their contexts like the logic's (src/logic/builders/concrete.lua)
+        logic.type_info["technology-trigger"] = logic.type_info["technology-trigger"] or {}
         for name, prototype in pairs(data.raw.technology) do
             local key = node("technology", name, "AND")
-            for _, ingredient in pairs(prototype.unit.ingredients) do
-                gutils.add_edge(graph, gutils.key("item", ingredient[1]), key, {
+            if prototype.unit ~= nil then
+                for _, ingredient in pairs(prototype.unit.ingredients) do
+                    gutils.add_edge(graph, gutils.key("item", ingredient[1]), key, {
+                        abilities = fx.edge({ [2] = true }),
+                    })
+                end
+            elseif prototype.research_trigger ~= nil then
+                -- A tech researched by crafting an item, through its trigger node (like rebuild-world-for-tests.lua)
+                local trigger = node("technology-trigger", name, "OR", { gutils.key("item", prototype.research_trigger.item) })
+                gutils.add_edge(graph, trigger, key, {
                     abilities = fx.edge({ [2] = true }),
                 })
             end
@@ -279,8 +289,8 @@ print("ok - contexts where the target recipe can't be made don't keep out a prer
 
 -- A part made in room A from an input whose tech isn't isolatable in room B, and in room B by another recipe; room B is reached with the product made from the parts
 -- The part's tech keeps the input's tech, since the part's recipe is only made in room A, so it isn't isolatable in room B any more
--- The product's witness uses the part made in room A, so the product's tech would wait on the part's tech, and the product made in room B from the other part recipe would lose isolatability there
--- The check of the rebuilt game leaves out the prerequisites that take room B's isolatability away, and keeps the part's own
+-- The product's witness in room A uses the part made there, so a single product tech would wait on the part's tech, and the product made in room B from the other part recipe would lose isolatability there
+-- Since the 2026-10-12 redesign, room B gets the product's own tech (Unlock 2), from room B's own part, so neither takes the other's context away (before, the check of the rebuilt game left the part's tech out)
 fixture({
     ["test-input"] = "test-pack-a",
     ["test-part"] = "test-pack-ab",
@@ -316,16 +326,16 @@ assert(before.node_to_context_inds[gutils.key("recipe", "test-product")][isolata
 logged = {}
 randomizations.rebuild_tech_tree()
 assert(prerequisites("test-part")["exfret-rebuilt-test-input-suffix"], "the part's tech keeps its input's tech")
-assert(not prerequisites("test-product")["exfret-rebuilt-test-part-suffix"], "the check must leave out the prerequisite that takes room B's isolatability away")
-assert_kept(before, sort(), "chain")
-local reported = false
-for _, message in pairs(logged) do
-    if string.find(message, "Tech tree rebuild check: [1-9]%d* more prerequisites left out") ~= nil then
-        reported = true
-    end
+assert(prerequisites("test-product")["exfret-rebuilt-test-part-suffix"], "the product's tech for room A keeps room A's part")
+local room_b_product = data.raw.technology["exfret-rebuilt-test-product-unlock-2-suffix"]
+assert(room_b_product ~= nil, "room B gets the product's own tech")
+local room_b_prerequisites = {}
+for _, prereq in pairs(room_b_product.prerequisites or {}) do
+    room_b_prerequisites[prereq] = true
 end
-assert(reported, "the check says what it left out")
-print("ok - the rebuild check leaves out a prerequisite that takes a context away from another tech's recipe")
+assert(room_b_prerequisites["exfret-rebuilt-test-part-b-suffix"] and not room_b_prerequisites["exfret-rebuilt-test-part-suffix"], "room B's product tech takes room B's part, not room A's")
+assert_kept(before, sort(), "chain")
+print("ok - a recipe isolatable in two rooms by different ways gets a tech for each, so neither takes the other's context away")
 
 -- What the check counts as lost: only nodes the rebuild doesn't replace, and not home contexts on their own
 do
@@ -719,14 +729,14 @@ assert(prerequisites("test-b-recipe")["test-discover"], "a recipe made only in a
 assert(not prerequisites("test-either-recipe")["test-discover"], "a recipe whose earliest way is in the start room doesn't")
 assert(not data.raw.technology["test-discover"].hidden, "the discovery stays in the tree")
 assert_kept(before, sort(), "discovery")
-local reported = false
+-- The rebuild's own check of that (REBUILDCHECK gates, src/randomizations/rebuild/tree-checks.lua) finds nothing
+local gates_line
 for _, message in pairs(logged) do
-    if string.find(message, "Tech tree rebuild: 1 prerequisites on techs the logic needs", 1, true) ~= nil then
-        reported = true
+    if string.find(message, "REBUILDCHECK gates: ", 1, true) ~= nil then
+        gates_line = message
     end
-    assert(string.find(message, "techs unlock a recipe made only on planets they don't need the discovery of", 1, true) == nil or string.find(message, "Tech tree rebuild: 0 techs", 1, true) ~= nil, "no tech is left without its recipe's discovery: " .. message)
 end
-assert(reported, "the rebuild says how many needed techs it added")
+assert(gates_line == "REBUILDCHECK gates: 0", "no tech is left without its recipe's discovery: " .. tostring(gates_line))
 -- What the check of that counts: without the discovery, the tech could be researched before room B is reached
 logic.build()
 local tech_recipes = {
@@ -752,8 +762,8 @@ assert(#undiscovered == 1 and undiscovered[1].recipe == "test-b-recipe", "a tech
 print("ok - a recipe made only in a discovered room needs the discovery")
 
 -- A recipe made only in room B, which a tech researched in room A discovers, whose tech is isolatable there only by the discovery rule, and whose ingredient's tech is researched in room B
--- The ingredient's tech is isolatable in room B from room B's own resources, but not in room B's home set, so as a prerequisite it would take the target tech's isolatability there away
--- The prerequisite filter leaves it out up front, so the check has nothing left to cut (like the original Fulgora's water scaffold for electrolyte on sa/dupes-preview seed 1, under scrap recycling's tech)
+-- The ingredient's tech is isolatable in room B from room B's own resources, but not in room B's home set, so as a prerequisite it would take the target tech's isolatability there away from research done at home
+-- So the target tech's research changes to fit room B, a trigger room B meets (crafting its ingredient there), and the ingredient's tech stays its prerequisite (user, 2026-10-13: "Change its research to fit"; before, the prerequisite was left out, like the original Fulgora's water scaffold for electrolyte on sa/dupes-preview seed 1, under scrap recycling's tech)
 fixture({
     ["test-ingredient"] = "test-pack-b",
     ["test-target"] = "test-pack-a",
@@ -795,15 +805,18 @@ assert(before.node_to_context_inds[gutils.key("recipe", "test-target")][isolatab
 assert(before.node_to_context_inds[gutils.key("technology", "test-ingredient-tech")][isolatable_b] ~= nil, "the fixture's ingredient tech is isolatable in room B")
 logged = {}
 randomizations.rebuild_tech_tree()
-assert(not prerequisites("test-target")["exfret-rebuilt-test-ingredient-suffix"], "the ingredient's tech would take away the target tech's isolatability from the discovery rule")
+assert(prerequisites("test-target")["exfret-rebuilt-test-ingredient-suffix"], "the target tech comes after its ingredient's tech")
+local target_trigger = data.raw.technology["exfret-rebuilt-test-target-suffix"].research_trigger
+assert(target_trigger ~= nil and target_trigger.type == "craft-item" and target_trigger.item == "test-ingredient-product", "the target tech's research changes to a trigger room B meets, crafting its ingredient there")
 assert_kept(before, sort(), "rule")
-local nothing_cut = false
+-- The rebuild's own checks pass: nothing the game had is lost (REBUILDCHECK contexts) and every rule of the tree holds
+local verdict
 for _, message in pairs(logged) do
-    if string.find(message, "Tech tree rebuild check: the rebuilt game keeps everything the game had", 1, true) ~= nil then
-        nothing_cut = true
+    if string.find(message, "REBUILDCHECK verdict: ", 1, true) ~= nil then
+        verdict = message
     end
 end
-assert(nothing_cut, "the prerequisite filter leaves it out before the check")
+assert(verdict == "REBUILDCHECK verdict: ok", "the prerequisite filter leaves it out up front, so the rebuilt game passes its checks: " .. tostring(verdict))
 print("ok - a prerequisite without the home context the discovery rule needs is left out up front")
 
 -- A recipe made only in room B, which a ship reaches from room A or from room C once B is discovered; the way from A takes a few more steps, so the sort reaches B from C first

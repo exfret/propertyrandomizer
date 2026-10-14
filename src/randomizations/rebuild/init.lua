@@ -23,8 +23,11 @@ local rebuild_check = require("src/randomizations/rebuild/rebuild-check")
 local unlock_contraction = require("src/logic/analysis/unlock-contraction")
 -- What each planet needs to get going from its own resources, which its discovery brings
 local starting_recipes = require("src/randomizations/rebuild/starting-recipes")
+-- The rebuild everything but py gets (see rebuild_legacy below)
+local rebuild_tree = require("src/randomizations/rebuild/tree")
 
-randomizations.rebuild_tech_tree = function()
+-- The rebuild before the 2026-10-12 redesign, which py keeps: its sorts have no room or ability contexts, which the redesigned one places technologies by (src/randomizations/rebuild/tree.lua)
+local function rebuild_legacy()
     -- Special py fixes
     if mods["pyalternativeenergy"] then
         -- Force icons of recipes to be their sole result
@@ -1464,6 +1467,16 @@ randomizations.rebuild_tech_tree = function()
     end
     log(undiscovered_message)
     trigger_promises.rebuild(data.raw.technology, copied_trigger_sources, retired_trigger_takers)
+end
+
+randomizations.rebuild_tech_tree = function()
+    if mods["pyalternativeenergy"] then
+        rebuild_legacy()
+        -- The old rebuild has no checks of the tree it builds (dev/run-tests.py reads this verdict)
+        log("REBUILDCHECK verdict: skipped (py keeps the rebuild from before the 2026-10-12 redesign)")
+    else
+        rebuild_tree.run()
+    end
 end
 
 -- Recycling recipes as the recycler would generate them from the game as it is now (see src/prototypes/recipes/recycling.lua)

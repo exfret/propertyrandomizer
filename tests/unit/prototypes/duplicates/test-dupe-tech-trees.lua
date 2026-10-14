@@ -321,6 +321,61 @@ test("a planet copy's technologies keep only their own branch's prerequisites, a
     assert(copied["drill"].prerequisites[1] == "home-discovery-2")
 end)
 
+test("unified randomization keeps each planet copy's technology behind the discoveries its tree follows", function()
+    local function discovery(name, location, extra)
+        local prototype = extra or {}
+        prototype.effects = {
+            {
+                type = "unlock-space-location",
+                space_location = location,
+            },
+        }
+        return tech(name, prototype)
+    end
+    discovery("find-home-2", "home-2", {
+        dupe_number = 2,
+    })
+    discovery("find-hot-2", "hot-2", {
+        dupe_number = 2,
+        prerequisites = {
+            "find-home-2",
+        },
+    })
+    -- Like copy 2's electric mining drill, rooted at the starting planet copy's discovery, and Vulcanus 2's research after its own discovery
+    tech("drill-exfret-2-copy", {
+        dupe_number = 2,
+        prerequisites = {
+            "find-home-2",
+        },
+    })
+    tech("mine-exfret-2-copy", {
+        dupe_number = 2,
+        prerequisites = {
+            "find-hot-2",
+        },
+    })
+    -- Needing both, it follows the later discovery only
+    tech("big-exfret-2-copy", {
+        dupe_number = 2,
+        prerequisites = {
+            "mine-exfret-2-copy",
+            "drill-exfret-2-copy",
+        },
+    })
+    tech("original", {
+        prerequisites = {
+            "drill-exfret-2-copy",
+        },
+    })
+    local gates = dupe.copy_gates(data.raw.technology)
+    assert(#gates["drill-exfret-2-copy"] == 1 and gates["drill-exfret-2-copy"][1] == "find-home-2")
+    assert(#gates["mine-exfret-2-copy"] == 1 and gates["mine-exfret-2-copy"][1] == "find-hot-2")
+    assert(#gates["big-exfret-2-copy"] == 1 and gates["big-exfret-2-copy"][1] == "find-hot-2")
+    -- A discovery's copy follows its own tiers, and an original isn't a copy
+    assert(gates["find-hot-2"] == nil and gates["find-home-2"] == nil)
+    assert(gates["original"] == nil)
+end)
+
 test("initially enabled duplicate recipes require their copy discovery", function()
     local discovery = tech("home-discovery", {})
     dupe.home_discoveries[2] = discovery

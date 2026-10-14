@@ -223,12 +223,45 @@ local ok, err = pcall(function()
         assert(kept ~= nil and kept.hidden ~= true, "rebuild " .. round .. " didn't keep the crafting path as Unlock 2")
         -- Room A's ways couldn't be prerequisites: room B would wait for room A's pack, and the path is kept for room B
         -- Before 2026-10-10 that left it with none, and judged on room A as well, room B's ways couldn't be either
-        local prerequisites = {}
-        for _, prerequisite in pairs(kept.prerequisites or {}) do
-            table.insert(prerequisites, prerequisite)
+        -- Room B's ways are needed directly or through each other (the ingredient's own research needs the way, so reduction keeps only the ingredient's tech since the 2026-10-12 redesign)
+        local function needs(tech_name, target_name)
+            local seen = {}
+            local pending = { tech_name }
+            while #pending > 0 do
+                local current = table.remove(pending)
+                if current == target_name then
+                    return true
+                end
+                if seen[current] == nil then
+                    seen[current] = true
+                    for _, prereq in pairs((data.raw.technology[current] or {}).prerequisites or {}) do
+                        table.insert(pending, prereq)
+                    end
+                end
+            end
+            return false
         end
-        table.sort(prerequisites)
-        assert(table.concat(prerequisites, ", ") == "exfret-rebuilt-test-ingredient-b-suffix, exfret-rebuilt-test-way-b-suffix", "rebuild " .. round .. " gave Unlock 2 the prerequisites {" .. table.concat(prerequisites, ", ") .. "}, not room B's ways of crafting what it's researched by and the recipe's ingredient")
+        -- The ingredient's tech for room B can be an Unlock 2 of its own: its first tech's research (the pack made from the material) is done in time only in room A, so that tech comes after room A's way (since a 2026-10-13 review of the planner, which reads research off a route that comes in time)
+        local function needs_unlocker_of(tech_name, recipe_name)
+            for name, prototype in pairs(data.raw.technology) do
+                if prototype.hidden ~= true and needs(tech_name, name) then
+                    for _, effect in pairs(prototype.effects or {}) do
+                        if effect.type == "unlock-recipe" and effect.recipe == recipe_name then
+                            return true
+                        end
+                    end
+                end
+            end
+            return false
+        end
+        assert(needs_unlocker_of(kept_name, "test-ingredient-b"), "rebuild " .. round .. ": Unlock 2 doesn't need a tech of test-ingredient-b, room B's way of crafting the recipe's ingredient")
+        assert(needs(kept_name, "exfret-rebuilt-test-way-b-suffix"), "rebuild " .. round .. ": Unlock 2 doesn't need exfret-rebuilt-test-way-b-suffix, room B's way of crafting what it's researched by")
+        for _, unneeded in pairs({
+            "exfret-rebuilt-test-ingredient-a-suffix",
+            "exfret-rebuilt-test-way-a-suffix",
+        }) do
+            assert(not needs(kept_name, unneeded), "rebuild " .. round .. ": Unlock 2 needs " .. unneeded .. ", one of room A's ways")
+        end
         -- The recipe's own tech still takes room A's ingredient, which comes first
         local own = data.raw.technology["exfret-rebuilt-test-target-recipe-suffix"]
         assert(#(own.prerequisites or {}) == 1 and own.prerequisites[1] == "exfret-rebuilt-test-ingredient-a-suffix", "rebuild " .. round .. " gave Unlock 1 the prerequisites {" .. table.concat(own.prerequisites or {}, ", ") .. "}")

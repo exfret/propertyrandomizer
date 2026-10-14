@@ -94,7 +94,7 @@ recipe("test-material-recipe")
 recipe("test-target-recipe")
 tech("test-material-tech", "test-material-recipe")
 tech("test-copied-tech", "test-target-recipe", true)
-tech("test-alternate-tech", "test-target-recipe")
+tech("test-zalternate-tech", "test-target-recipe")
 UNIFIED_TRIGGER_TAKERS = { ["test-original-trigger"] = { "test-copied-tech" } }
 
 logic.build = function()
@@ -117,7 +117,7 @@ logic.build = function()
     local material = node("recipe", "test-material-recipe", "AND", { node("recipe-unlock", "test-material-recipe", "OR", { node("recipe-tech-unlock", "test-material-recipe", "OR", { material_tech }) }) })
     local trigger = node("technology-trigger", "test-copied-tech", "OR", { material })
     local copied = node("technology", "test-copied-tech", "AND", { trigger })
-    local alternate = node("technology", "test-alternate-tech", "AND", {
+    local alternate = node("technology", "test-zalternate-tech", "AND", {
         start,
         copied,
     })
@@ -133,7 +133,20 @@ logic.build = function()
     logic.graph = graph
 end
 
+-- The sort takes open nodes by key (top.choose_open), so which unlock the timeline reaches the target with doesn't depend on pairs order: the material's tech and recipe ("recipe: ..." keys) come before the alternate's tech, so the copied trigger is had in time and the rebuild copies it, as the game before had it first
+-- (With the alternate first, the timeline planner copies the alternate's research instead, since the copied trigger isn't had until after the target is first made)
+local top = require("src/lib/sort/context-sort")
+top.choose_open = function(open)
+    local first
+    for node_key, _ in pairs(open) do
+        if first == nil or node_key < first then
+            first = node_key
+        end
+    end
+    return first
+end
 randomizations.rebuild_tech_tree()
+top.choose_open = nil
 local rebuilt = data.raw.technology["exfret-rebuilt-test-target-recipe-suffix"]
 assert(rebuilt.research_trigger.item == "test-trigger-material")
 assert(rebuilt.research_trigger.count == 630)

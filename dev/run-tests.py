@@ -6,6 +6,7 @@
 #   - the game used the settings the config asked for
 #   - the randomizer panel wouldn't warn about a softlock: every science pack reachable before randomization still is (the check at the end of data-final-fixes.lua)
 #   - the MECHCHECK verdict (src/randomizations/unified/skeleton/check.lua) is ok: no recipe became unreachable and no mechanic context was lost beyond isolatability
+#   - the tech tree rebuild's REBUILDCHECK verdict (src/randomizations/rebuild/tree-checks.lua) is ok where it ran: the rebuilt tree kept what the game had and follows the user's rules for it (discoveries, a tech per planet, no superfluous unlocks, later science, ...)
 #   - ocean swaps left at most one conversion recipe in the game (PLANETCHECK conversions, src/randomizations/planetary/scaffolds.lua)
 #   - resource swaps left extra patches for at most a third of all the resource patches they work on (PLANETCHECK extra patches, src/randomizations/planetary/resources.lua)
 # Resource-patch limit violations fail even work-in-progress suites.
@@ -85,7 +86,7 @@ ROOT_LOCK = None
 
 SUITES = ["smoke", "settings", "unified"]
 # Checks a hand-picked config can turn off with nocheck=
-OPTIONAL_CHECKS = ["reachability", "mechcheck", "control", "science-cost"]
+OPTIONAL_CHECKS = ["reachability", "mechcheck", "rebuildcheck", "control", "science-cost"]
 UNIFIED_SEEDS = [1, 2, 3, 4]
 CONTROL_TICKS = 600
 # A run with every setting on takes about 5 minutes on an unloaded machine
@@ -104,6 +105,10 @@ FAILURE_GUIDANCE = (
 
 # The end-of-load check's verdict, which leaves out losses that only affect isolatability (those are acceptable)
 VERDICT = re.compile(r"MECHCHECK verdict: (ok|FAILED) (\(.*\))")
+# The tech tree rebuild's checks of the tree it built, logged after its summary line (py keeps the old rebuild and logs a skipped verdict)
+REBUILD_RAN = re.compile(r"Tech tree rebuild: \d+ technologies for \d+ recipes")
+REBUILD_VERDICT = re.compile(r"REBUILDCHECK verdict: (ok|FAILED|skipped)([^\r\n]*)")
+REBUILD_LINE = re.compile(r"REBUILDCHECK ([a-z-]+): ([1-9]\d*)[^\r\n]*")
 # With the hidden test-reductions setting, every logic build is made twice, full and reduced, and compared (src/logic/analysis/reduction-check.lua)
 REDUCTIONCHECK = re.compile(r"REDUCTIONCHECK build \d+ \(([^)]*)\): (ok|FAILED)(.*)$", re.MULTILINE)
 # Conversion recipes the ocean scaffolds left in the game, logged at the end of planetary randomization with the limit the mod holds them to (scaffolds.MAX_CONVERSIONS in src/randomizations/planetary/scaffolds.lua)
@@ -741,6 +746,19 @@ def check_verdict(text):
     return []
 
 
+def check_rebuild(text):
+    # Where the rebuild ran, its verdict must be there and ok, naming the rules that failed otherwise
+    verdicts = REBUILD_VERDICT.findall(text)
+    if len(verdicts) == 0:
+        if REBUILD_RAN.search(text) is not None:
+            return ["the REBUILDCHECK verdict is missing from the log (the tech tree rebuild's checks didn't run)"]
+        return []
+    if verdicts[-1][0] == "FAILED":
+        failing = ["REBUILDCHECK " + name + ": " + count for name, count in REBUILD_LINE.findall(text)]
+        return ["REBUILDCHECK verdict FAILED" + verdicts[-1][1] + (" [" + "; ".join(failing) + "]" if failing else "")]
+    return []
+
+
 def check_reductions(text):
     # Every logic build's two graphs must agree; a run with the setting but no lines didn't check anything
     lines = REDUCTIONCHECK.findall(text)
@@ -860,6 +878,8 @@ def run_one(run, ctx):
                 problems.extend(check_reachability(text))
             if "mechcheck" not in run.config.nocheck:
                 problems.extend(check_verdict(text))
+        if "rebuildcheck" not in run.config.nocheck:
+            problems.extend(check_rebuild(text))
         if reported.get(PREFIX + "test-reductions") == "true":
             problems.extend(check_reductions(text))
         if "control" not in run.config.nocheck:
