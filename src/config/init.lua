@@ -115,7 +115,8 @@ config.planetary_biome_placement = settings.startup["propertyrandomizer-planetar
 config.planetary_resources = config.unified_preview or settings.startup["propertyrandomizer-planetary-resources"].value
 config.planetary_lightning = settings.startup["propertyrandomizer-planetary-lightning"].value
 config.planetary_freezing = settings.startup["propertyrandomizer-planetary-freezing"].value
-config.planetary_locks = config.unified_preview or settings.startup["propertyrandomizer-planetary-locks"].value
+-- Not part of the unified preview (user, 2026-10-13: the moves were causing issues), so only its own setting turns lock moves on
+config.planetary_locks = settings.startup["propertyrandomizer-planetary-locks"].value
 -- Planet rewards (src/randomizations/planetary/rewards.lua), a work in progress (notes/wip.txt): planets' special machines and other rewards move to other planets
 config.planetary_rewards = settings.startup["propertyrandomizer-planetary-rewards"].value
 -- Work in progress, off by default: each planet's science moves into the special machine that arrived there instead of the move being reverted

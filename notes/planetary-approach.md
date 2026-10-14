@@ -39,7 +39,7 @@ All in `data-final-fixes.lua` and `randomizations/planetary/execute.lua`:
 6. **The per-attempt check** (`planetary.check_attempt`, logged as PLANETCHECK attempt). An attempt that loses planet goals first gets the items those goals lack made shippable (`transport.lua`). If goals are still lost, it's retried, at most twice per load (`PLANETARY_LOSS_RETRIES` in data-final-fixes.lua). After that the attempt is kept.
 7. **The final checks**: MECHCHECK (unified's own), and PLANETCHECK final (`planetary.check_final`), which warns in the randomizer panel about planet goals the finished game lost.
 
-The unified preview turns on ocean swaps, resource swaps and locks. Planet copies bring the connection graph with them. Lightning, freezing, enemy moves, rewards and the fix pass have settings of their own.
+The unified preview turns on ocean swaps and resource swaps. Planet copies bring the connection graph with them. Lock moves, lightning, freezing, enemy moves, rewards and the fix pass have settings of their own (lock moves left the preview on 2026-10-13, since they were causing issues).
 
 With the planetary fix pass on (section 4), the stages wait until unified is loaded (`planetary.pending`, `planetary.run_pending`), since the fix pass repairs with unified's handlers.
 
