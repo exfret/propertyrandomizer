@@ -352,6 +352,8 @@ tree_checks.run = function(facts)
     add("science-no-lab", no_lab, true)
 
     -- copies: a copied item's recipe (dupe number n) is unlocked after the discovery of a planet copy with its number, where there is one (user 2026-10-12: "the duplicated items belong to the duplicated planets, not to nauvis")
+    -- A recipe that took in other planets' versions of it (merged_versions, src/prototypes/recipes/recipe-merges.lua) keeps the number of the version it was, but belongs to every planet it's made on (user, 2026-10-15)
+    -- The discovery of a planet copy with any of their numbers will do then, and it needs none where one of them isn't a planet copy
     local copies = {}
     local copy_discoveries = {}
     for room, names in pairs(discoverers) do
@@ -363,12 +365,41 @@ tree_checks.run = function(facts)
             end
         end
     end
+    -- The numbers of the planet copies a copied item's recipe belongs to, as a set, or nil for a recipe that doesn't belong to planet copies only
+    local function copy_numbers(recipe_name)
+        local recipe = recipes[recipe_name] or {}
+        local number = recipe.dupe_number
+        if type(number) ~= "number" or number <= 1 then
+            return nil
+        end
+        local numbers = {}
+        if next(recipe.merged_versions or {}) ~= nil then
+            for room, _ in pairs(facts.rooms_of(recipe_name) or {}) do
+                local room_number = facts.copy_number(room)
+                if room_number <= 1 then
+                    return nil
+                end
+                numbers[room_number] = true
+            end
+        end
+        if next(numbers) == nil then
+            numbers[number] = true
+        end
+        return numbers
+    end
     for _, recipe_name in pairs(sorted_keys(unlockers)) do
-        local number = (recipes[recipe_name] or {}).dupe_number
-        if type(number) == "number" and number > 1 and copy_discoveries[number] ~= nil then
+        local numbers = copy_numbers(recipe_name)
+        local wanted = {}
+        for number, _ in pairs(numbers or {}) do
+            for name, _ in pairs(copy_discoveries[number] or {}) do
+                wanted[name] = true
+            end
+        end
+        if next(wanted) ~= nil then
+            local label = table.concat(sorted_keys(numbers), " or ")
             for _, tech_name in pairs(unlockers[recipe_name]) do
-                if not needs_any(tech_name, copy_discoveries[number]) then
-                    table.insert(copies, tech_name .. " unlocks " .. recipe_name .. " (copy " .. number .. ") before any copy " .. number .. " planet")
+                if not needs_any(tech_name, wanted) then
+                    table.insert(copies, tech_name .. " unlocks " .. recipe_name .. " (copy " .. label .. ") before any copy " .. label .. " planet")
                 end
             end
         end

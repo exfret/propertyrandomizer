@@ -7,6 +7,7 @@ local START = "planet: start"
 local HOT = "planet: hot"
 local HOT_2 = "planet: hot-2"
 local COLD = "planet: cold"
+local COLD_3 = "planet: cold-3"
 
 local function tech(name, fields)
     local prototype = fields or {}
@@ -163,9 +164,13 @@ local function run(tree)
             [HOT] = { ["find-hot"] = true },
             [HOT_2] = { ["find-hot-2"] = true },
             [COLD] = { ["find-cold"] = true },
+            [COLD_3] = { ["find-cold-3"] = true },
         },
         copy_number = function(room)
-            return room == HOT_2 and 2 or 1
+            if room == HOT_2 then
+                return 2
+            end
+            return room == COLD_3 and 3 or 1
         end,
         labs = {
             {
@@ -293,6 +298,76 @@ test("copies: a copied item's recipe unlocked before any planet copy with its nu
     tree.technologies["drill-2"].prerequisites = {}
     tree.technologies["drill-2"].unit = unit({ "red" })
     expect(run(tree), "copies", 1, "copies")
+end)
+
+test("copies: a recipe merged from planet copies' versions belongs to every planet it's made on", function()
+    -- Like casting iron gear wheel's versions for Aquicana (Fulgora copy 3), Glelis (Nauvis copy 3) and Vulgora (Vulcanus copy 2), merged into Aquicana's and unlocked after Vulgora's discovery (user, 2026-10-15)
+    local tree = clean()
+    tree.technologies["find-cold-3"] = tech("find-cold-3", {
+        effects = { discover("cold-3") },
+        prerequisites = { "find-hot-2" },
+        unit = unit({
+            "red",
+            "blue",
+        }, 100),
+    })
+    tree.technologies["belt-3"] = tech("belt-3", {
+        effects = { unlock("belt-3") },
+        prerequisites = { "find-hot-2" },
+        unit = unit({
+            "red",
+            "blue",
+        }),
+    })
+    tree.recipes["belt-3"] = {
+        name = "belt-3",
+        enabled = false,
+        dupe_number = 3,
+        merged_versions = {
+            {
+                name = "belt-2",
+                is_planet_locked = true,
+            },
+        },
+    }
+    tree.rooms["belt-3"] = {
+        [HOT_2] = true,
+        [COLD_3] = true,
+    }
+    -- After the discovery of the copy 2 planet it's made on
+    expect(run(tree), "copies", 0, "after a copy 2 planet")
+    -- Unmerged, the same recipe is a copy 3 one, as before
+    tree.recipes["belt-3"].merged_versions = nil
+    expect(run(tree), "copies", 1, "unmerged")
+    -- Researchable from the start: made on a planet that isn't a copy too, it needs no planet copy's discovery
+    tree = clean()
+    tree.technologies["belt-3"] = tech("belt-3", {
+        effects = { unlock("belt-3") },
+        unit = unit({ "red" }),
+    })
+    tree.recipes["belt-3"] = {
+        name = "belt-3",
+        enabled = false,
+        dupe_number = 3,
+        merged_versions = {
+            {
+                name = "belt-2",
+                is_planet_locked = true,
+            },
+        },
+    }
+    tree.rooms["belt-3"] = {
+        [START] = true,
+        [HOT_2] = true,
+    }
+    expect(run(tree), "copies", 0, "made on a planet that isn't a copy")
+    -- Made only on planet copies, a merged one is still caught before any of their discoveries
+    tree.rooms["belt-3"] = {
+        [HOT_2] = true,
+        [COLD_3] = true,
+    }
+    local found = violations(run(tree), "copies")
+    assert(#found == 1 and string.find(found[1], "belt-3 unlocks belt-3 (copy 2 or 3) before any copy 2 or 3 planet", 1, true) ~= nil, "merged, before any of its planets: " .. table.concat(found, "; "))
 end)
 
 test("cycles: a prerequisite leading back, or one that doesn't exist", function()

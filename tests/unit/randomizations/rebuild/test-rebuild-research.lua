@@ -46,16 +46,6 @@ local pass_through = require("src/logic/analysis/pass-through")
 local reductions = require("src/logic/analysis/reductions")
 local unlock_contraction = require("src/logic/analysis/unlock-contraction")
 
-data = { raw = {} }
-data.raw.lab = {}
-data.raw.recipe = {}
-data.raw.technology = {}
-function data:extend(prototypes)
-    for _, prototype in pairs(prototypes) do
-        self.raw[prototype.type][prototype.name] = prototype
-    end
-end
-
 local function recipe(name)
     data.raw.recipe[name] = {
         type = "recipe",
@@ -90,12 +80,24 @@ local function tech(name, unlocked, trigger)
     data.raw.technology[name] = prototype
 end
 
-recipe("test-material-recipe")
-recipe("test-target-recipe")
-tech("test-material-tech", "test-material-recipe")
-tech("test-copied-tech", "test-target-recipe", true)
-tech("test-zalternate-tech", "test-target-recipe")
-UNIFIED_TRIGGER_TAKERS = { ["test-original-trigger"] = { "test-copied-tech" } }
+-- The game before the rebuild: the target is unlocked by a technology researched by crafting the material and by an alternate one researched with packs, which came after it
+local function fresh_game()
+    data = { raw = {} }
+    data.raw.lab = {}
+    data.raw.recipe = {}
+    data.raw.technology = {}
+    function data:extend(prototypes)
+        for _, prototype in pairs(prototypes) do
+            self.raw[prototype.type][prototype.name] = prototype
+        end
+    end
+    recipe("test-material-recipe")
+    recipe("test-target-recipe")
+    tech("test-material-tech", "test-material-recipe")
+    tech("test-copied-tech", "test-target-recipe", true)
+    tech("test-zalternate-tech", "test-target-recipe")
+    UNIFIED_TRIGGER_TAKERS = { ["test-original-trigger"] = { "test-copied-tech" } }
+end
 
 logic.build = function()
     local graph = {
@@ -133,21 +135,28 @@ logic.build = function()
     logic.graph = graph
 end
 
--- The sort takes open nodes by key (top.choose_open), so which unlock the timeline reaches the target with doesn't depend on pairs order: the material's tech and recipe ("recipe: ..." keys) come before the alternate's tech, so the copied trigger is had in time and the rebuild copies it, as the game before had it first
--- (With the alternate first, the timeline planner copies the alternate's research instead, since the copied trigger isn't had until after the target is first made)
+-- The sort takes open nodes by key (top.choose_open), so which unlock the timeline reaches the target with doesn't depend on pairs order
 local top = require("src/lib/sort/context-sort")
-top.choose_open = function(open)
-    local first
-    for node_key, _ in pairs(open) do
-        if first == nil or node_key < first then
-            first = node_key
+local function rebuild_taking(first_of)
+    fresh_game()
+    top.choose_open = function(open)
+        local first
+        for node_key, _ in pairs(open) do
+            if first == nil or first_of(node_key, first) then
+                first = node_key
+            end
         end
+        return first
     end
-    return first
+    randomizations.rebuild_tech_tree()
+    top.choose_open = nil
+    return data.raw.technology["exfret-rebuilt-test-target-recipe-suffix"]
 end
-randomizations.rebuild_tech_tree()
-top.choose_open = nil
-local rebuilt = data.raw.technology["exfret-rebuilt-test-target-recipe-suffix"]
+
+-- Lowest key first: the material's tech and recipe ("recipe: ..." keys) come before the alternate's tech, so the copied trigger is had in time and the rebuild copies it, as the game before had it first
+local rebuilt = rebuild_taking(function(a, b)
+    return a < b
+end)
 assert(rebuilt.research_trigger.item == "test-trigger-material")
 assert(rebuilt.research_trigger.count == 630)
 assert(#rebuilt.prerequisites == 1)
@@ -156,3 +165,21 @@ assert(data.raw.technology["test-copied-tech"].hidden == true)
 assert(#UNIFIED_TRIGGER_TAKERS["test-original-trigger"] == 1)
 assert(UNIFIED_TRIGGER_TAKERS["test-original-trigger"][1] == rebuilt.name)
 print("ok - rebuilt trigger technology requires its crafting recipe despite an earlier alternate unlock")
+
+-- The alternate's route first: the timeline makes the target through the alternate before the material, so the trigger isn't had in time and the rebuild copies the alternate's research rather than make the target wait for the trigger (user, 2026-10-15: the old tree's first unlocker needn't be kept, "we don't care about the old tree anymore")
+local function on_alternate_route(node_key)
+    return string.find(node_key, "test-zalternate-tech", 1, true) ~= nil or string.find(node_key, "test-target-recipe", 1, true) ~= nil
+end
+rebuilt = rebuild_taking(function(a, b)
+    if on_alternate_route(a) ~= on_alternate_route(b) then
+        return on_alternate_route(a)
+    end
+    return a < b
+end)
+assert(rebuilt.research_trigger == nil)
+assert(rebuilt.unit.count == 1 and #rebuilt.unit.ingredients == 0)
+assert(#(rebuilt.prerequisites or {}) == 0)
+assert(data.raw.technology["test-copied-tech"].hidden == true)
+-- No technology takes the trigger unified randomization promised, so its promise goes (src/prototypes/technology/technology-trigger-promises.lua)
+assert(#UNIFIED_TRIGGER_TAKERS["test-original-trigger"] == 0)
+print("ok - rebuilt technology copies the alternate's research when the timeline reaches the recipe through it first")
