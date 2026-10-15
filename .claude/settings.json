@@ -34,6 +34,11 @@
                 "hooks": [
                     {
                         "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/review-player-text.py\" --hook stop",
+                        "timeout": 60
+                    },
+                    {
+                        "type": "command",
                         "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/style-check.py\" --hook stop"
                     },
                     {
@@ -62,6 +67,10 @@
                 "hooks": [
                     {
                         "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/review-player-text.py\" --hook pre-edit"
+                    },
+                    {
+                        "type": "command",
                         "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/protect-changelog.py\" --hook pre-edit"
                     },
                     {
@@ -74,6 +83,11 @@
             {
                 "matcher": "Bash",
                 "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/review-player-text.py\" --hook pre-bash",
+                        "timeout": 60
+                    },
                     {
                         "type": "command",
                         "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/protect-changelog.py\" --hook pre-bash"

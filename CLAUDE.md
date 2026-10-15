@@ -1,5 +1,12 @@
 # propertyrandomizer
 
+## Player-facing wording needs human review
+
+- Draft locale and localized names/descriptions as needed, then have the user read the exact changes before treating them as finished. Run `python3 dev/review-player-text.py` and show the complete pending diffs, including locale keys and Lua expressions. Wait for explicit approval of those review IDs before running `python3 dev/review-player-text.py --approve ID...`. A request to implement a feature, approval of a plan, or approval of earlier wording does not approve new text. Never approve on the user's behalf or alter review receipts directly.
+- The checker covers all `locale/` files and reviews the whole diff of production Lua files when localized expressions or their same-file suppliers change. It compares localized names/descriptions, captions, tooltips, and mod locale references in both old and new syntax, including multiline values, helpers, and deletions; unrelated edits in the same file do not require wording approval. Supplier resolution is conservative within each function and its enclosing functions; this is not complete cross-file data-flow analysis. Test/dev/research/archive Lua fixtures are excluded. Indirect text in other files still needs review under this rule even if the scanner cannot find it.
+- Approvals match the exact file contents and path against HEAD; further changes need fresh review. Receipts are local temporary files, so losing them requires review again. `--staged` checks the index, including partial staging; approve that snapshot separately if it differs from the reviewed working copy.
+- Claude's Stop hook requests review and its Bash approval hook shows the exact diffs in a permission prompt. The Git pre-commit hook blocks unapproved text, including shell-written changes. If approval is pending, leave the drafts in place, tell the user, and end the turn to wait for their response; do not loop, suppress the check, or bypass hooks. Existing uncommitted text is also pending, not implicitly approved.
+
 ## Require placement
 
 - Keep `require` at module scope, outside function bodies, loops, and other function calls. Bind the module to a local before calling its methods; do not write `require("module").run(...)`, pass `require(...)` as an argument, alias `require`, or pass it to `pcall`.

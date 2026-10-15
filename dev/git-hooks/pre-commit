@@ -12,6 +12,7 @@ if git diff --cached --name-only | grep -q '^graphics/dupes/'; then
     echo "pre-commit: graphics/dupes/ is generated from the game's sprites and stays out of the repository; unstage it (git restore --staged graphics/dupes)" >&2
     exit 1
 fi
+python3 "$root/dev/review-player-text.py" --staged
 python3 "$root/dev/style-check.py" --staged
 python3 "$root/dev/check-localisation.py" --staged
 # New dependency graph node types need the user's approval (dev/node-types.json)
