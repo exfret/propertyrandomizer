@@ -34,6 +34,9 @@
 #     --tier NAME                    only the runs in this tier from tests/configs.txt (e.g. precommit)
 #     --ref GIT_REF                  test a committed version (e.g. v0.5.5) instead of the working tree
 #     --staged                       test the staged files, which is what a commit would contain (for dev/git-hooks/pre-commit)
+#     --baseline-ref REF             compare each run against REF, serially with matched settings/seeds; confirm slowdowns with 3 pairs
+#     --timing-percent N             fail above this percentage slowdown AND --timing-seconds (default 25)
+#     --timing-seconds N             minimum absolute slowdown to fail (default 2 seconds)
 #     --dir PATH                     test a mod folder outside git, like the release prepare-release.sh builds
 #     --seed-offset N                shift every seed, to try the same configs on other seeds
 #     --profile                      sample the Lua stack while each map is created (dev/profiler-mod in Instrument Mode) and write where the time went to profile.txt in its log folder (dev/profile-report.py); loads run a little slower
@@ -65,6 +68,7 @@ import zlib
 # Also when another script loads this file by path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import factorio_launch
+import timing_compare
 
 REPO =os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FACTORIO = "/Applications/factorio.app/Contents/MacOS/factorio"
@@ -191,7 +195,7 @@ class Setting:
 
 class TestFile:
     # tests/configs.txt
-    def __init__(self):
+    def __init__(self, path=CONFIGS):
         self.wip = set()
         self.skip = set()
         self.requires = {}
@@ -204,7 +208,7 @@ class TestFile:
         self.limits = []
         # (setting, value text): configs with one of these are judged by the old logic's check instead of the reachability checks
         self.old_logic = []
-        with open(CONFIGS) as f:
+        with open(path) as f:
             for number, raw in enumerate(f, 1):
                 line = re.sub(r"(^|\s)#.*$", "", raw).strip()
                 if line == "":
@@ -432,6 +436,7 @@ class Processes:
         self.lock = threading.Lock()
         self.running = set()
         self.stopping = False
+        self.seconds = {}
 
     def run(self, args, log_path):
         with open(log_path, "w") as log_file:
@@ -440,6 +445,7 @@ class Processes:
                     if proc is None or self.stopping:
                         return "stopped"
                     self.running.add(proc)
+                start = time.monotonic()  # Slot wait and test setup are not game runtime.
                 try:
                     return proc.wait(timeout=TIMEOUT_SECONDS)
                 except subprocess.TimeoutExpired:
@@ -447,6 +453,7 @@ class Processes:
                     proc.wait()
                     return "timeout after " + str(TIMEOUT_SECONDS // 60) + " minutes"
                 finally:
+                    self.seconds[log_path] = time.monotonic() - start
                     with self.lock:
                         self.running.discard(proc)
 
@@ -582,19 +589,19 @@ def find_user_mod(name, game):
     return best[1]
 
 
-def load_modsets():
+def load_modsets(directory=MOD_CONFIGS):
     # Each mod set's other mods are found later by find_links, only for mod sets with runs, so a missing mod only stops runs that need it
     modsets = {}
-    for file_name in sorted(os.listdir(MOD_CONFIGS)):
+    for file_name in sorted(os.listdir(directory)):
         if not file_name.endswith(".json"):
             continue
-        with open(os.path.join(MOD_CONFIGS, file_name)) as f:
+        with open(os.path.join(directory, file_name)) as f:
             mod_list = json.load(f)
         # Not part of Factorio's mod-list.json format, so it's taken out before the list is written for a run
         settings = mod_list.pop("settings", {})
         for setting_name, value in settings.items():
             if setting_name.startswith(PREFIX) or not any(isinstance(value, kind) for kind, _ in JSON_DAT_TYPES):
-                raise SystemExit(os.path.join(MOD_CONFIGS, file_name) + ": settings are other mods' startup settings, each a bool, number or string; " + setting_name + " isn't")
+                raise SystemExit(os.path.join(directory, file_name) + ": settings are other mods' startup settings, each a bool, number or string; " + setting_name + " isn't")
         enabled = [mod["name"] for mod in mod_list["mods"] if mod["enabled"]]
         builtin = [name for name in enabled if os.path.isfile(os.path.join(GAME_DATA, name, "info.json"))]
         others = [name for name in enabled if name != MOD_NAME and name not in builtin]
@@ -910,7 +917,8 @@ def run_one(run, ctx):
     shutil.rmtree(data_dir, ignore_errors=True)
     if len(problems) == 0 and os.path.exists(save):
         os.remove(save)
-    return {"run": run, "ok": len(problems) == 0, "problems": problems, "hard_problems": hard_problems, "dir": run_dir, "seconds": time.time() - start, "science_costs": science_cost_summary, "dump_hash": dump_hash}
+    timings = {phase: ctx.processes.seconds.get(os.path.join(run_dir, phase + ".log")) for phase in ("create", "control")}
+    return {"run": run, "ok": len(problems) == 0, "problems": problems, "hard_problems": hard_problems, "dir": run_dir, "seconds": time.time() - start, "science_costs": science_cost_summary, "dump_hash": dump_hash, "timings": timings}
 
 
 def run_one_safely(run, ctx):
@@ -920,6 +928,76 @@ def run_one_safely(run, ctx):
         return run_one(run, ctx)
     except Exception as error:
         return {"run": run, "ok": False, "problems": ["the test runner failed: " + repr(error)], "dir": os.path.join(ctx.root, "runs", run.slug), "seconds": time.time() - start}
+
+
+def timing_runs(run, candidate_settings, baseline_settings):
+    """Freeze shared defaults as well as overrides; never regenerate/drop baseline configs."""
+    values = {name: setting.default for name, setting in candidate_settings.items() if name != "seed"}
+    values.update(run.config.settings)
+    baseline_values = {}
+    notes = []
+    for name, value in values.items():
+        if name not in baseline_settings:
+            notes.append(f"{name}={fmt(value)}: feature setting absent in baseline; comparison still runs")
+            continue
+        setting = baseline_settings[name]
+        if setting.type != candidate_settings[name].type:
+            raise ValueError("incomparable setting type: " + name)
+        parsed = setting.parse(fmt(value) if isinstance(value, bool) else str(value))
+        if parsed != value or (setting.minimum is not None and value < setting.minimum) or (setting.maximum is not None and value > setting.maximum):
+            raise ValueError("baseline cannot accept " + name + "=" + fmt(value))
+        baseline_values[name] = value
+    for name, setting in baseline_settings.items():
+        if name not in candidate_settings and name != "seed":
+            baseline_values[name] = setting.default
+            notes.append(f"{name}={fmt(setting.default)}: baseline-only setting at its default")
+    def with_values(values):
+        config = run.config
+        return Run(Config(config.suite, config.name, values, config.seed, config.nocheck, config.old_logic), run.modset)
+    return with_values(values), with_values(baseline_values), notes
+
+
+def run_timed(run, ctx, baseline, percent, seconds):
+    start = time.time()
+    result = {"run": run, "ok": False, "problems": [], "hard_problems": [],
+              "dir": os.path.join(ctx.root, "runs", run.slug)}
+    try:
+        candidate_run, baseline_run, notes = timing_runs(run, ctx.settings, baseline.settings)
+        for note in notes:
+            print("Timing " + run.name + ": " + note, flush=True)
+
+        def sample(side, attempt):
+            parent, picked = (ctx, candidate_run) if side == "candidate" else (baseline, baseline_run)
+            # Each repeat has a fresh write-data/cache directory, just like attempt 1.
+            attempt_root = os.path.join(parent.root, "timing-attempt-" + str(attempt))
+            os.makedirs(attempt_root, exist_ok=True)
+            helper = os.path.join(attempt_root, HELPER_NAME)
+            if not os.path.islink(helper):
+                os.symlink(os.path.join(parent.root, HELPER_NAME), helper)
+            attempt_ctx = Context(attempt_root, parent.snapshot, parent.settings, parent.modsets, parent.version, False, False)
+            attempt_ctx.processes = ctx.processes  # One cancellation group, both revisions.
+            print(f"Timing {run.name}: {side} attempt {attempt}", flush=True)
+            measured = run_one_safely(picked, attempt_ctx)
+            if side == "candidate" and attempt == 1:
+                result.update(measured, run=run)
+            return measured
+
+        phases = ["create"] + ([] if "control" in run.config.nocheck else ["control"])
+        comparison, error = timing_compare.compare(sample, phases, percent, seconds)
+        comparison.update(run=run.name, seed=run.config.seed, notes=notes,
+                          candidate_settings=candidate_run.config.settings, baseline_settings=baseline_run.config.settings)
+        result["timing_comparison"] = comparison
+        if error:
+            result["ok"] = False
+            result.setdefault("hard_problems", []).append(error)
+            result["problems"].append(error)
+    except Exception as error:
+        message = "timing comparison failed: " + str(error)
+        result["ok"] = False
+        result.setdefault("hard_problems", []).append(message)
+        result["problems"].append(message)
+    result["seconds"] = time.time() - start
+    return result
 
 
 def duration(seconds):
@@ -965,6 +1043,13 @@ def summarize(results, test_file, elapsed):
         lines.extend(["", "Science costs (after/before recipe randomization, global prices):"])
         for result in cost_results:
             lines.append("  " + result["run"].name + ": " + result["science_costs"])
+    timed = [result for result in results if result.get("timing_comparison")]
+    if timed:
+        lines.extend(["", "Game runtime (baseline -> candidate; queue/setup time excluded):"])
+        for result in timed:
+            comparison = result["timing_comparison"]
+            for phase, values in comparison["phases"].items():
+                lines.append(f"  {result['run'].name} {phase}: {values['baseline']:.2f}s -> {values['candidate']:.2f}s ({values['ratio']:.2f}x)")
     failures = [result for result in results if not result["ok"]]
     if len(failures) > 0:
         lines.append("")
@@ -1030,11 +1115,25 @@ def main(argv):
     parser.add_argument("--tier", help="only the runs in this tier from tests/configs.txt")
     parser.add_argument("--ref", help="test this git ref instead of the working tree")
     parser.add_argument("--staged", action="store_true", help="test the staged files instead of the working tree")
+    parser.add_argument("--baseline-ref", help="compare game runtime against this git revision (the hook uses HEAD); runs serially")
+    parser.add_argument("--timing-percent", type=float, default=25, help="maximum relative slowdown, in percent (default 25)")
+    parser.add_argument("--timing-seconds", type=float, default=2, help="minimum absolute slowdown to fail, in seconds (default 2)")
     parser.add_argument("--dir", help="test this mod folder instead of the working tree")
     parser.add_argument("--seed-offset", type=int, default=0, help="shift every seed")
     parser.add_argument("--profile", action="store_true", help="sample the Lua stack while each map is created, and write profile.txt in its log folder")
     parser.add_argument("--dump-data", action="store_true", help="also dump each run's data.raw to data-raw-dump.json in its log folder and print its SHA-256")
     args = parser.parse_args(argv)
+    if any(not math.isfinite(value) or value < 0 for value in (args.timing_percent, args.timing_seconds)):
+        parser.error("timing thresholds must be finite and nonnegative")
+    if args.baseline_ref and (args.profile or args.dump_data):
+        parser.error("--baseline-ref cannot be combined with profiling or data dumps, which change the measured workload")
+    baseline_ref = None
+    if args.baseline_ref:
+        resolved = subprocess.run(["git", "rev-parse", "--verify", args.baseline_ref + "^{commit}"], cwd=REPO, capture_output=True, text=True)
+        if resolved.returncode != 0:
+            parser.error("cannot resolve timing baseline " + args.baseline_ref + ": " + resolved.stderr.strip())
+        baseline_ref = resolved.stdout.strip()
+        args.jobs = 1  # Do not benchmark competing candidate/baseline processes against each other.
     suites = args.suites if len(args.suites) > 0 else SUITES
     if sum(1 for picked in (args.ref is not None, args.staged, args.dir is not None) if picked) > 1:
         raise SystemExit("--ref, --staged and --dir each pick what to test; use one")
@@ -1043,19 +1142,25 @@ def main(argv):
 
     start = time.time()
     version = game_version()
-    test_file = TestFile()
+    root = new_root()
+    snapshot_dir = os.path.join(root, MOD_NAME)
+    snapshot(snapshot_dir, args.ref, args.staged, args.dir)
+    # Staged test plans must not pick up unrelated working-tree changes.
+    definitions = os.path.join(snapshot_dir, "tests")
+    if not os.path.isfile(os.path.join(definitions, "configs.txt")) and not args.staged:
+        # Release folders and old refs may omit development-only tests.
+        definitions = os.path.join(REPO, "tests")
+        print("Source has no tests/configs.txt; using development test definitions", flush=True)
+    test_file = TestFile(os.path.join(definitions, "configs.txt"))
     if args.tier is not None and args.tier not in test_file.tiers:
         raise SystemExit("no tier " + args.tier + " in tests/configs.txt (have " + ", ".join(test_file.tiers) + ")")
-    modsets = load_modsets()
+    modsets = load_modsets(os.path.join(definitions, "mod-configs"))
     unknown = [name for name in args.modset or [] if name not in modsets]
     if len(unknown) > 0:
         raise SystemExit("no mod set " + ", ".join(unknown) + " in tests/mod-configs (have " + ", ".join(modsets) + ")")
     unknown = [pattern for pattern, _ in test_file.limits if not any(fnmatch.fnmatchcase(modset, pattern) for modset in modsets)]
     if len(unknown) > 0:
         raise SystemExit("limit lines in tests/configs.txt match no mod set: " + ", ".join(unknown))
-    root = new_root()
-    snapshot_dir = os.path.join(root, MOD_NAME)
-    snapshot(snapshot_dir, args.ref, args.staged, args.dir)
     # Keep helper imports in sync with the tested source, especially for partially staged commits.
     # Stripped releases and older refs without a helper still use the development helper.
     snapshot_helper = os.path.join(snapshot_dir, "dev", "test-helper-mod")
@@ -1105,6 +1210,18 @@ def main(argv):
 
     point_latest(root)
     ctx = Context(root, snapshot_dir, settings, modsets, version, args.profile, args.dump_data)
+    baseline = None
+    if baseline_ref:
+        baseline_root = os.path.join(root, "baseline")
+        baseline_snapshot = os.path.join(baseline_root, MOD_NAME)
+        snapshot(baseline_snapshot, baseline_ref, False, None)
+        baseline_helper = os.path.join(baseline_snapshot, "dev", "test-helper-mod")
+        if not os.path.isdir(baseline_helper):
+            raise SystemExit("timing comparison unavailable: baseline has no test helper; logs in " + root)
+        shutil.copytree(baseline_helper, os.path.join(baseline_root, HELPER_NAME))
+        baseline = Context(baseline_root, baseline_snapshot, load_settings(baseline_snapshot), modsets, version, False, False)
+        baseline.processes = ctx.processes
+        print(f"Timing baseline: {args.baseline_ref} ({baseline_ref}); fails above {args.timing_percent:g}% AND at least {args.timing_seconds:g}s slower, confirmed with 3 pairs", flush=True)
     source = "the working tree"
     if args.ref is not None:
         source = "git ref " + args.ref
@@ -1139,11 +1256,16 @@ def main(argv):
                 line += "\n    profile in " + os.path.join(result["dir"], "profile.txt")
             if result.get("dump_hash") is not None:
                 line += "\n    data.raw dump SHA-256 " + result["dump_hash"]
+            for phase, values in result.get("timing_comparison", {}).get("phases", {}).items():
+                line += f"\n    {phase}: {values['baseline']:.2f}s -> {values['candidate']:.2f}s ({values['ratio']:.2f}x)"
             print(line, flush=True)
 
     pool = concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs)
     try:
-        futures = [pool.submit(run_one_safely, run, ctx) for run in runs]
+        if baseline is None:
+            futures = [pool.submit(run_one_safely, run, ctx) for run in runs]
+        else:
+            futures = [pool.submit(run_timed, run, ctx, baseline, args.timing_percent, args.timing_seconds) for run in runs]
         for future in concurrent.futures.as_completed(futures):
             report(future.result())
     except KeyboardInterrupt:
@@ -1156,6 +1278,12 @@ def main(argv):
     order = {run.name: i for i, run in enumerate(sorted(runs, key=lambda run: (SUITES.index(run.config.suite) if run.config.suite in SUITES else len(SUITES), run.name)))}
     results.sort(key=lambda result: order[result["run"].name])
     summary, ok = summarize(results, test_file, time.time() - start)
+    if baseline_ref:
+        summary = f"Timing baseline: {args.baseline_ref} ({baseline_ref})\n" + summary
+        with open(os.path.join(root, "timing-results.json"), "w") as f:
+            json.dump({"baseline_ref": baseline_ref, "percent": args.timing_percent, "seconds": args.timing_seconds,
+                       "results": [{"run": result["run"].name, "ok": result["ok"], "problems": result["problems"],
+                                    "comparison": result.get("timing_comparison")} for result in results]}, f, indent=2)
     with open(os.path.join(root, "summary.txt"), "w") as f:
         f.write(summary + "\n")
     print()

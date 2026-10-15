@@ -14,8 +14,9 @@
 wip unified
 
 # tier NAME PATTERN...: a small named set of runs for dev/run-tests.py --tier NAME; a run is in it if its name contains any pattern
-# precommit runs from dev/git-hooks/pre-commit, and should take about 10 minutes
-tier precommit base/defaults sa/defaults base/max sa/max base/unit-tests sa/unit-tests base/single-technology= base/single-recipe= base/single-recipe-tech-unlock= base/single-item=
+# precommit compares staged files with HEAD; timing failures are blocking even for wip suites.
+# Biome placement is skipped in generated configs, so cover it explicitly, including duplicates.
+tier precommit base/defaults sa/defaults base/max sa/max base/unit-tests sa/unit-tests base/single-technology= base/single-recipe= base/single-recipe-tech-unlock= base/single-item= sa/biome-placement@1 sa/biome-placement-dupes@1
 
 # limit MODSET CONFIG...: mod sets matching MODSET only run the configs named (both can use *, like unified-all@*); naming a mod set with --modset runs every config on it
 # Any Planet Start (the aps-* mod sets, each starting on another planet through its aps-planet setting) is checked on the default randomizations, everything players can turn on, and the graph randomizations
