@@ -1,0 +1,8 @@
+{
+	"name": "propertyrandomizer-counter",
+	"version": "0.1.0",
+	"title": "exfret's Randomizer instruction counter",
+	"author": "exfret",
+	"factorio_version": "2.1",
+	"description": "Only for dev/run-tests.py --baseline-ref (the pre-commit performance gate): counts Lua instructions in the data and control stages in Instrument Mode."
+}

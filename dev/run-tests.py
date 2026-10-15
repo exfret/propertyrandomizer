@@ -34,9 +34,9 @@
 #     --tier NAME                    only the runs in this tier from tests/configs.txt (e.g. precommit)
 #     --ref GIT_REF                  test a committed version (e.g. v0.5.5) instead of the working tree
 #     --staged                       test the staged files, which is what a commit would contain (for dev/git-hooks/pre-commit)
-#     --baseline-ref REF             compare each run against REF, serially with matched settings/seeds; confirm slowdowns with 3 pairs
-#     --timing-percent N             fail above this percentage slowdown AND --timing-seconds (default 25)
-#     --timing-seconds N             minimum absolute slowdown to fail (default 2 seconds)
+#     --baseline-ref REF             compare each run's Lua instruction count (dev/counter-mod in Instrument Mode) against REF's, with matched settings/seeds
+#     --timing-percent N             fail above this percentage more instructions AND --timing-instructions (default 25)
+#     --timing-instructions N        minimum extra Lua instructions to fail, in millions (default 200, about 2 seconds of Lua on the dev machine)
 #     --dir PATH                     test a mod folder outside git, like the release prepare-release.sh builds
 #     --seed-offset N                shift every seed, to try the same configs on other seeds
 #     --profile                      sample the Lua stack while each map is created (dev/profiler-mod in Instrument Mode) and write where the time went to profile.txt in its log folder (dev/profile-report.py); loads run a little slower
@@ -81,6 +81,12 @@ HELPER_MOD = os.path.join(REPO, "dev", "test-helper-mod")
 HELPER_NAME = "propertyrandomizer-test-helper"
 PROFILER_MOD = os.path.join(REPO, "dev", "profiler-mod")
 PROFILER_NAME = "propertyrandomizer-profiler"
+COUNTER_MOD = os.path.join(REPO, "dev", "counter-mod")
+COUNTER_NAME = "propertyrandomizer-counter"
+# What the counter mod logs: the data stage's count once at its end, and in each mod's control state a start line, then its count so far every time its hook fires
+DATA_COUNT = re.compile(r"PRCOUNT data samples=(\d+) interval=(\d+)")
+CONTROL_COUNT_START = re.compile(r"PRCOUNT control (\S+) start interval=(\d+)")
+CONTROL_COUNT = re.compile(r"PRCOUNT control (\S+) samples=(\d+)")
 CONFIGS = os.path.join(REPO, "tests", "configs.txt")
 MOD_CONFIGS = os.path.join(REPO, "tests", "mod-configs")
 DUMP_SETTINGS = os.path.join(REPO, "dev", "dump-settings.lua")
@@ -647,6 +653,8 @@ class Context:
         self.profile = profile
         # Whether each run also dumps its data.raw (--dump-data)
         self.dump_data = dump_data
+        # The counter mod's folder when runs count their Lua instructions (--baseline-ref), else None
+        self.counter = None
         self.processes = Processes()
 
 
@@ -840,6 +848,9 @@ def run_one(run, ctx):
     if ctx.profile:
         os.symlink(os.path.join(ctx.root, PROFILER_NAME), os.path.join(mods_dir, PROFILER_NAME))
         mod_list["mods"].append({"name": PROFILER_NAME, "enabled": True})
+    if ctx.counter is not None:
+        os.symlink(ctx.counter, os.path.join(mods_dir, COUNTER_NAME))
+        mod_list["mods"].append({"name": COUNTER_NAME, "enabled": True})
     with open(os.path.join(mods_dir, "mod-list.json"), "w") as f:
         json.dump(mod_list, f, indent=2)
     values = [(PREFIX + "seed", mod_settings.SIGNED, run.config.seed)]
@@ -861,7 +872,9 @@ def run_one(run, ctx):
     create_log = os.path.join(run_dir, "create.log")
     # Instrument Mode loads the profiler before every mod's data stage, and the profiler needs the full Lua debug library to sample
     profile_args = ["--instrument-mod", PROFILER_NAME, "--enable-unsafe-lua-debug-api"] if ctx.profile else []
-    code = ctx.processes.run(base_args + profile_args + ["--create", save], create_log)
+    # The counter too: Instrument Mode loads it before every mod's data stage and in every mod's control state, and its count hook needs the full Lua debug library
+    count_args = ["--instrument-mod", COUNTER_NAME, "--enable-unsafe-lua-debug-api"] if ctx.counter is not None else []
+    code = ctx.processes.run(base_args + profile_args + count_args + ["--create", save], create_log)
     text = read(create_log)
     if ctx.profile:
         profile_report.write_report(create_log, os.path.join(run_dir, "profile.txt"), source=ctx.snapshot)
@@ -891,7 +904,7 @@ def run_one(run, ctx):
             problems.extend(check_reductions(text))
         if "control" not in run.config.nocheck:
             control_log = os.path.join(run_dir, "control.log")
-            code = ctx.processes.run(base_args + ["--benchmark", save, "--benchmark-ticks", str(CONTROL_TICKS)], control_log)
+            code = ctx.processes.run(base_args + count_args + ["--benchmark", save, "--benchmark-ticks", str(CONTROL_TICKS)], control_log)
             control_text = read(control_log)
             problems.extend(check_game_version(control_text, ctx))
             if code != 0:
@@ -918,7 +931,33 @@ def run_one(run, ctx):
     if len(problems) == 0 and os.path.exists(save):
         os.remove(save)
     timings = {phase: ctx.processes.seconds.get(os.path.join(run_dir, phase + ".log")) for phase in ("create", "control")}
-    return {"run": run, "ok": len(problems) == 0, "problems": problems, "hard_problems": hard_problems, "dir": run_dir, "seconds": time.time() - start, "science_costs": science_cost_summary, "dump_hash": dump_hash, "timings": timings}
+    instructions = {}
+    if ctx.counter is not None:
+        for phase in ("create", "control"):
+            path = os.path.join(run_dir, phase + ".log")
+            if os.path.exists(path):
+                instructions[phase] = lua_instructions(read(path))
+    return {"run": run, "ok": len(problems) == 0, "problems": problems, "hard_problems": hard_problems, "dir": run_dir, "seconds": time.time() - start, "science_costs": science_cost_summary, "dump_hash": dump_hash, "timings": timings, "instructions": instructions}
+
+
+def lua_instructions(text):
+    # The Lua instructions a run's log counted (dev/counter-mod): the data stage's count plus each mod's last control-stage count, or None if nothing was counted
+    # A count is whole hook intervals, so each count leaves out its last partial interval
+    total = None
+    data = None
+    for data in DATA_COUNT.finditer(text):
+        pass
+    if data is not None:
+        total = int(data.group(1)) * int(data.group(2))
+    intervals = {}
+    for match in CONTROL_COUNT_START.finditer(text):
+        intervals[match.group(1)] = int(match.group(2))
+    samples = {}
+    for match in CONTROL_COUNT.finditer(text):
+        samples[match.group(1)] = int(match.group(2))
+    for mod, interval in intervals.items():
+        total = (total or 0) + samples.get(mod, 0) * interval
+    return total
 
 
 def run_one_safely(run, ctx):
@@ -957,7 +996,7 @@ def timing_runs(run, candidate_settings, baseline_settings):
     return with_values(values), with_values(baseline_values), notes
 
 
-def run_timed(run, ctx, baseline, percent, seconds):
+def run_timed(run, ctx, baseline, percent, instructions):
     start = time.time()
     result = {"run": run, "ok": False, "problems": [], "hard_problems": [],
               "dir": os.path.join(ctx.root, "runs", run.slug)}
@@ -968,7 +1007,7 @@ def run_timed(run, ctx, baseline, percent, seconds):
 
         def sample(side, attempt):
             parent, picked = (ctx, candidate_run) if side == "candidate" else (baseline, baseline_run)
-            # Each repeat has a fresh write-data/cache directory, just like attempt 1.
+            # Each side runs in its own folder, with a fresh write-data/cache directory
             attempt_root = os.path.join(parent.root, "timing-attempt-" + str(attempt))
             os.makedirs(attempt_root, exist_ok=True)
             helper = os.path.join(attempt_root, HELPER_NAME)
@@ -976,14 +1015,16 @@ def run_timed(run, ctx, baseline, percent, seconds):
                 os.symlink(os.path.join(parent.root, HELPER_NAME), helper)
             attempt_ctx = Context(attempt_root, parent.snapshot, parent.settings, parent.modsets, parent.version, False, False)
             attempt_ctx.processes = ctx.processes  # One cancellation group, both revisions.
-            print(f"Timing {run.name}: {side} attempt {attempt}", flush=True)
+            # Both revisions count with this runner's counter mod, which the baseline may not have
+            attempt_ctx.counter = ctx.counter
+            print(f"Timing {run.name}: {side}", flush=True)
             measured = run_one_safely(picked, attempt_ctx)
             if side == "candidate" and attempt == 1:
                 result.update(measured, run=run)
             return measured
 
         phases = ["create"] + ([] if "control" in run.config.nocheck else ["control"])
-        comparison, error = timing_compare.compare(sample, phases, percent, seconds)
+        comparison, error = timing_compare.compare(sample, phases, percent, instructions)
         comparison.update(run=run.name, seed=run.config.seed, notes=notes,
                           candidate_settings=candidate_run.config.settings, baseline_settings=baseline_run.config.settings)
         result["timing_comparison"] = comparison
@@ -1045,11 +1086,11 @@ def summarize(results, test_file, elapsed):
             lines.append("  " + result["run"].name + ": " + result["science_costs"])
     timed = [result for result in results if result.get("timing_comparison")]
     if timed:
-        lines.extend(["", "Game runtime (baseline -> candidate; queue/setup time excluded):"])
+        lines.extend(["", "Lua instructions (baseline -> candidate; game runtime for information, queue/setup time excluded):"])
         for result in timed:
             comparison = result["timing_comparison"]
             for phase, values in comparison["phases"].items():
-                lines.append(f"  {result['run'].name} {phase}: {values['baseline']:.2f}s -> {values['candidate']:.2f}s ({values['ratio']:.2f}x)")
+                lines.append(f"  {result['run'].name} " + timing_compare.describe(phase, values))
     failures = [result for result in results if not result["ok"]]
     if len(failures) > 0:
         lines.append("")
@@ -1115,25 +1156,24 @@ def main(argv):
     parser.add_argument("--tier", help="only the runs in this tier from tests/configs.txt")
     parser.add_argument("--ref", help="test this git ref instead of the working tree")
     parser.add_argument("--staged", action="store_true", help="test the staged files instead of the working tree")
-    parser.add_argument("--baseline-ref", help="compare game runtime against this git revision (the hook uses HEAD); runs serially")
-    parser.add_argument("--timing-percent", type=float, default=25, help="maximum relative slowdown, in percent (default 25)")
-    parser.add_argument("--timing-seconds", type=float, default=2, help="minimum absolute slowdown to fail, in seconds (default 2)")
+    parser.add_argument("--baseline-ref", help="compare Lua instruction counts against this git revision (the hook uses HEAD)")
+    parser.add_argument("--timing-percent", type=float, default=25, help="maximum relative increase in Lua instructions, in percent (default 25)")
+    parser.add_argument("--timing-instructions", type=float, default=200, help="minimum extra Lua instructions to fail, in millions (default 200)")
     parser.add_argument("--dir", help="test this mod folder instead of the working tree")
     parser.add_argument("--seed-offset", type=int, default=0, help="shift every seed")
     parser.add_argument("--profile", action="store_true", help="sample the Lua stack while each map is created, and write profile.txt in its log folder")
     parser.add_argument("--dump-data", action="store_true", help="also dump each run's data.raw to data-raw-dump.json in its log folder and print its SHA-256")
     args = parser.parse_args(argv)
-    if any(not math.isfinite(value) or value < 0 for value in (args.timing_percent, args.timing_seconds)):
+    if any(not math.isfinite(value) or value < 0 for value in (args.timing_percent, args.timing_instructions)):
         parser.error("timing thresholds must be finite and nonnegative")
     if args.baseline_ref and (args.profile or args.dump_data):
-        parser.error("--baseline-ref cannot be combined with profiling or data dumps, which change the measured workload")
+        parser.error("--baseline-ref cannot be combined with profiling (Instrument Mode takes one mod, and the counter is it) or data dumps")
     baseline_ref = None
     if args.baseline_ref:
         resolved = subprocess.run(["git", "rev-parse", "--verify", args.baseline_ref + "^{commit}"], cwd=REPO, capture_output=True, text=True)
         if resolved.returncode != 0:
             parser.error("cannot resolve timing baseline " + args.baseline_ref + ": " + resolved.stderr.strip())
         baseline_ref = resolved.stdout.strip()
-        args.jobs = 1  # Do not benchmark competing candidate/baseline processes against each other.
     suites = args.suites if len(args.suites) > 0 else SUITES
     if sum(1 for picked in (args.ref is not None, args.staged, args.dir is not None) if picked) > 1:
         raise SystemExit("--ref, --staged and --dir each pick what to test; use one")
@@ -1221,7 +1261,11 @@ def main(argv):
         shutil.copytree(baseline_helper, os.path.join(baseline_root, HELPER_NAME))
         baseline = Context(baseline_root, baseline_snapshot, load_settings(baseline_snapshot), modsets, version, False, False)
         baseline.processes = ctx.processes
-        print(f"Timing baseline: {args.baseline_ref} ({baseline_ref}); fails above {args.timing_percent:g}% AND at least {args.timing_seconds:g}s slower, confirmed with 3 pairs", flush=True)
+        # Lua instruction counts repeat exactly for the same code and game, so other processes on the machine don't change them, and both sides may run at once
+        ctx.counter = os.path.join(root, COUNTER_NAME)
+        shutil.copytree(COUNTER_MOD, ctx.counter)
+        baseline.counter = ctx.counter
+        print(f"Timing baseline: {args.baseline_ref} ({baseline_ref}); counts Lua instructions (dev/counter-mod), and fails above {args.timing_percent:g}% AND at least {args.timing_instructions:g} million more", flush=True)
     source = "the working tree"
     if args.ref is not None:
         source = "git ref " + args.ref
@@ -1257,7 +1301,7 @@ def main(argv):
             if result.get("dump_hash") is not None:
                 line += "\n    data.raw dump SHA-256 " + result["dump_hash"]
             for phase, values in result.get("timing_comparison", {}).get("phases", {}).items():
-                line += f"\n    {phase}: {values['baseline']:.2f}s -> {values['candidate']:.2f}s ({values['ratio']:.2f}x)"
+                line += "\n    " + timing_compare.describe(phase, values)
             print(line, flush=True)
 
     pool = concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs)
@@ -1265,7 +1309,7 @@ def main(argv):
         if baseline is None:
             futures = [pool.submit(run_one_safely, run, ctx) for run in runs]
         else:
-            futures = [pool.submit(run_timed, run, ctx, baseline, args.timing_percent, args.timing_seconds) for run in runs]
+            futures = [pool.submit(run_timed, run, ctx, baseline, args.timing_percent, args.timing_instructions * 1e6) for run in runs]
         for future in concurrent.futures.as_completed(futures):
             report(future.result())
     except KeyboardInterrupt:
@@ -1281,7 +1325,7 @@ def main(argv):
     if baseline_ref:
         summary = f"Timing baseline: {args.baseline_ref} ({baseline_ref})\n" + summary
         with open(os.path.join(root, "timing-results.json"), "w") as f:
-            json.dump({"baseline_ref": baseline_ref, "percent": args.timing_percent, "seconds": args.timing_seconds,
+            json.dump({"baseline_ref": baseline_ref, "percent": args.timing_percent, "instructions": args.timing_instructions * 1e6,
                        "results": [{"run": result["run"].name, "ok": result["ok"], "problems": result["problems"],
                                     "comparison": result.get("timing_comparison")} for result in results]}, f, indent=2)
     with open(os.path.join(root, "summary.txt"), "w") as f:

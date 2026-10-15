@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""The performance gate must reject slow commits, not just collect durations."""
+"""The performance gate must reject commits that make loads run more Lua, not just collect counts."""
 import contextlib
 import importlib.util
 import io
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -20,63 +21,65 @@ def setting(name, default="false", kind="bool-setting", allowed="", minimum="", 
     return runner.Setting([runner.PREFIX + name, kind, default, "false", allowed, minimum, maximum])
 
 
-def result(seconds, ok=True):
-    return {"ok": ok, "timings": {"create": seconds, "control": 1}, "dir": "/tmp/fixture",
-            "problems": [] if ok else ["load failed"]}
+M = 1000000
+
+
+def result(count, ok=True, control=M):
+    return {"ok": ok, "instructions": {"create": count, "control": control}, "timings": {"create": 30.0, "control": 1.0},
+            "dir": "/tmp/fixture", "problems": [] if ok else ["load failed"]}
 
 
 class ComparisonTests(unittest.TestCase):
-    def compare(self, baseline, candidate, phase="create"):
+    def compare(self, before, after, phase="create"):
         calls = []
         def sample(side, attempt):
             calls.append((side, attempt))
-            measured = result((baseline if side == "baseline" else candidate)[attempt - 1])
-            if phase == "control":
-                measured["timings"]["control"] = measured["timings"]["create"]
-                measured["timings"]["create"] = 10
-            return measured
+            count = before if side == "baseline" else after
+            return result(10 * M, control=count) if phase == "control" else result(count)
         report, error = runner.timing_compare.compare(sample, ["create", "control"])
         return report, error, calls
 
-    def test_hundredfold_regression_blocks_after_confirmation(self):
-        report, error, calls = self.compare([10, 10, 10], [1000, 1000, 1000])
-        self.assertIn("timing regression", error)
+    def test_hundredfold_regression_blocks_from_one_pair(self):
+        # Counts repeat exactly for the same code and game, so nothing is run again
+        report, error, calls = self.compare(10 * M, 1000 * M)
+        self.assertIn("Lua instruction regression", error)
         self.assertEqual(report["phases"]["create"]["ratio"], 100)
-        self.assertEqual(calls, [("baseline", 1), ("candidate", 1), ("candidate", 2),
-                                 ("baseline", 2), ("baseline", 3), ("candidate", 3)])
+        self.assertEqual(calls, [("baseline", 1), ("candidate", 1)])
 
     def test_both_thresholds_must_be_exceeded(self):
-        for before, after in [(100, 120), (1, 2), (8, 10), (10, 9)]:
+        # Under 25% more; a large ratio under 200 million more; exactly 25% more; fewer
+        for before, after in [(1000 * M, 1200 * M), (100 * M, 250 * M), (800 * M, 1000 * M), (10 * M, 9 * M)]:
             with self.subTest(before=before, after=after):
-                _, error, calls = self.compare([before], [after])
+                _, error, calls = self.compare(before, after)
                 self.assertIsNone(error)
                 self.assertEqual(len(calls), 2)
 
-    def test_two_seconds_at_large_enough_ratio_blocks(self):
-        _, error, _ = self.compare([4] * 3, [6] * 3)
-        self.assertIn("timing regression", error)
-
-    def test_initial_outlier_does_not_block(self):
-        report, error, _ = self.compare([10, 10, 10], [1000, 10, 11])
-        self.assertIsNone(error)
-        self.assertEqual(report["phases"]["create"]["candidate"], 11)
+    def test_two_hundred_million_more_at_a_large_enough_ratio_blocks(self):
+        _, error, _ = self.compare(400 * M, 600 * M)
+        self.assertIn("Lua instruction regression", error)
 
     def test_control_regression_cannot_hide_behind_creation(self):
-        _, error, _ = self.compare([10] * 3, [20] * 3, "control")
+        _, error, _ = self.compare(10 * M, 1000 * M, "control")
         self.assertIn("control:", error)
+
+    def test_counts_of_nothing_compare(self):
+        # A control stage that never reaches one hook interval counts 0 on both sides
+        report, error, _ = self.compare(0, 0, "control")
+        self.assertIsNone(error)
+        self.assertEqual(report["phases"]["control"]["ratio"], 1.0)
+
+    def test_runtime_is_reported_next_to_the_counts(self):
+        report, _, _ = self.compare(10 * M, 11 * M)
+        line = runner.timing_compare.describe("create", report["phases"]["create"])
+        self.assertIn("10.0M -> 11.0M Lua instructions", line)
+        self.assertIn("runtime 30.00s -> 30.00s", line)
 
     def test_invalid_or_failed_samples_block(self):
         for side in ("baseline", "candidate"):
-            for bad in (result(10, False), result(None), result(float("nan")), result(0)):
+            for bad in (result(10 * M, False), result(None), result(float("nan")), result(-1), result(1.5)):
                 with self.subTest(side=side, bad=bad):
-                    _, error = runner.timing_compare.compare(lambda current, _: bad if current == side else result(10), ["create"])
+                    _, error = runner.timing_compare.compare(lambda current, _: bad if current == side else result(10 * M), ["create"])
                     self.assertIn("timing comparison failed", error)
-
-    def test_failed_confirmation_is_not_discarded(self):
-        def sample(side, attempt):
-            return result(10 if side == "baseline" else 1000, attempt != 2)
-        _, error = runner.timing_compare.compare(sample, ["create"])
-        self.assertIn("attempt 2", error)
 
 
 class RunnerTests(unittest.TestCase):
@@ -145,15 +148,62 @@ class RunnerTests(unittest.TestCase):
             ctx = runner.Context(folder, folder, {}, {}, (), False, False)
             base = runner.Context(os.path.join(folder, "baseline"), folder, {}, {}, (), False, False)
             def measured(picked, context):
-                sample = result(10 if "baseline" in context.root else 1000)
+                sample = result(10 * M if "baseline" in context.root else 1000 * M)
                 sample.update(run=picked, hard_problems=[])
                 return sample
             with mock.patch.object(runner, "run_one_safely", measured), contextlib.redirect_stdout(io.StringIO()):
-                measured_result = runner.run_timed(run, ctx, base, 25, 2)
+                measured_result = runner.run_timed(run, ctx, base, 25, 200 * M)
             summary, passed = runner.summarize([measured_result], runner.TestFile(), 0)
             self.assertFalse(passed)
             self.assertIn("[hard failure]", summary)
-            self.assertIn("timing regression", summary)
+            self.assertIn("Lua instruction regression", summary)
+
+    def test_log_counts(self):
+        # The data stage's line, plus each mod's last control-stage line; a mod that never reached one interval counts 0
+        text = "\n".join([
+            "PRCOUNT data samples=12 interval=100000",
+            "PRCOUNT control propertyrandomizer start interval=100000",
+            "PRCOUNT control propertyrandomizer-test-helper start interval=100000",
+            "PRCOUNT control propertyrandomizer samples=1",
+            "PRCOUNT control propertyrandomizer samples=2",
+        ])
+        self.assertEqual(runner.lua_instructions(text), 14 * 100000)
+        self.assertEqual(runner.lua_instructions("PRCOUNT control base start interval=100000"), 0)
+        self.assertIsNone(runner.lua_instructions("no counter here"))
+
+    def test_counted_runs_load_the_counter_in_both_stages(self):
+        with tempfile.TemporaryDirectory() as folder:
+            modsets = {"sa": {"links": [], "list": {"mods": []}, "settings": {}}}
+            ctx = runner.Context(folder, os.path.join(folder, "mod"), {}, modsets, (2, 1, 0), False, False)
+            ctx.counter = os.path.join(folder, runner.COUNTER_NAME)
+            commands = []
+
+            class Processes:
+                seconds = {}
+
+                def run(self, args, log_path):
+                    commands.append(args)
+                    lines = ["PRCOUNT control propertyrandomizer start interval=100000"]
+                    if "--benchmark" in args:
+                        lines += ["Performed " + str(runner.CONTROL_TICKS) + " updates", "PRCOUNT control propertyrandomizer samples=2"]
+                    else:
+                        lines += ["PRCOUNT data samples=10 interval=100000", "PRCOUNT control propertyrandomizer samples=3"]
+                    with open(log_path, "w") as f:
+                        f.write("\n".join(lines) + "\n")
+                    return 0
+
+            ctx.processes = Processes()
+            run = runner.Run(runner.Config("settings", "fixture", {}, 42, set(), False), "sa")
+            measured = runner.run_one(run, ctx)
+            mods_dir = os.path.join(folder, "runs", run.slug, "mods")
+            self.assertEqual(os.readlink(os.path.join(mods_dir, runner.COUNTER_NAME)), ctx.counter)
+            with open(os.path.join(mods_dir, "mod-list.json")) as f:
+                self.assertIn({"name": runner.COUNTER_NAME, "enabled": True}, json.load(f)["mods"])
+            self.assertEqual(len(commands), 2)
+            for args in commands:
+                self.assertIn("--enable-unsafe-lua-debug-api", args)
+                self.assertEqual(args[args.index("--instrument-mod") + 1], runner.COUNTER_NAME)
+            self.assertEqual(measured["instructions"], {"create": 13 * 100000, "control": 2 * 100000})
 
     def test_biome_configs_are_in_precommit(self):
         definitions = runner.TestFile()
