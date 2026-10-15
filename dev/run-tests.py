@@ -1011,8 +1011,11 @@ def run_timed(run, ctx, baseline, percent, instructions):
             attempt_root = os.path.join(parent.root, "timing-attempt-" + str(attempt))
             os.makedirs(attempt_root, exist_ok=True)
             helper = os.path.join(attempt_root, HELPER_NAME)
-            if not os.path.islink(helper):
+            # Configs run in parallel and share this folder, so another config's side can link the helper first; checking before linking would race
+            try:
                 os.symlink(os.path.join(parent.root, HELPER_NAME), helper)
+            except FileExistsError:
+                pass
             attempt_ctx = Context(attempt_root, parent.snapshot, parent.settings, parent.modsets, parent.version, False, False)
             attempt_ctx.processes = ctx.processes  # One cancellation group, both revisions.
             # Both revisions count with this runner's counter mod, which the baseline may not have

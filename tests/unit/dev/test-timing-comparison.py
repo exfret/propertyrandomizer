@@ -158,6 +158,22 @@ class RunnerTests(unittest.TestCase):
             self.assertIn("[hard failure]", summary)
             self.assertIn("Lua instruction regression", summary)
 
+    def test_parallel_configs_share_the_helper_link(self):
+        # Configs run two at a time and share each side's folder: a side whose helper link another config made after this one would have checked still runs
+        runs = [runner.Run(runner.Config("settings", name, {}, 42, {"control"}, False), "sa") for name in ("first", "second")]
+        with tempfile.TemporaryDirectory() as folder:
+            ctx = runner.Context(folder, folder, {}, {}, (), False, False)
+            base = runner.Context(os.path.join(folder, "baseline"), folder, {}, {}, (), False, False)
+            def measured(picked, context):
+                sample = result(10 * M)
+                sample.update(run=picked, hard_problems=[])
+                return sample
+            # Every link looks missing, as it does to two sides that check at the same time
+            with mock.patch.object(runner, "run_one_safely", measured), mock.patch.object(runner.os.path, "islink", lambda path: False), contextlib.redirect_stdout(io.StringIO()):
+                results = [runner.run_timed(run, ctx, base, 25, 200 * M) for run in runs]
+            for measured_result in results:
+                self.assertTrue(measured_result["ok"], measured_result["problems"])
+
     def test_log_counts(self):
         # The data stage's line, plus each mod's last control-stage line; a mod that never reached one interval counts 0
         text = "\n".join([
