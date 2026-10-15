@@ -273,8 +273,8 @@ end)
 -- Positions and identities
 ----------------------------------------------------------------------------------------------------
 
--- A toy graph as first pass splits it: nodes by type and name, an orand on each edge into an OR node (as gutils.make_orands puts one), with the bookkeeping make_orand keeps
-local function toy_graph()
+-- A toy split graph with orands and their bookkeeping by default; false leaves direct OR inputs as selective expansion can.
+local function toy_graph(expand_orands)
     local graph = {
         nodes = {},
         edges = {},
@@ -294,7 +294,7 @@ local function toy_graph()
         return added
     end
     local function edge(start, stop, extra)
-        if stop.op == "OR" then
+        if stop.op == "OR" and expand_orands ~= false then
             local orand = node("orand", key(start) .. " --> " .. key(stop), "AND")
             graph.node_to_orands[key(stop)][key(orand)] = true
             graph.orand_to_parent[key(orand)] = key(stop)
@@ -487,6 +487,41 @@ test("pumping a fluid and barreling it follow its identity: they feed a source t
     assert(item_fluid.move_identity_sources(plain_graph, key(plain_slot), key("fluid-temperature", key("syrup", "15") .. "-trav"), recipes) == nil)
     local item_slot = toy_item_slot(graph, node, edge, "gear")
     assert(item_fluid.move_identity_sources(graph, key(item_slot), key("item", "gear-trav"), recipes) == nil)
+end)
+
+test("identity fluid sources move when unclaimable OR inputs have no branch connectors", function()
+    local graph, node, edge = toy_graph(false)
+    local slot, create, craft, make, range, use = toy_fluid_slot(graph, node, edge, "brine")
+    local trav = graph.nodes[key("fluid-temperature", key("brine", "15") .. "-trav")]
+    local offshore = node("fluid-create-offshore-temperature", key("brine", "15"), "OR")
+    edge(offshore, create, { amount = 2 })
+    local empty = node("recipe", "empty-brine-keg", "AND")
+    edge(empty, craft, { amount = 3 })
+    local fill = node("recipe", "brine-keg", "AND")
+    edge(range, fill)
+    local recipes = item_fluid.container_recipes({
+        {
+            filled = "brine-keg",
+            held = "brine",
+            vessel = "keg",
+            fill = "brine-keg",
+            empty = "empty-brine-keg",
+        },
+    })
+    local source_key = item_fluid.move_identity_sources(graph, key(slot), key(trav), recipes)
+    assert(source_key ~= nil, "direct identity sources must be detached from the position")
+    local function connection(start, stop)
+        return graph.edges[gutils.ekey({ start = start, stop = stop })]
+    end
+    assert(connection(key(offshore), source_key).amount == 2)
+    assert(connection(key(empty), source_key).amount == 3)
+    assert(connection(key(offshore), key(create)) == nil)
+    assert(connection(key(empty), key(craft)) == nil, "emptying must not make the position's replacement fluid")
+    assert(connection(key(make), key(craft)) ~= nil, "ordinary production stays on the position")
+    assert(connection(source_key, key(trav)) ~= nil and trav.op == "OR")
+    assert(connection(key(trav), key(fill)) ~= nil and connection(key(range), key(fill)) == nil)
+    assert(connection(key(range), key(use)) ~= nil)
+    assert(next(graph.node_to_orands[source_key]) == nil, "direct edges do not create branch connectors")
 end)
 
 test("a recipe's category node follows its fluid counts, trading hand crafting for the fluid category, and a resource's follows its results", function()

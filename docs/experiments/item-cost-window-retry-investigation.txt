@@ -1,0 +1,74 @@
+Cost-window retry investigation
+
+move_identity_sources assumed every fluid production alternative had an orand wrapper; selective OR expansion leaves direct edges, which were silently skipped. Barrel emptying therefore incorrectly remained a source for the fluid position, although reflection keeps it with its fluid identity.
+
+Earlier versus later experiment: all six source hashes recorded by the earlier window study match the saved earlier source. That source used full gutils.make_orands(spoofed_graph). The later tested source uses selective expansion (commit f72ed64), so unclaimable fluid production edges have no wrappers. The rewiring helper still required wrappers. Earlier zero-retry measurements and the later six-attempt result therefore ran different implementations of the model.
+
+Concrete first rejected candidate:
+  crude-oil position -> fluoroketone-cold identity (available early).
+  fluoroketone-cold position -> thruster-fuel identity.
+  Real barrels keep fluoroketone-cold; they do not turn it into thruster fuel.
+  The model erroneously kept empty-fluoroketone-cold-barrel -> fluid-craft-temperature fluoroketone-cold on the POSITION.
+  Its proof for express-underground-belt used early fluoroketone identity -> filled barrel -> empty barrel -> fluoroketone position -> the newly selected fluid ingredient.
+  Reflection renamed that position ingredient to thruster-fuel. The real thruster-fuel source was fluoroketone-cooling, not emptying the fluoroketone barrel, and it was unreachable. Hundreds of downstream losses followed.
+
+Correction: Rewire direct edges as well as wrapped alternatives, preserving edge metadata and updating branch bookkeeping only when a wrapper exists.
+
+Paired seed 1, same frozen production source:
+  window log 4 (~54.6x), seed 1, fix False: attempts 6; rejected 5; final check True; changed item identities 246
+  window log 8 (~2981.0x), seed 1, fix False: attempts 1; rejected 0; final check True; changed item identities 245
+  window log 4 (~54.6x), seed 1, fix True: attempts 1; rejected 0; final check True; changed item identities 243
+  window log 4 (~54.6x), seed 2, fix True: attempts 1; rejected 0; final check True; changed item identities 244
+  window log 8 (~2981.0x), seed 1, fix True: attempts 1; rejected 0; final check True; changed item identities 243
+  window log 8 (~2981.0x), seed 2, fix True: attempts 1; rejected 0; final check True; changed item identities 241
+
+New direct-edge regression failed on the original code with "direct identity sources must be detached from the position", then passed after the correction. Existing expanded-branch tests still pass.
+
+Live cost-window constant remains 8. Only the model correction and regression test were added; the 55x default was not reapplied.
+
+Evidence excerpts:
+  55.237 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:41: RETRYTRACE CHOSEN recipe: express-underground-belt <- fluid-temperature-range: fluoroketone-cold: nil: nil MODEL planet: aquilo | 00=71463.25; planet: aquilo | 01=71464; planet: fulgora | 00=29574.25; planet: fulgora | 01=29575; planet: fulgora | 10=63335.75; planet: fulgora | 11=63336; planet: gleba | 00=42359.25; planet: gleba | 01=42360; planet: nauvis | 00 @ home1=8615; planet: nauvis | 00=8613.25; planet: nauvis | 01=8613.5; planet: nauvis | 10=8613.75; planet: nauvis | 11=8614; planet: vulcanus | 00=54490.25; planet: vulcanus | 01=54491; surface: space-platform | 00 @ home1=20647; surface: space-platform | 00=20645.25; surface: space-platform | 01=20646
+  55.248 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 8613.25 fluid-temperature-range: fluoroketone-cold: nil: nil @ planet: nauvis | 00
+  55.248 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 8565.25 fluid-temperature: fluoroketone-cold: -150 @ planet: nauvis | 00
+  55.248 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 8561.25 fluid-create-temperature: fluoroketone-cold: -150 @ planet: nauvis | 00
+  55.248 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 1988.25 fluid-hold: fluoroketone-cold @ planet: nauvis | 00
+  55.248 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 8559.25 fluid-craft-temperature: fluoroketone-cold: -150 @ planet: nauvis | 00
+  55.248 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 8555.25 recipe: empty-fluoroketone-cold-barrel @ planet: nauvis | 00
+  55.248 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 8549.25 item: fluoroketone-cold-barrel @ planet: nauvis | 00
+  55.248 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 7078.25 head: recipe-category: crafting-with-fluid__0__0 --> recipe: empty-fluoroketone-cold-barrel @ planet: nauvis | 00
+  55.248 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3417.25 recipe-category: cryogenics__0__0 @ planet: nauvis | 00
+  55.248 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 8545.25 orand: recipe: fluoroketone-cold-barrel --> item: fluoroketone-cold-barrel @ planet: nauvis | 00
+  55.249 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3415.25 entity-operate: cryogenic-plant @ planet: nauvis | 00
+  55.249 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 8543.25 recipe: fluoroketone-cold-barrel @ planet: nauvis | 00
+  55.249 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3413.25 entity-own-operable: cryogenic-plant @ planet: nauvis | 00
+  55.249 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3085.25 head: energy-source-electric:  --> entity-operate: cryogenic-plant @ planet: nauvis | 00
+  55.249 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 7310.25 head: recipe-category: crafting-with-fluid__0__0 --> recipe: fluoroketone-cold-barrel @ planet: nauvis | 00
+  55.249 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 8541.25 fluid-temperature: fluoroketone-cold: -150-trav @ planet: nauvis | 00
+  55.249 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3411.25 entity-own: cryogenic-plant @ planet: nauvis | 00
+  55.249 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 8539.25 head: fluid-temperature: fluoroketone-cold: -150 --> fluid-temperature: fluoroketone-cold: -150-trav @ planet: nauvis | 00
+  55.249 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3409.25 entity-build: cryogenic-plant @ planet: nauvis | 00
+  55.249 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3407.25 entity-build-architecture: cryogenic-plant @ planet: nauvis | 00
+  55.249 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3443.25 recipe-category: chemistry__cryogenics__0__0 @ planet: nauvis | 00
+  55.249 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3405.25 item: cryogenic-plant-trav @ planet: nauvis | 00
+  55.249 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3403.25 head: item: cryogenic-plant --> item: cryogenic-plant-trav @ planet: nauvis | 00
+  55.249 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 5230.25 head: recipe-category: chemistry__cryogenics__0__0 --> recipe: plastic-bar @ planet: nauvis | 00
+  55.261 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3417.25 recipe-category: cryogenics__0__0 @ planet: nauvis | 00
+  55.262 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3415.25 entity-operate: cryogenic-plant @ planet: nauvis | 00
+  55.262 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3413.25 entity-own-operable: cryogenic-plant @ planet: nauvis | 00
+  55.262 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3085.25 head: energy-source-electric:  --> entity-operate: cryogenic-plant @ planet: nauvis | 00
+  55.262 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3411.25 entity-own: cryogenic-plant @ planet: nauvis | 00
+  55.262 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3409.25 entity-build: cryogenic-plant @ planet: nauvis | 00
+  55.262 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3407.25 entity-build-architecture: cryogenic-plant @ planet: nauvis | 00
+  55.262 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3443.25 recipe-category: chemistry__cryogenics__0__0 @ planet: nauvis | 00
+  55.262 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3405.25 item: cryogenic-plant-trav @ planet: nauvis | 00
+  55.262 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 3403.25 head: item: cryogenic-plant --> item: cryogenic-plant-trav @ planet: nauvis | 00
+  55.262 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:56: RETRYTRACE PROOF 5230.25 head: recipe-category: chemistry__cryogenics__0__0 --> recipe: plastic-bar @ planet: nauvis | 00
+  55.278 Script @__propertyrandomizer__/dev/experiments/test-cost-retry-trace.lua:105: RETRYTRACE EDGE fluid-craft-temperature: thruster-fuel: 25 <- recipe: fluoroketone-cooling sends=false all=
+
+Raw runs: /private/tmp/cost-retry-fixed-evidence/results.json
+Raw diagnostic: /private/tmp/cost-retry-trace-6-evidence/create.log
+
+Limits:
+Two Space Age seeds per window validate the correction; this is not a broad seed-failure-rate estimate.
+The 55x default remains reverted. Both windows were tested in frozen copies differing only by the cost constant and this fluid-source correction.
+The diagnostic replay was restricted to its first attempt to capture the rejected build; diagnostic path and fresh-sort code were confined to scratch copies and are not production changes.

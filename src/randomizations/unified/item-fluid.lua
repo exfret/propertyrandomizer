@@ -468,37 +468,28 @@ item_fluid.move_identity_sources = function(graph, slot_key, trav_key, container
         end
         return source_key
     end
-    -- An orand from a maker into one of the position's OR nodes feeds the source instead (gutils.make_orand's bookkeeping follows it)
-    local function move_orand(orand_key, from_key)
-        local edge_key = gutils.ekey({
-            start = orand_key,
-            stop = from_key,
-        })
+    -- Identity makers feed the source, whether selective expansion kept an orand or left a direct edge.
+    local function move_input(edge_key, from_key)
+        local input = gutils.prenode(graph, edge_key)
         gutils.redirect_edge_stop(graph, edge_key, source())
-        if graph.node_to_orands ~= nil then
-            graph.node_to_orands[from_key][orand_key] = nil
-            graph.node_to_orands[source_key][orand_key] = true
-            graph.orand_to_parent[orand_key] = source_key
+        if input.type == "orand" and graph.node_to_orands ~= nil then
+            graph.node_to_orands[from_key][gutils.key(input)] = nil
+            graph.node_to_orands[source_key][gutils.key(input)] = true
+            graph.orand_to_parent[gutils.key(input)] = source_key
         end
     end
     for pre, _ in pairs(table.deepcopy(slot.pre)) do
         local create = gutils.prenode(graph, pre)
         if create.type == "fluid-create-temperature" then
             for create_pre, _ in pairs(table.deepcopy(create.pre)) do
-                local orand = gutils.prenode(graph, create_pre)
-                if orand.type == "orand" then
-                    local maker = gutils.unique_prenode(graph, orand)
-                    if maker.type == "fluid-create-offshore-temperature" or (maker.type == "recipe" and recipes.empty[maker.name] ~= nil) then
-                        move_orand(gutils.key(orand), gutils.key(create))
-                    elseif maker.type == "fluid-craft-temperature" then
-                        for craft_pre, _ in pairs(table.deepcopy(maker.pre)) do
-                            local craft_orand = gutils.prenode(graph, craft_pre)
-                            if craft_orand.type == "orand" then
-                                local recipe = gutils.unique_prenode(graph, craft_orand)
-                                if recipe.type == "recipe" and recipes.empty[recipe.name] ~= nil then
-                                    move_orand(gutils.key(craft_orand), gutils.key(maker))
-                                end
-                            end
+                local maker = real_prenode(graph, gutils.prenode(graph, create_pre))
+                if maker.type == "fluid-create-offshore-temperature" or (maker.type == "recipe" and recipes.empty[maker.name] ~= nil) then
+                    move_input(create_pre, gutils.key(create))
+                elseif maker.type == "fluid-craft-temperature" then
+                    for craft_pre, _ in pairs(table.deepcopy(maker.pre)) do
+                        local recipe = real_prenode(graph, gutils.prenode(graph, craft_pre))
+                        if recipe.type == "recipe" and recipes.empty[recipe.name] ~= nil then
+                            move_input(craft_pre, gutils.key(maker))
                         end
                     end
                 end
