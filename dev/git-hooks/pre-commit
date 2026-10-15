@@ -15,6 +15,8 @@ python3 "$root/dev/style-check.py" --staged
 python3 "$root/dev/check-localisation.py" --staged
 # New dependency graph node types need the user's approval (dev/node-types.json)
 python3 "$root/dev/node-types.py" --staged
+# New progression choices must use established handlers; helpers cannot hide extra graph builds/sorts.
+python3 "$root/dev/check-progression-architecture.py" --staged
 if git diff --cached --name-only | grep -qE '\.lua$|^info\.json$|^locale/|^tests/'; then
     python3 "$root/dev/run-tests.py" --tier precommit --staged
 fi

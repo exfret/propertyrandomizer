@@ -6,6 +6,15 @@
 - The only allowed conditional loading is a pure mod-existence check: literal `mods["mod-name"]` / `mods.mod_name` or `script.active_mods` lookups, optionally combined with `not`, `and`, `or`, or comparisons to `nil`. Every enclosing condition and preceding `if`/`elseif` branch must satisfy this rule. Settings, feature flags, version checks, and mixed conditions do not qualify.
 - `dev/style-check.py` enforces this as the blocking `require-context` rule through the existing edit, stop, and pre-commit hooks, including active `src/legacy/logic/` code. Run `python3 dev/style-check.py --requires-only --all` for a complete working-tree audit, including files excluded from ordinary style checks. Run `python3 dev/run-unit-tests.py --only test-style-check` for its regression tests; the runner uses the existing release Python environment when available. Both need the checker's existing tree-sitter dependencies.
 
+## Use the established progression architecture
+
+- Progression-sensitive prerequisite choices belong in unified second-pass handlers (`src/randomizations/unified/handlers/`), using claim/pool/validate/reflect and the shared promotion/fallback machinery. Collision-mask biome placement is one of these choices; cosmetic biome appearance mixing is separate.
+- Before implementing a randomization, trace the nearest existing handler and explain how its extension points cover the requested behavior. Extend those points rather than inventing a separate algorithm, trial loop, graph rebuild, repair pass, or validation sort around the feature.
+- Declare whether a handler needs identity matching (`first_pass`). A pure in-place choice must not launch an otherwise unused first pass; when other handlers need it, share their pass. Reuse the runner's current graph and baseline when preprocessing has not changed the world.
+- Helpers may prepare prototype metadata and compile candidate dependencies. They must not independently build or sort the whole progression graph to accept/reject choices. Validation and attempt retries belong to the unified runner.
+- If the established machinery cannot express the approved behavior, identify the specific missing capability and ask before adding an alternate progression algorithm. A performance optimization of an unauthorized alternate algorithm does not fix the architecture.
+- Run `python3 dev/check-progression-architecture.py` before finishing. It rejects new graph build/sort calls outside the central runners, including calls hidden in helpers. Its baseline records existing debt, not permission to copy it; adding baseline entries requires the user's explicit approval.
+
 ## Game facts: verify or ask, never assume
 
 - Before relying on how Factorio works (engine rules and limits, Lua API behavior, prototype properties and their defaults, what vanilla base/Space Age data contains, how mechanics interact), check the 2.1 docs at lua-api.factorio.com/latest (local copies are in `/Applications/factorio.app/Contents/doc-html`) or the installed game data under `/Applications/factorio.app/Contents/data`. Read neighbouring fields too; a default can be overridden right next to where you looked.
