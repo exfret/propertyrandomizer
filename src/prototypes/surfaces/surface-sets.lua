@@ -343,6 +343,34 @@ surface_sets.accepted = function(prototype)
     return surface_sets.accepting(prototype.surface_conditions or {}, surface_sets.room_keys(), surface_sets.value)
 end
 
+-- A surface property of the mod's own that no surface has a value for, which surface_sets.nowhere_conditions asks for above its default
+surface_sets.NOWHERE_PROPERTY = "propertyrandomizer-retired"
+
+-- Surface conditions no surface meets, for something retired to no planet (a recipe whose planets all make a planet version of it instead, or a planet reward's member that left for a variant)
+-- The property isn't one of the pool's, which come and go with each plan (surface_sets.apply_properties); its prototype is a copy of any surface property, since the base game defines some (base/prototypes/planet/surface-property.lua)
+surface_sets.nowhere_conditions = function()
+    if data.raw["surface-property"][surface_sets.NOWHERE_PROPERTY] == nil then
+        local template_name = sorted_keys(data.raw["surface-property"])[1]
+        local property = table.deepcopy(data.raw["surface-property"][template_name])
+        property.name = surface_sets.NOWHERE_PROPERTY
+        property.default_value = 0
+        property.order = "z[propertyrandomizer]-retired"
+        property.localised_name = nil
+        property.localised_description = nil
+        property.localised_unit_key = nil
+        property.is_time = nil
+        data:extend({
+            property,
+        })
+    end
+    return {
+        {
+            property = surface_sets.NOWHERE_PROPERTY,
+            min = 1,
+        },
+    }
+end
+
 -- Removes every pool property from the game: its prototype, and each room's value
 surface_sets.clear = function(pool)
     for _, entry in pairs(pool) do

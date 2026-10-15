@@ -1762,31 +1762,10 @@ local function remove_unlocks(recipe_name)
     end
 end
 
--- The surface conditions of a retired recipe (one that left for a variant on the new planet): a surface property of the mod's own that no surface has a value for, asked for above its default, so no surface meets them
+-- The surface conditions of a retired recipe (one that left for a variant on the new planet): conditions no surface meets (surface_sets.nowhere_conditions)
 -- The recipe stays in the game, locked to nowhere and unlocked by nothing; item randomization trades its results like every other recipe's
--- Not one of the lock stage's pool properties, which come and go with each plan (surface_sets.apply_properties); the prototype is a copy of any surface property, since data.raw has one by then
-local RETIRED_PROPERTY = "propertyrandomizer-retired"
 local function retired_conditions()
-    if data.raw["surface-property"][RETIRED_PROPERTY] == nil then
-        local template_name = sorted_keys(data.raw["surface-property"])[1]
-        local property = table.deepcopy(data.raw["surface-property"][template_name])
-        property.name = RETIRED_PROPERTY
-        property.default_value = 0
-        property.order = "z[propertyrandomizer]-retired"
-        property.localised_name = nil
-        property.localised_description = nil
-        property.localised_unit_key = nil
-        property.is_time = nil
-        data:extend({
-            property,
-        })
-    end
-    return {
-        {
-            property = RETIRED_PROPERTY,
-            min = 1,
-        },
-    }
+    return surface_sets.nowhere_conditions()
 end
 
 -- A member recipe remade for the target with the target's own ingredients (target_ingredients): a planet variant named after the target, with the target's icon as a badge, that the caller locks to the target's rooms (locks.fix) and unlocks with the bundle's technology (edit_tech's renamed)

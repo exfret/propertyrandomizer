@@ -660,6 +660,18 @@ local function unlocking_technologies(recipe_name)
     return technologies
 end
 
+-- Takes a recipe out of every technology's unlocks
+local function remove_unlocks(recipe_name)
+    for _, technology in pairs(data.raw.technology) do
+        local effects = technology.effects or {}
+        for i = #effects, 1, -1 do
+            if effects[i].type == "unlock-recipe" and effects[i].recipe == recipe_name then
+                table.remove(effects, i)
+            end
+        end
+    end
+end
+
 -- A planned planet variant of a recipe a planet shares with its copies: the recipe with the planet's new ingredients, named after the planet (like "Copper plate (Nauvis 2)") with its icon as a badge, unlocked by the same technologies and locked to that planet (resources.add_variant)
 -- Returns { planet_name, recipe_name (the original's), old_ingredients (the original's), variant (the prototype), technologies }
 resources.variant_plan = function(recipe, planet_name, ingredients)
@@ -704,20 +716,14 @@ end
 -- Takes a variant back out of the game; locks.realize must run after (once for several)
 resources.remove_variant = function(plan)
     data.raw.recipe[plan.variant.name] = nil
-    for _, technology in pairs(data.raw.technology) do
-        local effects = technology.effects or {}
-        for i = #effects, 1, -1 do
-            if effects[i].type == "unlock-recipe" and effects[i].recipe == plan.variant.name then
-                table.remove(effects, i)
-            end
-        end
-    end
+    remove_unlocks(plan.variant.name)
     locks.unfix("recipe", plan.variant.name)
 end
 
--- On a planet that got a variant, the variant replaces the original there (user, 2026-09-30): each original stops accepting the planets with a variant of it, through a fixed lock on every other room (locks.fix), which goes again if the variants do
--- Only originals without surface conditions of their own: a planet-locked original (like acid neutralisation) stays free for the lock stage's random moves, and keeps its variant beside it
--- locks.realize must run after; a set the new surface properties can't give (the pool ran out) leaves that original makeable everywhere, as without this
+-- On a planet that got a variant, the variant replaces the original there (user, 2026-09-30): each original stops accepting the planets with a variant of it, through a fixed lock on the rest of its rooms (locks.fix), which goes again if the variants do
+-- An original locked to some planets of its own gives way on those with a variant too (user, 2026-10-14), like acid neutralisation, which works on Vulcanus and its copies alike: one whose every planet has a variant is left on none, which retires it (locks.realize), and while lock moves are on, its fixed lock keeps their random moves off it
+-- An original whose lock is fixed or moved already (a duplicate's home lock, a moved lock) keeps it, and its variants beside it
+-- The caller runs locks.realize after it; a set the new surface properties can't give (the pool ran out) leaves that original as it was
 -- Returns the excluded originals: list of { recipe_name, planet_rooms = room key --> true }, sorted
 resources.exclude_originals = function(variants)
     local planets_of = {}
@@ -732,21 +738,49 @@ resources.exclude_originals = function(variants)
     for _, recipe_name in pairs(sorted_keys(planets_of)) do
         local recipe = data.raw.recipe[recipe_name]
         local id = "recipe/" .. recipe_name
-        if recipe ~= nil and (recipe.surface_conditions == nil or next(recipe.surface_conditions) == nil) and locks.fixed[id] == nil and locks.moved[id] == nil then
+        if recipe ~= nil and locks.fixed[id] == nil and locks.moved[id] == nil then
+            -- The rooms it works on now: every room, or those its own conditions accept
+            local accepted
+            if recipe.surface_conditions ~= nil and next(recipe.surface_conditions) ~= nil then
+                accepted = surface_sets.accepted(recipe)
+            end
             local rooms = {}
+            local planet_rooms = {}
             for _, room_key in pairs(surface_sets.room_keys()) do
-                if planets_of[recipe_name][room_key] == nil then
-                    rooms[room_key] = true
+                if accepted == nil or accepted[room_key] ~= nil then
+                    if planets_of[recipe_name][room_key] == nil then
+                        rooms[room_key] = true
+                    else
+                        planet_rooms[room_key] = true
+                    end
                 end
             end
-            locks.fix("recipe", recipe_name, rooms, variants_of[recipe_name])
-            table.insert(excluded, {
-                recipe_name = recipe_name,
-                planet_rooms = planets_of[recipe_name],
-            })
+            if next(planet_rooms) ~= nil then
+                locks.fix("recipe", recipe_name, rooms, variants_of[recipe_name])
+                table.insert(excluded, {
+                    recipe_name = recipe_name,
+                    planet_rooms = planet_rooms,
+                })
+            end
         end
     end
     return excluded
+end
+
+-- Retires the excluded originals left on no planet (resources.exclude_originals; locks.realize locked them to no surface), once nothing will give them a planet back: they're unlocked by nothing too, like a planet reward's retired recipes (src/randomizations/planetary/rewards.lua), so a player only sees their versions (user, 2026-10-14: the original "goes away when all of them do")
+-- Only putting data.raw back gives the unlocks back
+-- Returns the names of the originals retired, sorted
+resources.retire_originals = function(excluded)
+    local retired = {}
+    for _, entry in pairs(excluded) do
+        local lock = locks.fixed["recipe/" .. entry.recipe_name]
+        if lock ~= nil and next(lock.rooms) == nil then
+            remove_unlocks(entry.recipe_name)
+            table.insert(retired, entry.recipe_name)
+        end
+    end
+    table.sort(retired)
+    return retired
 end
 
 -- Makes excluded originals makeable on those planets again (their own conditions back); locks.realize must run after

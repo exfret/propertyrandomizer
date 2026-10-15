@@ -499,6 +499,16 @@ check.give_up_spare = function(before, after, variants_of)
     return texts
 end
 
+-- Whether one of a recipe's planet versions (check.versions) is reachable in a sort's contexts (node key --> contexts)
+local function is_version_reachable(contexts_of, variants_of, recipe_name)
+    for _, variant_name in pairs(check.versions(variants_of, recipe_name)) do
+        if next(contexts_of[gutils.key("recipe", variant_name)] or {}) ~= nil then
+            return true
+        end
+    end
+    return false
+end
+
 -- variants_of: original recipe name --> list of variant recipe names that count as it for rules 1 and 2, with their own variants (check.versions)
 check.required_failures = function(before, after, variants_of)
     local before_contexts = before.sort_info.node_to_context_inds
@@ -509,17 +519,9 @@ check.required_failures = function(before, after, variants_of)
     -- A recipe the game no longer has can't be needed, as the mechanic context check says too: the recycler's regenerated recipes take the names of the recipes recycling their items now (src/prototypes/recipes/recycling.lua), so a name from before can be gone while its item is still recycled under another
     -- Neither can a recipe a planet reward retired on purpose (check.is_retired: locked to no surface and unlocked by nothing, with a variant of it on the new planet, see src/randomizations/planetary/rewards.lua); its own goals follow the variant (rule 2)
     -- A recipe one of its planet variants still makes counts as reachable too, like for rule 2 (a resource swap's variants replace their originals on their planets, see resources.exclude_originals)
-    local function variant_reachable(recipe_name)
-        for _, variant_name in pairs(check.versions(variants_of, recipe_name)) do
-            if next(after_contexts[gutils.key("recipe", variant_name)] or {}) ~= nil then
-                return true
-            end
-        end
-        return false
-    end
     for node_key, contexts in pairs(before_contexts) do
         local node = before.graph.nodes[node_key]
-        if node ~= nil and node.type == "recipe" and next(contexts) ~= nil and after.graph.nodes[node_key] ~= nil and next(after_contexts[node_key] or {}) == nil and not check.is_retired(node.name) and not variant_reachable(node.name) then
+        if node ~= nil and node.type == "recipe" and next(contexts) ~= nil and after.graph.nodes[node_key] ~= nil and next(after_contexts[node_key] or {}) == nil and not check.is_retired(node.name) and not is_version_reachable(after_contexts, variants_of, node.name) then
             table.insert(failures, {
                 text = "unreachable " .. node_key,
                 keys = {
@@ -692,9 +694,9 @@ check.goal_inds = function(failures, sort)
     return inds
 end
 
--- Returns whether every science pack keeps its contexts in the rooms it belongs to and every recipe stays reachable
+-- Returns whether every science pack keeps its contexts in the rooms it belongs to and every recipe stays reachable, as itself or a planet version (variants_of, as for check.required_failures), unless it was retired on purpose
 -- With is_quiet, nothing is logged and moved mechanics aren't computed (for checking many candidate changes)
-check.run = function(before, after, is_quiet)
+check.run = function(before, after, is_quiet, variants_of)
     local function say(message)
         if not is_quiet then
             log(message)
@@ -745,14 +747,14 @@ check.run = function(before, after, is_quiet)
         say("PLANETCHECK lost science " .. str)
     end
 
-    -- Recipes stay reachable somewhere
+    -- Recipes stay reachable somewhere; an original whose versions replaced it everywhere (resources.retire_originals) isn't lost, nor is a recipe a reward retired
     local num_recipes = 0
     local lost_recipes = {}
     for node_key, contexts in pairs(before_contexts) do
         local node = before.graph.nodes[node_key]
         if node ~= nil and node.type == "recipe" and next(contexts) ~= nil then
             num_recipes = num_recipes + 1
-            if next(after_contexts[node_key] or {}) == nil then
+            if next(after_contexts[node_key] or {}) == nil and not check.is_retired(node.name) and not is_version_reachable(after_contexts, variants_of, node.name) then
                 table.insert(lost_recipes, node_key)
             end
         end

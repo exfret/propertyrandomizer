@@ -333,4 +333,32 @@ locks.revert({
 })
 check(accepted_now() == ember_2, "reverting it brings the home lock back, not " .. accepted_now())
 
+-- A lock on no room retires its recipe (user, 2026-10-14: an original whose every planet has its own version goes away): no surface meets its conditions, and it gives the recycler nothing, until the lock has a room again or goes
+data.raw.recipe["acid-wash"] = {
+    name = "acid-wash",
+    surface_conditions = {
+        {
+            property = "squishiness",
+            min = 4000,
+            max = 4000,
+        },
+    },
+    auto_recycle = true,
+}
+local function wash_accepted()
+    return names(surface_sets.accepting(data.raw.recipe["acid-wash"].surface_conditions or {}, surface_sets.room_keys(), surface_sets.value))
+end
+locks.fix("recipe", "acid-wash", {})
+locks.realize()
+check(wash_accepted() == "", "a recipe locked to no room works nowhere, not " .. wash_accepted())
+check(data.raw.recipe["acid-wash"].auto_recycle == false, "and the recycler makes nothing from it")
+locks.fixed["recipe/acid-wash"].rooms[room("ember", 1)] = true
+locks.realize()
+check(wash_accepted() == room("ember", 1), "given a room back, it works there, not " .. wash_accepted())
+check(data.raw.recipe["acid-wash"].auto_recycle == true, "and recycles again")
+locks.fixed["recipe/acid-wash"].rooms = {}
+locks.realize()
+locks.release("recipe", "acid-wash")
+check(data.raw.recipe["acid-wash"].surface_conditions[1].property == "squishiness" and data.raw.recipe["acid-wash"].auto_recycle == true, "releasing the lock puts its own conditions and recycling back")
+
 print("test-locks: " .. num_checks .. " checks passed")

@@ -193,4 +193,136 @@ trigger_edits = resources.trigger_edits(resources.replacements_without({
 }), {})
 check(#trigger_edits == 0, "no trigger edit should stay once alpha is undone")
 
+-- The originals step (resources.exclude_originals): a planet-locked original gives way on its planets with a variant too (user, 2026-10-14), and is left on no planet once all of them have one
+local surface_sets = package.loaded["src/prototypes/surfaces/surface-sets"]
+local locks = package.loaded["src/randomizations/planetary/locks"]
+surface_sets.room_keys = function()
+    return {
+        "planet: home",
+        "planet: vul",
+        "planet: vul-2",
+        "surface: platform",
+    }
+end
+-- Test recipes list the rooms their own conditions accept
+surface_sets.accepted = function(recipe)
+    return recipe.accepts
+end
+local function fresh_locks()
+    locks.fixed = {}
+    locks.moved = {}
+    locks.fix = function(kind, name, rooms)
+        locks.fixed[kind .. "/" .. name] = {
+            rooms = rooms,
+        }
+        return kind .. "/" .. name
+    end
+end
+local function variant(recipe_name, planet_name)
+    return {
+        recipe_name = recipe_name,
+        planet_name = planet_name,
+        variant = {
+            name = recipe_name .. "-on-" .. planet_name,
+        },
+    }
+end
+data.raw.recipe = {
+    -- Works on Vulcanus and its copy alike, like acid neutralisation
+    acid = {
+        surface_conditions = {
+            {
+                property = "pressure",
+                min = 4000,
+                max = 4000,
+            },
+        },
+        accepts = {
+            ["planet: vul"] = true,
+            ["planet: vul-2"] = true,
+        },
+    },
+    plate = {},
+    -- A duplicate's home lock is fixed already
+    foundry = {
+        surface_conditions = {
+            {
+                property = "pressure",
+                min = 4000,
+                max = 4000,
+            },
+        },
+        accepts = {
+            ["planet: vul"] = true,
+        },
+    },
+}
+
+-- Its technology unlocks it and its variants (resources.add_variant puts them beside it)
+local function fresh_technologies()
+    data.raw.technology = {
+        calcite = {
+            effects = {
+                {
+                    type = "unlock-recipe",
+                    recipe = "acid",
+                },
+                {
+                    type = "unlock-recipe",
+                    recipe = "acid-on-vul",
+                },
+                {
+                    type = "unlock-recipe",
+                    recipe = "acid-on-vul-2",
+                },
+            },
+        },
+    }
+end
+local function unlocks_of(technology_name)
+    local names = {}
+    for _, effect in pairs(data.raw.technology[technology_name].effects) do
+        table.insert(names, effect.recipe)
+    end
+    return table.concat(names, ",")
+end
+
+fresh_locks()
+fresh_technologies()
+local excluded = resources.exclude_originals({
+    variant("acid", "vul"),
+    variant("acid", "vul-2"),
+})
+check(#excluded == 1 and keys_of(excluded[1].planet_rooms) == "planet: vul,planet: vul-2", "acid gives way on both Vulcanus planets")
+check(next(locks.fixed["recipe/acid"].rooms) == nil, "with every one of its planets having a variant, it's left on none (retired by locks.realize)")
+local retired = resources.retire_originals(excluded)
+check(table.concat(retired, ",") == "acid", "acid is retired: " .. table.concat(retired, ","))
+check(unlocks_of("calcite") == "acid-on-vul,acid-on-vul-2", "a retired original is unlocked by nothing, and its variants still are: " .. unlocks_of("calcite"))
+
+fresh_locks()
+fresh_technologies()
+excluded = resources.exclude_originals({
+    variant("acid", "vul"),
+})
+check(keys_of(locks.fixed["recipe/acid"].rooms) == "planet: vul-2", "it stays on its own planet without a variant, and nowhere new: " .. keys_of(locks.fixed["recipe/acid"].rooms))
+check(#resources.retire_originals(excluded) == 0 and unlocks_of("calcite") == "acid,acid-on-vul,acid-on-vul-2", "an original still on a planet isn't retired, and keeps its unlock: " .. unlocks_of("calcite"))
+
+fresh_locks()
+excluded = resources.exclude_originals({
+    variant("plate", "vul"),
+})
+check(keys_of(locks.fixed["recipe/plate"].rooms) == "planet: home,planet: vul-2,surface: platform", "an original with no lock of its own stays everywhere else: " .. keys_of(locks.fixed["recipe/plate"].rooms))
+
+fresh_locks()
+locks.fixed["recipe/foundry"] = {
+    rooms = {
+        ["planet: vul"] = true,
+    },
+    movable = true,
+}
+excluded = resources.exclude_originals({
+    variant("foundry", "vul"),
+})
+check(#excluded == 0 and locks.fixed["recipe/foundry"].rooms["planet: vul"], "an original with a fixed lock already keeps it")
+
 print("test-resource-undo: " .. num_checks .. " checks passed")

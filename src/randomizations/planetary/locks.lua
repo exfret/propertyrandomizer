@@ -293,7 +293,25 @@ locks.draw = function(candidates, id)
     return drawn
 end
 
+-- A lock on no room retires what it locks: no surface meets its conditions (surface_sets.nowhere_conditions), and a retired recipe gives the recycler nothing to make a recycling recipe from (as a retired planet reward member, rewards.lua), until the lock has a room again or goes
+-- (user, 2026-10-14: a planet-locked original gives way on its planets that have their own version, and goes away when all of them do)
+local function set_nowhere(lock, prototype, is_nowhere)
+    if is_nowhere then
+        prototype.surface_conditions = surface_sets.nowhere_conditions()
+        if lock.kind == "recipe" and lock.kept_auto_recycle == nil then
+            lock.kept_auto_recycle = {
+                value = prototype.auto_recycle,
+            }
+            prototype.auto_recycle = false
+        end
+    elseif lock.kept_auto_recycle ~= nil then
+        prototype.auto_recycle = lock.kept_auto_recycle.value
+        lock.kept_auto_recycle = nil
+    end
+end
+
 -- Puts every moved and fixed lock's current rooms in the game: new surface properties for all of them (src/prototypes/surfaces/surface-sets.lua), and their conditions
+-- A lock on no room retires what it locks (set_nowhere)
 -- A lock the planner couldn't realize (the pool of new properties ran out) goes back to its original conditions
 -- Returns the ids of locks that went back
 locks.realize = function()
@@ -323,7 +341,7 @@ locks.realize = function()
     local requests = {}
     for _, list in pairs(lists) do
         for _, id in pairs(sorted_keys(list)) do
-            if prototype_of(list[id]) ~= nil and not is_waiting(list, id) then
+            if prototype_of(list[id]) ~= nil and not is_waiting(list, id) and next(list[id].rooms) ~= nil then
                 table.insert(requests, {
                     id = id,
                     rooms = list[id].rooms,
@@ -348,7 +366,10 @@ locks.realize = function()
             elseif prototype == nil then
                 -- The prototype is gone (data.raw was put back to a state from before it, like a scaffold variant after a rolled-again ocean swap), so the lock is forgotten
                 list[id] = nil
+            elseif next(lock.rooms) == nil then
+                set_nowhere(lock, prototype, true)
             elseif unrealized[id] ~= nil then
+                set_nowhere(lock, prototype, false)
                 prototype.surface_conditions = table.deepcopy(lock.original)
                 list[id] = nil
                 if list == locks.moved and locks.fixed[id] ~= nil then
@@ -361,6 +382,7 @@ locks.realize = function()
                 else
                     prototype.surface_conditions = conditions
                 end
+                set_nowhere(lock, prototype, false)
             end
         end
     end
@@ -531,6 +553,7 @@ locks.release = function(kind, name)
         else
             prototype.surface_conditions = table.deepcopy(lock.original)
         end
+        set_nowhere(lock, prototype, false)
     end
     locks.fixed[target_id] = nil
 end
@@ -564,6 +587,7 @@ locks.revert = function(target_ids)
         if lock ~= nil then
             local prototype = prototype_of(lock)
             prototype.surface_conditions = table.deepcopy(lock.original)
+            set_nowhere(lock, prototype, false)
             reverted[target_id] = lock
             locks.moved[target_id] = nil
         end

@@ -405,6 +405,11 @@ local function replace_originals(logic, state, variants, current)
         local labels, localised_labels = planet_list(sorted_keys(kept_on))
         warn("resource swaps", "kept " .. num_kept .. " original recipes makeable on " .. labels .. " beside those planets' own versions, since the planets still needed them.", localised_text.get("propertyrandomizer-warning.resource-originals-kept", num_kept, localised_labels))
     end
+    -- Originals left on no planet are retired, their versions making them on every planet they worked on
+    local retired = resources.retire_originals(excluded)
+    if #retired > 0 then
+        log("Planetary resources: " .. #retired .. " originals retired, since every planet they worked on has its own version now: " .. table.concat(retired, ", "))
+    end
     return excluded, result.num_back, reason
 end
 
@@ -1461,7 +1466,7 @@ local function finish(state, old_raw, old_fixed)
         end
     end
     if state.after ~= nil then
-        planetary_check.run(state.before, state.after)
+        planetary_check.run(state.before, state.after, false, state.variants_of)
     end
     log("Planetary: " .. planetary_check.num_sorts .. " sorts")
     scaffolds.log_conversions()
