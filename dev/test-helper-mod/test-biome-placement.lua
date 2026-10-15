@@ -6,7 +6,8 @@ tests.run = function()
     local report = prototypes.mod_data["propertyrandomizer-biome-placement"]
     assert(report ~= nil, "PRTEST biome-placement stage unexpectedly rolled back")
     local changed = false
-    for _, profile in pairs(report.data.assignments) do
+    for name, profile in pairs(report.data.assignments) do
+        assert(report.data.entities[name] == "randomized", "PRTEST biome assignment outside machine eligibility: " .. name)
         changed = changed or profile ~= "normal"
     end
     assert(changed, "PRTEST biome-placement made no non-Normal assignments")

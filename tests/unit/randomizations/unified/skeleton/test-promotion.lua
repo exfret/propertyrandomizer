@@ -45,6 +45,7 @@ package.loaded["src/logic/state"] = package.loaded["src/logic/init"]
 
 local gutils = require("src/lib/graph/graph-utils")
 local promotion = require("src/randomizations/unified/skeleton/promotion")
+local protection = require("src/randomizations/unified/skeleton/protection")
 if arg ~= nil and arg[1] == "cached-rewires" then
     local ordinary_new = promotion.new
     promotion.new = function(params)
@@ -241,6 +242,23 @@ test("automatable counterparts add automatability and keep the room and isolatab
     assert(top.automatable_counterpart(C("planet: a | 11")) == nil)
     assert(top.automatable_counterpart(C("planet: a | 00 @ home1")) == nil)
     assert(top.automatable_counterpart(C("planet: a")) == nil)
+end)
+
+test("without an identity pass, promotion captures the native recipe contexts from its own sort", function()
+    local original = protection.planet_locked_recipe_contexts
+    local captured = false
+    protection.planet_locked_recipe_contexts = function(graph, sort_info)
+        captured = true
+        assert(graph.nodes[key("head", "z-r")].num_pre == 1, "native fallback must already be connected")
+        return {[r] = sort_info.node_to_context_inds[r]}
+    end
+    local prom = promotion.new({graph = build_graph(false, true), complex = true, protect_planet_locked = true})
+    protection.planet_locked_recipe_contexts = original
+    assert(captured)
+    assert(#prom.promise_mechanics() == 0)
+    local contexts = prom.required_contexts(r)
+    assert(has_automatable(contexts))
+    assert(not prom.candidate_ok(r, x, contexts))
 end)
 
 test("a planet-locked recipe keeps every context it had, so it can't take an ingredient that can't be automated", function()

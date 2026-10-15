@@ -116,6 +116,13 @@ promotion.new = function(params)
     local pebble_contexts = sort_info.pebble_contexts
     local nci = sort_info.node_to_context_inds
 
+    -- With no identity pass, this initial sort already represents the native fallback world.
+    -- Keep the same planet-locked contexts the first pass normally captures, without another sort.
+    local planet_locked = params.planet_locked
+    if params.protect_planet_locked == true then
+        planet_locked = protection.planet_locked_recipe_contexts(graph, sort_info)
+    end
+
     local state = {
         -- ind --> true
         is_promised = {},
@@ -830,7 +837,7 @@ promotion.new = function(params)
         end
         -- Protected mechanic pebbles, and every pebble of a recipe locked to one planet (params.planet_locked, see protection.lua)
         -- In debt mode, also recipe pebbles that are goals (like a recipe the older world had locked to a planet), since the planet-locked ones only come from the game itself
-        local planet_locked = params.planet_locked or {}
+        local planet_locked = planet_locked or {}
         local function is_promised_mechanic(ind)
             local pebble_key, pebble_context = pebble_keys[ind], pebble_contexts[ind]
             if (planet_locked[pebble_key] or {})[pebble_context] ~= nil then

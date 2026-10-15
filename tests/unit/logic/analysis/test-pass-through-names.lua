@@ -9,6 +9,7 @@
 local BUILDERS = {
     ["src/logic/builders/concrete.lua"] = true,
     ["src/logic/builders/abstract.lua"] = true,
+    ["src/logic/builders/tile-requirements.lua"] = true,
 }
 
 local function read(path)

@@ -1,4 +1,4 @@
--- User-approved eligibility and infrastructure policy.
+-- Eligibility for machine biome draws.
 -- These are gameplay choices by entity type, not properties that can be inferred from collision masks.
 local policy = {}
 
@@ -17,30 +17,6 @@ policy.randomized = {
     accumulator = true,
 }
 
--- Everything profile: broaden terrain placement while retaining surface and special placement requirements.
-policy.unrestricted = {
-    ["arithmetic-combinator"] = true,
-    ["decider-combinator"] = true,
-    ["constant-combinator"] = true,
-    ["selector-combinator"] = true,
-    lamp = true,
-    ["programmable-speaker"] = true,
-    ["electric-pole"] = true,
-    ["power-switch"] = true,
-    inserter = true,
-    pipe = true,
-    ["pipe-to-ground"] = true,
-    pump = true,
-    ["heat-pipe"] = true,
-    container = true,
-    ["logistic-container"] = true,
-    ["storage-tank"] = true,
-    roboport = true,
-    radar = true,
-}
-
--- Use categories.belts; individual restrictions need a reachable unrestricted transport option first.
-policy.unrestricted_belts = true
-
--- Other types, including unknown modded types, retain their native placement rules.
+-- Infrastructure does not participate: keep its native placement rules, with no draw or forced profile.
+-- Other types, including unknown modded types, also retain their native placement rules.
 return policy

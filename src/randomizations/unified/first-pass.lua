@@ -269,9 +269,10 @@ first_pass.execute = function(params)
         if EXCLUDE_ENTITY_OPERATE and subdiv_node.type == "entity-operate" then
             return false
         end
-        -- Check if at least one of its edges are randomized, or in other words that one of the pre's in subdiv graph are a head
+        -- Claimed requirements normally create identity positions. A second-pass-only head changes
+        -- prerequisites in place (biome terrain), so it must not turn the building into a first-pass identity slot.
         for _, prenode in pairs(gutils.prenodes(subdiv_graph, subdiv_node)) do
-            if prenode.type == "head" then
+            if prenode.type == "head" and prenode.second_pass_only ~= true then
                 return true
             end
         end

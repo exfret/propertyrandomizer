@@ -88,6 +88,7 @@ claim_tool.prepare(data.raw, defines.prototypes.entity)
 -- Freeze the original appearance donors after planet copies exist, before gameplay randomization edits them.
 local biomes = require("src/randomizations/planetary/biomes")
 local biome_collision = require("src/randomizations/planetary/biome-collision")
+local biome_placement = require("src/randomizations/planetary/biome-placement")
 if config.planetary_biomes == true then
     biomes.capture()
 end
@@ -235,6 +236,16 @@ if planetary.pending ~= nil then
     old_data_raw = table.deepcopy(data.raw)
 end
 
+-- Terrain families and collision aliases are fixed metadata; unified's second pass chooses building requirements.
+if config.planetary_biome_placement == true then
+    local problem = biome_placement.prepare()
+    if problem ~= nil then
+        log("Biome placement skipped: " .. problem)
+        table.insert(randomization_info.warnings, localised_text.get("propertyrandomizer-warning.planetary-skipped", problem))
+    end
+    old_data_raw = table.deepcopy(data.raw)
+end
+
 -- Independent deposits (src/randomizations/unified/deposit-copies.lua): while unified randomization runs, each planet's deposits mine a copy of their material, and the recipes taking it there take the copy in a version of their own, so item randomization changes them planet by planet
 -- After the planetary stages, whose resource placements it splits up, and before the game the rest of randomization starts from is captured
 local deposit_copies = require("src/randomizations/unified/deposit-copies")
@@ -335,7 +346,10 @@ local function ship_for_goals(num_lost, failures, sort_info)
     return num_lost
 end
 for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
-    unified_info = unified.execute()
+    unified_info = unified.execute({
+        -- The initial check just built this world. Later attempts rebuild after restoring prototypes.
+        starting_graph = i == 1 and new_logic.graph or nil,
+    })
     if unified_info then
         -- The copies go back to their materials before anything looks at the game the attempt built, so recycling and the checks see the game players get (src/randomizations/unified/deposit-copies.lua)
         if config.deposit_copies == true then

@@ -15,6 +15,7 @@
 
 ## Use the established progression architecture
 
+- Biome placement: infrastructure is outside the randomization and keeps native placement rules. “Does not roll” must never become “force Everything”; Everything is only an ordinary candidate for eligible machines.
 - Progression-sensitive prerequisite choices belong in unified second-pass handlers (`src/randomizations/unified/handlers/`), using claim/pool/validate/reflect and the shared promotion/fallback machinery. Collision-mask biome placement is one of these choices; cosmetic biome appearance mixing is separate.
 - Before implementing a randomization, trace the nearest existing handler and explain how its extension points cover the requested behavior. Extend those points rather than inventing a separate algorithm, trial loop, graph rebuild, repair pass, or validation sort around the feature.
 - Declare whether a handler needs identity matching (`first_pass`). A pure in-place choice must not launch an otherwise unused first pass; when other handlers need it, share their pass. Reuse the runner's current graph and baseline when preprocessing has not changed the world.

@@ -112,6 +112,12 @@ if config.entity_randomization then
     enabled["entity"] = true
 end
 
+-- Biome placement is a second-pass handler enabled by its existing placement setting.
+if config.planetary_biome_placement == true then
+    config.unified["biome-placement"] = true
+    enabled["biome-placement"] = true
+end
+
 -- for _, id in pairs(all_handler_ids) do
 for id, _ in pairs(config.unified) do
     if enabled[id] then--config.unified[id] then
@@ -128,6 +134,7 @@ end
 -- Load handlers
 local default_handler = require("src/randomizations/unified/handlers/default")
 local available_handlers = {
+    ["biome-placement"] = require("src/randomizations/unified/handlers/biome-placement"),
     ["entity"] = require("src/randomizations/unified/handlers/entity"),
     ["entity-autoplace"] = require("src/randomizations/unified/handlers/entity-autoplace"),
     ["entity-energy-source"] = require("src/randomizations/unified/handlers/entity-energy-source"),
@@ -163,6 +170,10 @@ end
 
 -- Whether any handler is on, so there's anything for unified randomization to do
 unified.has_handlers = #handler_ids > 0
+unified.needs_first_pass = false
+for _, handler in pairs(handlers) do
+    unified.needs_first_pass = unified.needs_first_pass or handler.first_pass
+end
 -- Whether research triggers are randomized (handlers/tech-triggers.lua), for data-final-fixes.lua's split of trigger technologies before the tech tree rebuild (research_triggers.split_technologies)
 unified.randomizes_triggers = handlers["tech-triggers"] ~= nil
 
@@ -171,7 +182,7 @@ unified.randomizes_triggers = handlers["tech-triggers"] ~= nil
 local function attempt(options)
     options = options or {}
     local repair_only = options.repair_only == true
-    local do_first_pass = DO_FIRST_PASS and not repair_only
+    local do_first_pass = DO_FIRST_PASS and not repair_only and unified.needs_first_pass
     local handlers = handlers
     local handler_ids = handler_ids
     local debt = options.debt
@@ -220,7 +231,7 @@ local function attempt(options)
         end
     end
 
-    if REMOVE_TECH_PREREQS and not repair_only then
+    if REMOVE_TECH_PREREQS and not repair_only and config.dev_unified == true then
         -- A planet copy's technologies keep the discoveries their parallel tree follows (dupe_branches.copy_gates), so that randomization never makes something early need a copied item: the copies belong to their planet copies (user, 2026-10-12), which the tech tree rebuild keeps them behind
         local copy_gates = dupe_branches.copy_gates(data.raw.technology)
         for _, tech in pairs(data.raw.technology) do
@@ -233,8 +244,19 @@ local function attempt(options)
         end
     end
 
-    -- Logic building
-    logic.build()
+    -- A caller may supply the graph it just built. Preprocessing invalidates that graph.
+    local reuse_starting_graph = options.starting_graph ~= nil and not repair_only
+        and not (REMOVE_TECH_PREREQS and config.dev_unified == true)
+    for _, handler in pairs(handlers) do
+        if handler.preprocess ~= default_handler.preprocess then
+            reuse_starting_graph = false
+        end
+    end
+    if reuse_starting_graph then
+        logic.graph = options.starting_graph
+    else
+        logic.build()
+    end
     -- The debt has every node logic.build left out (see superpose.union), so this game needs them too for the debt to fit onto its graphs
     if debt ~= nil then
         reductions.expand_all(logic.graph)
@@ -421,23 +443,32 @@ local function attempt(options)
     log_info(2, "CALCULATE POOLS")
     ----------------------------------------------------------------------------------------------------
 
-    local pool_graph = table.deepcopy(cut_graph)
-    local sort_for_pool = top.sort(pool_graph, nil, nil, { choose_randomly = true })
+    local pool_graph
+    local sort_for_pool
+    if USE_PROMOTION and not do_first_pass then
+        -- Promotion reconnects native fallbacks and ranks them itself.
+        -- Without identity matching, the claiming sort is already the required reachability baseline.
+        sort_for_pool = sort_for_claiming
+    else
+        pool_graph = table.deepcopy(cut_graph)
+        sort_for_pool = top.sort(pool_graph, nil, nil, { choose_randomly = true })
 
-    for _, dep in pairs(sorted_deps) do
-        for _, head_key in pairs(dep_to_heads[dep]) do
-            local head = pool_graph.nodes[head_key]
-            local old_base = pool_graph.nodes[head.old_base]
-            -- Heads that start detached have a vanilla base only so their edge could be claimed (see promotion.new)
-            if head.starts_detached == nil then
-                gutils.connect_base_head(pool_graph, head.old_base, head_key, old_base.abilities)
-                sort_for_pool = top.sort(pool_graph, sort_for_pool, {old_base, head}, { choose_randomly = true })
+        for _, dep in pairs(sorted_deps) do
+            for _, head_key in pairs(dep_to_heads[dep]) do
+                local head = pool_graph.nodes[head_key]
+                local old_base = pool_graph.nodes[head.old_base]
+                -- Heads that start detached have a vanilla base only so their edge could be claimed (see promotion.new)
+                if head.starts_detached == nil then
+                    gutils.connect_base_head(pool_graph, head.old_base, head_key, old_base.abilities)
+                    sort_for_pool = top.sort(pool_graph, sort_for_pool, {old_base, head}, { choose_randomly = true })
+                end
             end
         end
+
     end
 
     -- SKELETON EXPERIMENT (measurement only; see src/randomizations/unified/skeleton/)
-    if SKELETON_STATS then
+    if SKELETON_STATS and pool_graph ~= nil then
         skeleton_stats.run({
             graph = pool_graph,
             sort_info = sort_for_pool,
@@ -447,10 +478,14 @@ local function attempt(options)
         })
     end
     -- Nothing changes pool_graph after this, so it's checked now, before first pass can let go of it
-    test_graph_invariants.test(pool_graph)
+    if pool_graph ~= nil then
+        test_graph_invariants.test(pool_graph)
+    end
 
     ----------------------------------------------------------------------------------------------------
-    log_info(2, "FIRST PASS")
+    if do_first_pass then
+        log_info(2, "FIRST PASS")
+    end
     ----------------------------------------------------------------------------------------------------
 
     local first_pass_info
@@ -611,7 +646,7 @@ local function attempt(options)
 
     -- TEST: Make sure each head is after its corresponding base
     -- TODO: Make this check compatible with first pass
-    if not do_first_pass and not repair_only then
+    if not do_first_pass and not repair_only and not USE_PROMOTION then
         for _, dep in pairs(sorted_deps) do
             for _, head_key in pairs(dep_to_heads[dep]) do
                 local head = subdiv_graph.nodes[head_key]
@@ -818,6 +853,7 @@ local function attempt(options)
             debt = debt,
             -- Contexts recipes locked to one planet keep, from first pass's sort of the game before randomization
             planet_locked = (first_pass_info or {}).planet_locked,
+            protect_planet_locked = not do_first_pass and not repair_only,
             -- A head's handler says what connecting a base to it gains or loses (e.g. entity randomization's pairing table)
             connection_abilities = function(base, head)
                 local handler = head_to_handler[key(head)]
@@ -879,8 +915,15 @@ local function attempt(options)
     local num_paying_heads = 0
     -- For handlers with a stay_chance: their heads, how many tried to keep their old connection, and how many kept it (in all, and of those that tried)
     local handler_to_stay_stats = {}
+    local handler_to_search_stats = {}
     for _, handler in pairs(handlers) do
         handler_to_used_prereq_inds[handler.id] = {}
+        handler_to_search_stats[handler.id] = {
+            heads = 0,
+            checks = 0,
+            accepted = 0,
+            fallback = 0,
+        }
     end
     for dep_ind, dep in pairs(sorted_deps) do
         if #dep_to_heads[dep] > 0 then
@@ -933,7 +976,15 @@ local function attempt(options)
                 local order = {}
                 local later = {}
                 local paying_contexts = (prom ~= nil and #required_contexts > 0) and prom.head_boundary_contexts(head_key, required_contexts) or {}
-                for ind = 1, #shuffled_prereqs do
+                local search_stats = handler_to_search_stats[handler_id]
+                search_stats.heads = search_stats.heads + 1
+                local candidate_indices = head_to_handler[head_key].candidate_indices
+                local indices
+                if candidate_indices ~= false then
+                    indices = candidate_indices(random_graph, head, shuffled_prereqs)
+                end
+                for position = 1, #(indices or shuffled_prereqs) do
+                    local ind = indices ~= nil and indices[position] or position
                     if #paying_contexts > 0 and prom.head_pays(head_key, shuffled_prereqs[ind], paying_contexts) then
                         table.insert(order, ind)
                     else
@@ -995,6 +1046,7 @@ local function attempt(options)
                         error("Randomization assertion failed! Tell exfret he's a dumbo.")
                     end
 
+                    search_stats.checks = search_stats.checks + 1
                     local is_context_reachable
                     if prom ~= nil then
                         is_context_reachable = #required_contexts == 0 or prom.head_candidate_ok(head_key, base_key, required_contexts)
@@ -1018,6 +1070,7 @@ local function attempt(options)
                             log("Accepted prereq " .. key(gutils.get_owner(random_graph, base)) .. " (" .. origin .. ") for " .. dep .. (#paying_contexts > 0 and (prom.head_pays(head_key, base_key, paying_contexts) and " (pays)" or " (doesn't pay)") or ""))
                             head_to_handler[head_key].process(random_graph, base, head)
                             found_prereq = true
+                            search_stats.accepted = search_stats.accepted + 1
                             handler_to_used_prereq_inds[handler_id][ind] = true
                             head_to_base[head_key] = base_key
                             if prom ~= nil then
@@ -1038,6 +1091,7 @@ local function attempt(options)
                 if not found_prereq and prom ~= nil then
                     -- Fall back to the vanilla base, which promotion guarantees is valid in the required contexts
                     local base_key = head.old_base
+                    search_stats.fallback = search_stats.fallback + 1
                     log("Prereq shuffle found nothing for " .. head_key .. "; falling back to vanilla base")
                     head_to_handler[head_key].process(random_graph, random_graph.nodes[base_key], head)
                     head_to_base[head_key] = base_key
@@ -1057,6 +1111,12 @@ local function attempt(options)
                     log("Prereq shuffle failed at " .. tostring(percentage) .. "%")
                 end
             end
+        end
+    end
+    for handler_id, stats in pairs(handler_to_search_stats) do
+        if stats.heads > 0 then
+            log("SEARCH " .. handler_id .. ": heads=" .. stats.heads .. ", checks=" .. stats.checks
+                .. ", accepted=" .. stats.accepted .. ", fallback=" .. stats.fallback)
         end
     end
     for handler_id, stats in pairs(handler_to_stay_stats) do

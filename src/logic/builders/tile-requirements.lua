@@ -165,8 +165,11 @@ requirements.compile = function(entity, tile_groups)
     return layouts
 end
 
-requirements.build = function(entity, lu)
-    builder.add_node("entity-build-tile-rules", "OR", nil, nil, {pass_through = true})
+requirements.build = function(entity, lu, biome_terrain)
+    builder.add_node("entity-build-tile-rules", "OR", nil, nil, {
+        pass_through = true,
+        biome_terrain = biome_terrain,
+    })
     local layouts = requirements.compile(entity, lu.tile_collision_group_to_layers)
     for index, clauses in pairs(layouts) do
         local layout_key = gutils.concat({
@@ -187,6 +190,79 @@ requirements.build = function(entity, lu)
             end
         end
     end
+end
+
+-- The unified placement handler uses the same terrain compiler as the real-game builder.
+-- Reuse the existing node types, with private names; no prototype mutation or graph rebuild is needed.
+requirements.option = function(graph, entity, tile_groups, name, cache)
+    local layouts = requirements.compile(entity, tile_groups)
+    local layout_keys = {}
+    for _, clauses in pairs(layouts) do
+        local keys = {}
+        for _, clause in pairs(clauses) do
+            table.insert(keys, clause.key)
+        end
+        table.insert(layout_keys, signature(keys))
+    end
+    table.sort(layout_keys)
+    local cache_key = signature(layout_keys)
+    if cache ~= nil and cache[cache_key] ~= nil then
+        return cache[cache_key]
+    end
+    local root = gutils.add_node(graph, "entity-build-tile-rules", name, {
+        op = "OR",
+        spoof = true,
+    })
+    for index, clauses in pairs(layouts) do
+        local layout = gutils.add_node(graph, "entity-build-tile-layout", gutils.concat({
+            name,
+            index,
+        }), {
+            op = "AND",
+            spoof = true,
+        })
+        gutils.add_edge(graph, layout, root)
+        for clause_index, clause in pairs(clauses) do
+            local region = gutils.add_node(graph, "entity-build-tile-region", gutils.concat({
+                layout.name,
+                clause_index,
+            }), {
+                op = "OR",
+                spoof = true,
+            })
+            gutils.add_edge(graph, region, layout)
+            for _, group in pairs(clause.groups) do
+                gutils.add_edge(graph, gutils.key("tile-collision-group", group), region)
+            end
+        end
+    end
+    if cache ~= nil then
+        cache[cache_key] = root
+    end
+    return root
+end
+
+-- Bundle the existing collision and native tile-rule prerequisites into one claimable requirement.
+requirements.native = function(graph, entity, build)
+    local root = gutils.add_node(graph, "entity-build-tile-layout", "biome-native: " .. entity.name, {
+        op = "AND",
+        spoof = true,
+    })
+    local edges = {}
+    for edge_key, _ in pairs(build.pre) do
+        if graph.nodes[graph.edges[edge_key].start].biome_terrain == true then
+            table.insert(edges, edge_key)
+        end
+    end
+    assert(#edges > 0, "building has no terrain requirement: " .. entity.name)
+    for _, edge_key in pairs(edges) do
+        gutils.redirect_edge_stop(graph, edge_key, gutils.key(root))
+    end
+    gutils.add_edge(graph, root, build, {
+        biome_native = true,
+        second_pass_only = true,
+    })
+    return root
 end
 
 return requirements

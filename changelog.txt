@@ -14,11 +14,14 @@ Date: ?
     - Separate prototype exclusions with Explorer-style selectors and scopes for individual, graph, numerical or all normal randomizations
     - Customizer tab in randomizer panel for changing settings more easily
   Changes:
+    - Building biome restrictions now use the unified second pass instead of separate full-graph trial checks
+    - Selected machines try up to ten random biome proposals, reusing repeated prerequisite checks
     - Combat safeguards apply only to graph randomization; numerical military changes apply directly without combat checks or rollback
     - Duplicate icons no longer have a top left number badge; item randomization has new recipe badges for numbers 1 through 99
     - Upgrade line preservation removed in favor of reduced complexity and independent randomizations
     - (Unified preview) Recipe category randomization favors old category 50% of the time
   Bugfixes:
+    - Biome placement leaves infrastructure unchanged instead of assigning it Everything
     - Item randomization reflection of ammo creation was not properly modeled
     - Fluid box connections no longer share a corner tile facing different ways (the game only drew one of them in alt mode)
     - (Unified preview) Mining fluid randomization was not previously working on non-uranium ores

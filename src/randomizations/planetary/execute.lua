@@ -40,7 +40,6 @@ local discovery = require("src/randomizations/planetary/discovery")
 local rewards = require("src/randomizations/planetary/rewards")
 local lock_repairs = require("src/randomizations/planetary/lock-repairs")
 local enemies = require("src/randomizations/planetary/enemies")
-local biome_placement = require("src/randomizations/planetary/biome-placement")
 -- The check's rule 1 skips recipes a reward retired (rewards.bundle_of_retired)
 planetary_check.is_retired = function(recipe_name)
     return rewards.bundle_of_retired(recipe_name) ~= nil
@@ -1365,9 +1364,6 @@ local function run_stages(logic, state, careful, fix)
             run_stage(what, run_locks, logic, state)
         end
     end
-    if config.planetary_biome_placement then
-        run_stage("biome placement", biome_placement.execute, logic, state)
-    end
 end
 
 -- Draws the star map first: the connection graph (checked like any stage, against the game before it) and, with DISCOVERY_FOLLOWS_MAP, the discovery order that follows it (run_discovery), and then the game they make is the one the other stages are checked against, sorted again with home sets of its own
@@ -1537,7 +1533,7 @@ planetary.execute = function(logic)
             log("Planet rewards: the dry run stopped on an error: " .. tostring(problem))
         end
     end
-    if not (config.planetary_biome_placement == true or config.planetary_oceans == true or config.planetary_resources == true or config.planetary_lightning == true or config.planetary_freezing == true or config.planetary_locks == true or config.planetary_rewards == true or config.planetary_connections == true or config.planetary_enemies == true) then
+    if not (config.planetary_oceans == true or config.planetary_resources == true or config.planetary_lightning == true or config.planetary_freezing == true or config.planetary_locks == true or config.planetary_rewards == true or config.planetary_connections == true or config.planetary_enemies == true) then
         log("Planetary: " .. planetary_check.num_sorts .. " sorts (no stage that changes the game is on)")
         return
     end

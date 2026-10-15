@@ -131,7 +131,7 @@ config.planetary_connections = config.dupes or settings.startup["propertyrandomi
 -- Demolisher territories and the starting planet's kinds of enemies move to other planets (src/randomizations/planetary/enemies.lua), a work in progress (notes/wip.txt)
 config.planetary_enemies = settings.startup["propertyrandomizer-planetary-enemies"].value
 -- Whether any planetary gameplay stage is on (src/randomizations/planetary/execute.lua), planet rewards included; biome appearances run independently.
-config.planetary = config.planetary_biome_placement or config.planetary_oceans or config.planetary_resources or config.planetary_lightning or config.planetary_freezing or config.planetary_locks or config.planetary_rewards or config.planetary_connections or config.planetary_enemies
+config.planetary = config.planetary_oceans or config.planetary_resources or config.planetary_lightning or config.planetary_freezing or config.planetary_locks or config.planetary_rewards or config.planetary_connections or config.planetary_enemies
 
 config.item_new_num_retries = settings.startup["propertyrandomizer-item-retries"].value
 config.item_percent_randomized = settings.startup["propertyrandomizer-item-percent"].value / 100
@@ -157,7 +157,7 @@ config.deposit_copies = config.dev_unified and settings.startup["propertyrandomi
 -- Whether a recipe's per-planet versions that a unified attempt left taking and making the same things merge into one (src/randomizations/unified/recipe-merges.lua, user 2026-10-10): with the unified randomizations in development, after each of their attempts
 config.recipe_merges = config.dev_unified
 -- Whether planets get random names mixed from the vanilla planets' names (src/randomizations/planetary/planet-names.lua): with planetary randomization, the unified randomizations in development and the duplicates all on (user, 2026-09-30)
-config.planet_names = config.dupes and config.planetary and config.dev_unified
+config.planet_names = config.dupes and (config.planetary or config.planetary_biome_placement) and config.dev_unified
 -- Whether every planet but the starting one gets a random tint (src/randomizations/planetary/planet-tints.lua), copies included: with the random names, so the planets are disguised together
 config.planet_tints = config.planet_names
 

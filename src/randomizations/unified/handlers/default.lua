@@ -12,6 +12,9 @@ default.required = {
 
 -- Whether to add a prereq back to the end of the list when it's used
 default.with_replacement = true
+-- Whether this handler needs first-pass identity matching before its prerequisite choices.
+-- Pure choices made in place can opt out; another enabled handler can still require the first pass.
+default.first_pass = true
 -- Whether to put extra copies with the same priority or at the end (default at the end)
 default.uniform_copies = false
 -- Chance that a head first tries the bases that keep its old connection, as stays says (see the prereq shuffle in execute.lua); 0 never does
@@ -60,7 +63,8 @@ end
 -- Having num_copies more than one adds more prereqs to the pool for flexibility or to bias the pool one way
 -- These extra copies are currently just added to the end rather than mixed in uniformly
 -- The number 0 can be returned, in which case a new prereq won't be added, but dep will still be counted as claimed/randomizable
--- The edge parameter is just to carry the edge's extra_info, if any
+-- The edge parameter is just to carry the edge's extra_info, if any.
+-- An edge tagged second_pass_only is still claimed here, but does not create an identity slot in first pass.
 default.claim = function(graph, prereq, dep, edge)
 end
 
@@ -80,6 +84,10 @@ end
 -- Allows for defining a function for the handler to do the prereq search on a dependent themselves
 -- Required for more advanced handlers like the one for recipe ingredients
 default.custom_prereq_search = false
+
+-- Optional ordered indices into the shuffled prerequisite pool for one head.
+-- False uses the whole pool. Filters/bounded proposals still use shared validation and fallback.
+default.candidate_indices = false
 
 -- Mandatory (though can be empty for handlers with custom prereq searches)
 default.validate = function(graph, base, head, extra)

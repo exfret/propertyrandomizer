@@ -40,6 +40,8 @@ local BUILD_EQUIPMENT = false
 function concrete.build(lu, extra_params)
     extra_params = extra_params or {}
     local payback_time = extra_params.payback_time or constants.cost.default_payback_time
+    local biome_report = (data.raw["mod-data"] or {})["propertyrandomizer-biome-placement"]
+    local biome_entities = biome_report ~= nil and biome_report.data.entities or {}
 
     ----------------------------------------------------------------------
     -- Ammo Category
@@ -410,7 +412,10 @@ function concrete.build(lu, extra_params)
             end
 
             ----------------------------------------
-            add_node("entity-build-tile", "OR", nil, nil, { pass_through = true })
+            add_node("entity-build-tile", "OR", nil, nil, {
+                pass_through = true,
+                biome_terrain = biome_entities[entity.name] ~= nil or nil,
+            })
             ----------------------------------------
             -- Can we access a tile on which the entity can be built? (i.e., no collision)
 
@@ -429,7 +434,7 @@ function concrete.build(lu, extra_params)
                 end
             end
             if next(entity.tile_buildability_rules or {}) ~= nil then
-                tile_requirements.build(entity, lu)
+                tile_requirements.build(entity, lu, biome_entities[entity.name] ~= nil or nil)
             end
         end
 
