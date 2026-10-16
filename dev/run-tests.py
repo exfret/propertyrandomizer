@@ -40,6 +40,7 @@
 #     --dir PATH                     test a mod folder outside git, like the release prepare-release.sh builds
 #     --seed-offset N                shift every seed, to try the same configs on other seeds
 #     --profile                      sample the Lua stack while each map is created (dev/profiler-mod in Instrument Mode) and write where the time went to profile.txt in its log folder (dev/profile-report.py); loads run a little slower
+#     --settings-file FILE            replay this mod's startup settings and seed from a saved mod-settings.dat, without test pins or generated configs; requires --modset
 #     --dump-data                    also dump each run's data.raw (Factorio's --dump-data, one more load) to data-raw-dump.json in its log folder, and print its SHA-256, to check that two versions build the same game
 
 import argparse
@@ -284,7 +285,7 @@ class Config:
 
 class Plan:
     # Every config, from the mod copy's settings and tests/configs.txt
-    def __init__(self, settings, test_file, seed_offset):
+    def __init__(self, settings, test_file, seed_offset, settings_file=None):
         self.settings = settings
         self.test_file = test_file
         self.seed_offset = seed_offset
@@ -297,6 +298,23 @@ class Plan:
         self.no_values = [name for name, setting in settings.items() if name not in test_file.skip and setting.values() is None]
         self.left_out = [name for name, setting in settings.items() if name not in covered and name not in self.skipped and name not in self.no_values]
         self.configs = []
+        if settings_file is not None:
+            _, tree = mod_settings.load(settings_file)
+            values = {}
+            for full_name, entry in mod_settings.startup_settings(tree):
+                if not full_name.startswith(PREFIX):
+                    continue
+                name = full_name[len(PREFIX):]
+                if name not in settings:
+                    self.notes.append("Saved key absent from this source's settings.lua: " + full_name)
+                    continue
+                values[name] = settings[name].parse(fmt(mod_settings.setting_value(entry)[1]))
+            seed = values.pop("seed", settings["seed"].default) + seed_offset
+            old_logic = any(values.get(name, settings[name].default) == settings[name].parse(text)
+                            for name, text in test_file.old_logic if name in settings)
+            self.configs.append(Config("settings", "saved-settings@" + str(seed), values, seed, set(), old_logic))
+            self.notes.append("Replaying saved randomizer startup settings without test pins: " + str(settings_file))
+            return
         self.generate()
         self.add_hand_picked()
 
@@ -1165,6 +1183,7 @@ def main(argv):
     parser.add_argument("--dir", help="test this mod folder instead of the working tree")
     parser.add_argument("--seed-offset", type=int, default=0, help="shift every seed")
     parser.add_argument("--profile", action="store_true", help="sample the Lua stack while each map is created, and write profile.txt in its log folder")
+    parser.add_argument("--settings-file", help="replay saved randomizer startup settings and seed from mod-settings.dat, without test pins; requires --modset")
     parser.add_argument("--dump-data", action="store_true", help="also dump each run's data.raw to data-raw-dump.json in its log folder and print its SHA-256")
     args = parser.parse_args(argv)
     if any(not math.isfinite(value) or value < 0 for value in (args.timing_percent, args.timing_instructions)):
@@ -1177,7 +1196,9 @@ def main(argv):
         if resolved.returncode != 0:
             parser.error("cannot resolve timing baseline " + args.baseline_ref + ": " + resolved.stderr.strip())
         baseline_ref = resolved.stdout.strip()
-    suites = args.suites if len(args.suites) > 0 else SUITES
+    if args.settings_file and (not args.modset or args.suites or args.only or args.tier):
+        parser.error("--settings-file requires --modset and selects its own single config; omit suites, --only and --tier")
+    suites = ["settings"] if args.settings_file else (args.suites if len(args.suites) > 0 else SUITES)
     if sum(1 for picked in (args.ref is not None, args.staged, args.dir is not None) if picked) > 1:
         raise SystemExit("--ref, --staged and --dir each pick what to test; use one")
     if args.dir is not None and not os.path.isfile(os.path.join(args.dir, "info.json")):
@@ -1212,7 +1233,7 @@ def main(argv):
     if args.profile:
         shutil.copytree(PROFILER_MOD, os.path.join(root, PROFILER_NAME))
     settings = load_settings(snapshot_dir)
-    plan = Plan(settings, test_file, args.seed_offset)
+    plan = Plan(settings, test_file, args.seed_offset, args.settings_file)
     unknown = [suite for suite in suites if suite not in set(config.suite for config in plan.configs)]
     if len(unknown) > 0:
         shutil.rmtree(root, ignore_errors=True)
