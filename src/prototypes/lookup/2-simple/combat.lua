@@ -79,6 +79,16 @@ stage.damage_type_sources = function()
         end
     end
 
+    -- A moved death payload is available only after its host can be killed.
+    -- This metadata names the reflected action, excluding unrelated attacks and death-created creatures.
+    for name, entity in pairs(lu.entities) do
+        if entity.propertyrandomizer_death_payload ~= nil then
+            local effects = {}
+            tutils.gather_trigger_structs(effects, entity.propertyrandomizer_death_payload, nil)
+            extract_damage_from_structs(effects, gutils.key("entity-kill", name), "death-effect")
+        end
+    end
+
     -- 2. TURRETS WITH BUILT-IN DAMAGE
     for _, turret_class in pairs({"electric-turret", "fluid-turret"}) do
         for _, turret in pairs(prots(turret_class)) do

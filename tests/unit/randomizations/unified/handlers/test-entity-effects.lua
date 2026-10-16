@@ -30,6 +30,8 @@ package.loaded["src/lib/graph/graph-utils"] = {
 }
 package.loaded["src/logic/builders/acquisition"] = {
     bulk_entity_types = {},
+    gives_item = function(kind) return kind == "build" end,
+    demand_tier = function() return "some" end,
     pairing = function(base, head)
         if head.acq_kind == "build" and (base.acq_kind == "capsule" or base.acq_kind == "ammo") then return nil end
         return {}
@@ -380,3 +382,36 @@ local edge = {
 assert(entity.claim({}, placer, target, edge) == 1, "folded supply must accept a placement claim")
 target.build_supply = nil
 assert(entity.claim({}, placer, target, edge) == false, "an unrelated architecture node must not be claimed")
+
+-- Reflect a building into an asteroid death slot, including its original placement and mine-back item.
+local salvage_graph = setup({vestige = true})
+defines.prototypes.entity.asteroid = true
+data.raw.asteroid = {host = {type = "asteroid", name = "host"}}
+data.raw["asteroid-chunk"] = {
+    ["asteroid-chunk-unknown"] = {type = "asteroid-chunk", name = "asteroid-chunk-unknown", hidden = true},
+    template = {type = "asteroid-chunk", name = "template", graphics_set = {test = true}, minable = {result = "old-product"}},
+}
+data.raw["assembling-machine"].machine.minable = {result = "candidate", mining_time = 0.2}
+data.raw["assembling-machine"].machine.icons = {
+    {icon = "entity.png", icon_size = 128},
+    {icon = "badge.png", icon_size = 64, scale = 0.25, shift = {8, -4}, tint = {r = 0.5, g = 1, b = 1}},
+}
+unified_starting_data_raw = table.deepcopy(data.raw)
+salvage_graph.nodes.kill = {type = "entity-kill", name = "host"}
+salvage_graph.nodes.salvage = {key = "salvage", type = "base", acq_kind = "dying", death_spoof = true, death_host = "host", salvage_source = "kill", owner = "kill"}
+entity.reflect(salvage_graph, {buildhead = "salvage"}, {buildhead = entity})
+for _, change in pairs(changes) do change.tbl[change.prop] = change.new_val end
+local chunk = assert(data.raw["asteroid-chunk"]["propertyrandomizer-salvage-chunk-machine"])
+assert(not chunk.hidden and chunk.graphics_set.sprite.layers[1].filename == "entity.png", "salvage must prefer the entity icon in the world")
+assert(chunk.graphics_set.variations == nil, "the icon replaces asteroid textures")
+local sprites = chunk.graphics_set.sprite.layers
+assert(sprites[1].size == 128 and sprites[1].scale == 0.25)
+assert(sprites[2].filename == "badge.png" and sprites[2].scale == 0.25)
+assert(sprites[2].shift[1] == 0.25 and sprites[2].shift[2] == -0.125 and sprites[2].tint.r == 0.5)
+assert(chunk.icons[1].icon == "entity.png", "the collector icon must match the floating icon")
+local salvage_item = assert(data.raw.item[chunk.minable.result])
+assert(salvage_item.place_result == "machine")
+assert(data.raw.item.candidate.place_result == nil, "the original placement source must be removed")
+assert(data.raw.asteroid.host.dying_trigger_effect[1].asteroid_name == chunk.name)
+assert(data.raw["assembling-machine"].machine.minable.result == salvage_item.name, "picking up the building must retain its new placer")
+print("Asteroid reflection moves a building into a collectible chunk and preserves its placer when mined back")

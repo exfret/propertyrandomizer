@@ -1,6 +1,8 @@
+local entity_death = require("test-entity-death-data")
 local tile_buildability = require("test-tile-buildability-data")
 local biome_placement = require("test-biome-placement-data")
 
+entity_death.run()
 tile_buildability.run()
 biome_placement.run()
 

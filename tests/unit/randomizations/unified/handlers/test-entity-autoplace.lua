@@ -266,3 +266,46 @@ assert(params.head_to_base["head-3"] == "base-free", "friendly head must use the
 assert(params.head_to_base["mine-head-1"] ~= nil and params.head_to_base["mine-head-2"] ~= nil)
 assert(rejected == 2 and mining_checks > 0, "both mining witnesses must refine candidate checks")
 print("Entity mining refinement passed: preserves promised returns and retries the same root with learned contexts")
+
+-- An empty death base must actually enter the general search, while the category coin and progression still apply.
+local function death_fixture(roll, progression_ok, collision_ok)
+    category_roll = roll
+    prototypes = {
+        tree = {name = "tree", type = "fixture", max_health = 20},
+        host = {name = "host", type = "fixture", max_health = 50, blocked = not collision_ok},
+    }
+    defines.prototypes.entity = {fixture = true}
+    unified_starting_data_raw.fixture = table.deepcopy(prototypes)
+    local graph = {nodes = {}, orand_to_parent = {dep = "tree", emptydep = "empty"}}
+    graph.nodes.tree = prototypes.tree
+    graph.nodes.empty = {name = "empty", spoof = true}
+    graph.nodes.dep = {key = "dep", pre = {head = true}}
+    graph.nodes.head = {key = "head", type = "head", acq_kind = "autoplace", old_base = "old", owner = "dep"}
+    graph.nodes.old = {key = "old", type = "base", acq_kind = "autoplace", entity = "tree", owner = "room"}
+    graph.nodes.room = {type = "room-autoplace", name = "room"}
+    graph.nodes.kill = {type = "entity-kill", name = "host"}
+    graph.nodes.death = {key = "death", type = "base", acq_kind = "dying", death_spoof = true, death_host = "host", owner = "kill", old_head = "emptyhead"}
+    graph.nodes.emptyhead = {key = "emptyhead", type = "head", owner = "emptydep"}
+    graph.nodes.emptydep = {key = "emptydep"}
+    randomization_info.options.first_pass.blacklist = {dep = true}
+    local params = {
+        random_graph = graph,
+        sorted_deps = {"dep"},
+        shuffled_prereqs = {"death", "old"},
+        head_to_base = {},
+        promotion = {
+            cache_rewires = function() end,
+            promised_contexts = function() return {"required-room"} end,
+            head_candidate_ok = function(_, base) return base == "old" or progression_ok end,
+            try_rewires = function() return true end,
+        },
+    }
+    entity.initialize()
+    assert(entity.custom_prereq_search(params))
+    return params.head_to_base.head
+end
+assert(death_fixture(0.99, true, true) == "death", "general search must move a tree to an empty death slot")
+assert(death_fixture(0, true, true) == "old", "same-category search must stay in autoplace")
+assert(death_fixture(0.99, false, true) == "old", "death output must retain required progression contexts")
+assert(death_fixture(0.99, true, false) == "old", "death output must fit the host's terrain")
+print("Death-slot search passed: ordinary cross-category movement, category preference, progression and terrain checks")

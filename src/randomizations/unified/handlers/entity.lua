@@ -3,7 +3,7 @@
 -- An item's ability to place something, or a room's autoplace spot, is a base, and an entity's need for one is a head
 -- Autoplaced entities can trade autoplace slots or stop being autoplaced, and built entities can be found in the wild instead and salvaged (mined for an item that places them)
 -- Entities made by trigger slots (like combat robots, the capture robot and the captive spawner) trade those slots or stop being made, and built entities can be made by one instead and then mined for an item that places them
--- Spoil slots (what eggs hatch into) and dying slots (what an enemy leaves behind when killed) trade among their own kind, and built entities can take one as a carrier hatching from the egg, or as a wreck left behind, mined for an item that places it
+-- Spoil slots can hatch building carriers. Death slots accept natural entities, bounded creatures or in-place payloads; asteroid deaths can yield collectible building salvage.
 -- Projectile packages keep their payloads while moving between firing slots or become directly placed impacts; building outputs lose only construction automation
 -- Each item places only one entity (planting counts, see common.set_placed_entity), so bases are matched to heads one to one, with promotion keeping mechanic contexts and recipe reachability
 -- With constants.entity_first_pass on, first pass does the matching instead: every claimed acquisition edge is a first pass position like an item's (see first_pass_rules), and this handler only reflects the result
@@ -26,6 +26,9 @@ local wild = require("src/prototypes/entities/wild-entities")
 local context_costs = require("src/cost/context-costs")
 local common = require("src/randomizations/unified/handler-helpers/entity")
 local packages = require("src/randomizations/unified/handler-helpers/projectile-packages")
+local death_slots = require("src/prototypes/entities/death-slots")
+local lutils = require("src/logic/logic-utils")
+local military = require("src/randomizations/unified/military")
 local military_rebalance = require("src/randomizations/unified/handler-helpers/military")
 
 local augmenting_search = require("src/lib/graph/augmenting-search")
@@ -35,6 +38,7 @@ local key = gutils.key
 local entity = {}
 local projectile_packages = {}
 local fixed_effects = {}
+local death_budgets = {}
 
 entity.id = "entity"
 
@@ -71,8 +75,6 @@ local TRANSIENT_WEIGHT_FLOOR = 0.1
 local TRIGGER_CHANCE = 0.25
 -- A building a captured spawner turns into is at most this many times the spawner's size, since it takes the spawner's place (see common.fits_autoplace_of)
 local CAPTURE_AREA_TOLERANCE = 1
--- Chance that an entity built from an item may instead be left behind by a dying enemy as a wreck, mined for an item that places it
-local WRECK_CHANCE = 0.25
 -- The spoofed entity-own node that capsules thrown for an effect (like grenades) get an edge to, so their use becomes a trigger base an entity can take
 local SPOOF_MAKER_NAME = "propertyrandomizer-spoof-maker"
 -- Chance that a capsule thrown for an effect trades its effect with others (see effect_capsule)
@@ -261,6 +263,7 @@ entity.initialize = function()
     identity_of_position = {}
     projectile_packages = {}
     fixed_effects = {}
+    death_budgets = {}
 end
 
 entity.spoof = function(graph)
@@ -404,6 +407,66 @@ entity.spoof = function(graph)
         end
     end
 
+    -- Empty death positions join the same matching pool. No runtime dummy entity is needed.
+    local death_sink = gutils.add_node(graph, "entity", "propertyrandomizer-empty-death", {op = "OR", spoof = true})
+    local death_names = {}
+    for _, prototype in pairs(dutils.get_all_prots("entity")) do
+        if graph.nodes[key("entity-kill", prototype.name)] ~= nil and death_slots.host(prototype, lookups, kept_in_place) then
+            table.insert(death_names, prototype.name)
+        end
+    end
+    table.sort(death_names)
+    -- Passive hosts use the weakest positive early-game attack available locally, not their own zero damage.
+    local room_budgets = {}
+    local function current_prototype(name) return dutils.get_prot("entity", name) end
+    for room_name, room in pairs(lookups.rooms) do
+        local budget
+        local function consider(prototype)
+            local damage = death_slots.attack_damage(prototype, current_prototype)
+            if damage ~= nil and damage > 0 and (budget == nil or damage < budget.damage) then
+                budget = {damage = damage, health = prototype.max_health or 1}
+            end
+        end
+        for _, spawner in pairs(dutils.get_all_prots("entity")) do
+            if spawner.result_units ~= nil and lutils.check_in_room(room, spawner) then
+                for _, definition in pairs(spawner.result_units) do
+                    local name, points = acquisition.read_spawn_definition(definition)
+                    if acquisition.spawn_weight_at(points, 0) > 0 then consider(current_prototype(name)) end
+                end
+            elseif spawner.autoplace ~= nil and spawner.autoplace.force == "enemy" and lutils.check_in_room(room, spawner) then
+                consider(spawner)
+            end
+        end
+        room_budgets[room_name] = budget
+    end
+    for _, name in pairs(death_names) do
+        local prototype = current_prototype(name)
+        if prototype.attack_parameters == nil then
+            for room_name, room in pairs(lookups.rooms) do
+                local budget = room_budgets[room_name]
+                if budget ~= nil and lutils.check_in_room(room, prototype) and (death_budgets[name] == nil or budget.damage < death_budgets[name].damage) then
+                    death_budgets[name] = budget
+                end
+            end
+        end
+    end
+    local death_rng = rng.key({id = "unified-entity-death-slots"})
+    for _, name in pairs(death_names) do
+        if rng.value(death_rng) < 0.25 then
+            local edge = gutils.add_edge(graph, key("entity-kill", name), key(death_sink), acquisition.tag("dying", {
+                death_spoof = true, death_host = name, amount = 1,
+            }))
+            keep_from_first_pass(gutils.ekey(edge))
+            if from_space[name] and death_slots.salvage_template(data.raw["asteroid-chunk"]) ~= nil then
+                local available = death_slots.salvage_source(graph, name, constants.cost.asteroid_chunk_collection_time)
+                local salvage = gutils.add_edge(graph, key(available), key(death_sink), acquisition.tag("dying", {
+                    death_spoof = true, death_host = name, salvage_source = edge.start, amount = 1,
+                }))
+                keep_from_first_pass(gutils.ekey(salvage))
+            end
+        end
+    end
+
     -- Slots where a trigger makes the entity aren't split by first pass either
     -- What an item spoils into is part of what the item is, like what it places, so with first pass spoil bases move with the item's identity (trav)
     for edge_key, edge in pairs(graph.edges) do
@@ -541,7 +604,7 @@ entity.claim = function(graph, prereq, dep, edge)
         end
         return 1
     end
-    if edge.trigger_spoof ~= nil or edge.projectile_package ~= nil then
+    if edge.death_spoof ~= nil or edge.trigger_spoof ~= nil or edge.projectile_package ~= nil then
         return 1
     end
     if is_made_kind(edge.acq_kind) then
@@ -599,6 +662,9 @@ entity.validate = function(graph, base, head, extra, owner_of)
         return key(base) == head.old_base
     end
     if traveler_package ~= nil then
+        if base.death_spoof and base.salvage_source == nil then
+            return traveler_package.impact ~= nil and not traveler_package.is_entity
+        end
         if source_package ~= nil then return true end
         return base.acq_kind == "build" and traveler_package.impact ~= nil and not traveler_package.is_entity
     end
@@ -642,7 +708,8 @@ entity.validate = function(graph, base, head, extra, owner_of)
         return owner_type == "item"
     end
     if base.acq_kind == "dying" then
-        return owner_type == "entity-kill"
+        if head.acq_kind == "build" then return base.salvage_source ~= nil end
+        return base.salvage_source == nil and owner_type == "entity-kill"
     end
     return owner_type == "room-autoplace"
 end
@@ -877,9 +944,24 @@ local function prerequisite_search(params)
 
     -- A built entity carried by biters takes a spawn or spoil slot like a unit would (so the slot's unit moves elsewhere or stops), but connects to the slot's carrier base, which also needs killing the unit (see spoof)
     local carrier_base_of, slot_base_of = carrier_bases(graph)
+    local salvage_base_of, death_base_of = {}, {}
+    for node_key, node in pairs(graph.nodes) do
+        if node.type == "base" and node.death_spoof and not node.salvage_source then
+            death_base_of[node.death_host] = node_key
+        end
+    end
+    for node_key, node in pairs(graph.nodes) do
+        if node.type == "base" and node.salvage_source then
+            local physical = death_base_of[node.death_host]
+            assert(physical ~= nil, "Salvage requires a physical death slot")
+            salvage_base_of[physical] = node_key
+            slot_base_of[node_key] = physical
+        end
+    end
     -- The base a slot's head connects to when it takes base_key, or nil if it can't (a spawn or spoil slot without a carrier base)
     local function connection_base(slot, base_key)
         local base = graph.nodes[base_key]
+        if base ~= nil and slot.kind == "build" and base.death_spoof then return salvage_base_of[base_key] end
         if base ~= nil and slot.kind == "build" and base.carrier_spoof == nil and (base.acq_kind == "spawn" or base.acq_kind == "spoil") then
             return carrier_base_of[base_key]
         end
@@ -927,7 +1009,7 @@ local function prerequisite_search(params)
     local function salvageable(slot)
         return movable_building(slot, "autoplace") and entity_prototype(slot.identity).minable ~= nil and original_entity(slot.identity).autoplace == nil
     end
-    -- Being made by a trigger slot, or left behind as a wreck, also needs it to be minable, since placing its item somewhere else has to be undoable like it was
+    -- Trigger-created buildings must remain mineable so their placement can be undone.
     local function triggerable(slot, slot_kind)
         return movable_building(slot, slot_kind) and entity_prototype(slot.identity).minable ~= nil
     end
@@ -947,6 +1029,9 @@ local function prerequisite_search(params)
         end
         local package = projectile_packages[slot.head.projectile_package]
         if package ~= nil then
+            if base.death_spoof then
+                return death_slots.payload_fits(original_entity(base.death_host), package.impact, original_entity, death_budgets[base.death_host]) and connect_key or false
+            end
             local destination = projectile_packages[base.projectile_package]
             if destination ~= nil and destination.id ~= package.id then
                 local cost, own_cost = item_cost(destination.owner), item_cost(package.owner)
@@ -972,11 +1057,25 @@ local function prerequisite_search(params)
                 return false
             end
         end
-        -- A wreck is left by killing an enemy, which has to be worth killing for the entity's item like a carrier, and it looks like the entity (common.wreck_of)
-        if base.acq_kind == "dying" and slot.kind == "build" then
-            local dying = original_entity(gutils.get_owner(graph, base).name)
-            if not acquisition.worth_carrying(dying.max_health or 1, item_cost(own_item_of(slot).name)) or common.entity_sprite(entity_prototype(slot.identity), 1) == nil then
-                return false
+        -- Death outputs must fit the host's terrain and combat strength; buildings use collectible asteroid salvage.
+        if base.acq_kind == "dying" and base_key ~= slot.own_base_key then
+            local host_name = base.death_host or owner_of(base).name
+            local host = original_entity(host_name)
+            if slot.kind == "build" then
+                if not base.death_spoof or not from_space[host_name] then return false end
+                local item = own_item_of(slot)
+                local weight = lookups.weight[item.name]
+                if weight == nil or weight > data.raw["utility-constants"].default.default_rocket_lift_weight or not dutils.survives_trip(item) then return false end
+            else
+                if from_space[host_name] then return false end
+                if slot.identity == host.name or not fits_autoplace_of(entity_prototype(slot.identity), host, 4) then return false end
+                local child = entity_prototype(slot.identity)
+                if death_slots.creature(child) then
+                    local budget = death_budgets[host_name]
+                    local health = budget and budget.health or host.max_health or 1
+                    local attack = child.attack_parameters
+                    if (child.max_health or 1) > health or not death_slots.payload_fits(host, attack and attack.ammo_type, original_entity, budget, attack and attack.damage_modifier) then return false end
+                end
             end
         end
         -- Salvage is never worth more than SALVAGE_COST_FACTOR times what mining the slot's entity gave, and needs both costs known to check that (acquisition.worth_salvaging)
@@ -1014,18 +1113,20 @@ local function prerequisite_search(params)
                 return salvageable(slot)
             elseif base.acq_kind == "spawn" or base.acq_kind == "spoil" then
                 return movable_building(slot, base.acq_kind)
-            elseif base.acq_kind == "dying" or is_trigger_kind(base.acq_kind) then
+            elseif base.acq_kind == "dying" then
+                return not slot.friendly and num_build_heads[slot.entity_name] == 1 and base.death_spoof and salvage_base_of[base_key] ~= nil and entity_prototype(slot.identity).minable ~= nil
+            elseif is_trigger_kind(base.acq_kind) then
                 return triggerable(slot, base.acq_kind)
             end
             return false
         end
-        return base.acq_kind == slot.kind or (is_trigger_kind(base.acq_kind) and is_trigger_kind(slot.kind))
+        return base.acq_kind == "dying" or base.acq_kind == slot.kind or (is_trigger_kind(base.acq_kind) and is_trigger_kind(slot.kind))
     end
 
     local pool, in_pool = {}, {}
     local function add_base(base_key)
         local base = graph.nodes[base_key]
-        if base ~= nil and base.mine_back == nil and base.carrier_spoof == nil and base.friendly == nil and in_pool[base_key] == nil then
+        if base ~= nil and base.mine_back == nil and base.salvage_source == nil and base.carrier_spoof == nil and base.friendly == nil and in_pool[base_key] == nil then
             in_pool[base_key] = true
             table.insert(pool, base_key)
         end
@@ -1048,7 +1149,7 @@ local function prerequisite_search(params)
         carried = 0,
         hatched = 0,
         triggered = 0,
-        wrecked = 0,
+        asteroid_salvaged = 0,
         friendly = 0,
         detached = 0,
     }
@@ -1192,6 +1293,42 @@ local function prerequisite_search(params)
                     end
                 end
             end
+            -- Keep multi-step death rewards, but do not introduce a chain that reproduces its own host.
+            local proposed, changed_death = {}, false
+            for _, move in pairs(path) do
+                proposed[move.head] = move.base
+                local base = graph.nodes[move.base]
+                if base ~= nil and base.acq_kind == "dying" then changed_death = true end
+            end
+            if changed_death then
+                local death_edges = {}
+                for source, children in pairs(lookups.dying_spawns or {}) do
+                    local host = gutils.deconstruct(source)
+                    if host.type == "entity" then
+                        death_edges[host.name] = death_edges[host.name] or {}
+                        for child, _ in pairs(children) do
+                            local output = gutils.deconstruct(child)
+                            if output.type == "entity" then death_edges[host.name][output.name] = true end
+                        end
+                    end
+                end
+                -- Remove claimed native death outputs before inserting their proposed destinations.
+                for _, slot in pairs(slots) do
+                    if slot.kind == "dying" and slot.head.death_spoof == nil then
+                        local host = owner_of(graph.nodes[slot.own_base_key]).name
+                        if death_edges[host] ~= nil then death_edges[host][slot.identity] = nil end
+                    end
+                end
+                for _, slot in pairs(slots) do
+                    local base = graph.nodes[proposed[slot] or slot.base_key]
+                    if base ~= nil and base.acq_kind == "dying" and slot.kind ~= "build" and slot.head.projectile_package == nil then
+                        local host = base.death_host or owner_of(base).name
+                        death_edges[host] = death_edges[host] or {}
+                        death_edges[host][slot.identity] = true
+                    end
+                end
+                if not death_slots.acyclic(death_edges) then return false end
+            end
             checked = checked + 1
             local ok, failure = prom.try_rewires(changes, true)
             if not ok then
@@ -1225,7 +1362,7 @@ local function prerequisite_search(params)
                 if base.acq_kind == "autoplace" then counts.salvaged = counts.salvaged + 1
                 elseif base.acq_kind == "spawn" then counts.carried = counts.carried + 1
                 elseif base.acq_kind == "spoil" then counts.hatched = counts.hatched + 1
-                elseif base.acq_kind == "dying" then counts.wrecked = counts.wrecked + 1
+                elseif base.acq_kind == "dying" then counts.asteroid_salvaged = counts.asteroid_salvaged + 1
                 elseif is_trigger_kind(base.acq_kind) then counts.triggered = counts.triggered + 1 end
             end
         end
@@ -1262,7 +1399,7 @@ local function prerequisite_search(params)
             elseif base.acq_kind == "spoil" and slot.kind == "build" then
                 log("Entity randomization: " .. slot.identity .. " is now carried by biters hatching from " .. gutils.get_owner(graph, base).name .. " in place of " .. head_entity_name(graph, graph.nodes[base.old_head]))
             elseif base.acq_kind == "dying" and slot.kind == "build" then
-                log("Entity randomization: " .. slot.identity .. " is now left as a wreck by " .. trigger_action(graph, base) .. " in place of " .. head_entity_name(graph, graph.nodes[base.old_head]))
+                log("Entity randomization: " .. slot.identity .. " is now collected as asteroid salvage from " .. trigger_action(graph, base) .. " in place of " .. head_entity_name(graph, graph.nodes[base.old_head]))
             elseif base.acq_kind == "autoplace" then
                 log("Entity randomization: " .. slot.entity_name .. " is now found in the wild where " .. base.entity .. " was")
             elseif base.acq_kind == "spawn" then
@@ -1276,7 +1413,7 @@ local function prerequisite_search(params)
             end
         end
     end
-    log("Entity randomization: " .. counts.moved .. " of " .. #slots .. " slots changed; " .. counts.spoofs .. " to an item that placed nothing, " .. counts.salvaged .. " to salvage from the wild, " .. counts.carried .. " to biter carriers, " .. counts.hatched .. " to carriers hatching from eggs, " .. counts.triggered .. " to trigger slots, " .. counts.wrecked .. " to wrecks, " .. counts.friendly .. " friendly biters, " .. counts.detached .. " detached")
+    log("Entity randomization: " .. counts.moved .. " of " .. #slots .. " slots changed; " .. counts.spoofs .. " to an item that placed nothing, " .. counts.salvaged .. " to salvage from the wild, " .. counts.carried .. " to biter carriers, " .. counts.hatched .. " to carriers hatching from eggs, " .. counts.triggered .. " to trigger slots, " .. counts.asteroid_salvaged .. " to asteroid salvage, " .. counts.friendly .. " friendly biters, " .. counts.detached .. " detached")
 
     local wild_counts = {
         total = 0,
@@ -1289,7 +1426,7 @@ local function prerequisite_search(params)
     for _, slot in pairs(slots) do
         if slot.kind == "autoplace" then
             wild_counts.total = wild_counts.total + 1
-            if slot.base_key ~= slot.own_base_key and slot.base_key ~= DETACHED then
+            if slot.base_key ~= slot.own_base_key and slot.base_key ~= DETACHED and graph.nodes[slot.base_key].acq_kind == "autoplace" then
                 wild_counts.moved = wild_counts.moved + 1
                 local base = graph.nodes[slot.base_key]
                 local own_base = graph.nodes[slot.own_base_key]
@@ -1400,7 +1537,6 @@ entity.first_pass_rules = function(graph)
                 salvage = rng.value(rng_key) < SALVAGE_CHANCE,
                 carry = rng.value(rng_key) < CARRIER_CHANCE,
                 trigger = rng.value(rng_key) < TRIGGER_CHANCE,
-                wreck = rng.value(rng_key) < WRECK_CHANCE,
                 friendly = rng.value(rng_key) < FRIENDLY_CHANCE,
                 detach = rng.value(rng_key) < DETACH_CHANCE,
             }
@@ -1430,7 +1566,7 @@ entity.first_pass_rules = function(graph)
     local function salvageable(identity)
         return movable_building(identity, "autoplace") and dutils.get_prot("entity", identity.entity).minable ~= nil and starting_entity(identity.entity).autoplace == nil
     end
-    -- Being made by a trigger slot, or left behind as a wreck, also needs it to be minable, since placing its item somewhere else has to be undoable like it was
+    -- Trigger-created buildings must remain mineable so their placement can be undone.
     local function triggerable(identity, slot_kind)
         return movable_building(identity, slot_kind) and dutils.get_prot("entity", identity.entity).minable ~= nil
     end
@@ -1495,9 +1631,8 @@ entity.first_pass_rules = function(graph)
             return may[identity.key].carry and movable_building(identity, position.kind) and unit.run_animation ~= nil and acquisition.worth_carrying(unit.max_health or 1, own_cost(identity))
         end
         if position.kind == "dying" then
-            -- A wreck is left by killing an enemy, which has to be worth killing for the entity's item like a carrier, and it looks like the entity (common.wreck_of)
-            local dying = starting_entity(gutils.get_owner(graph, position.base).name)
-            return may[identity.key].wreck and triggerable(identity, "dying") and acquisition.worth_carrying(dying.max_health or 1, own_cost(identity)) and common.entity_sprite(dutils.get_prot("entity", identity.entity), 1) ~= nil
+            -- The experimental first pass has no collector-backed alternate death positions.
+            return false
         end
         if is_trigger_kind(position.kind) then
             if not may[identity.key].trigger or not triggerable(identity, position.kind) then
@@ -1618,7 +1753,7 @@ local function first_pass_search(params)
         carried = 0,
         hatched = 0,
         triggered = 0,
-        wrecked = 0,
+        asteroid_salvaged = 0,
         friendly = 0,
         detached = 0,
     }
@@ -1668,8 +1803,8 @@ local function first_pass_search(params)
                 counts.hatched = counts.hatched + 1
                 log("Entity randomization: " .. identity.entity .. " is now carried by biters hatching from " .. gutils.get_owner(graph, base).name .. " in place of " .. position.entity)
             elseif identity.kind == "build" and position.kind == "dying" then
-                counts.wrecked = counts.wrecked + 1
-                log("Entity randomization: " .. identity.entity .. " is now left as a wreck by " .. trigger_action(graph, base) .. " in place of " .. position.entity)
+                counts.asteroid_salvaged = counts.asteroid_salvaged + 1
+                log("Entity randomization: " .. identity.entity .. " is now collected as asteroid salvage from " .. trigger_action(graph, base) .. " in place of " .. position.entity)
             elseif identity.kind == "build" then
                 counts.triggered = counts.triggered + 1
                 log("Entity randomization: " .. identity.entity .. " is now made by " .. trigger_action(graph, base) .. " in place of " .. (position.entity or "its effect"))
@@ -1699,7 +1834,7 @@ local function first_pass_search(params)
         end
     end
 
-    log("Entity randomization: " .. counts.moved .. " of " .. #position_keys .. " slots changed; " .. counts.spoofs .. " to an item that placed nothing, " .. counts.salvaged .. " to salvage from the wild, " .. counts.carried .. " to biter carriers, " .. counts.hatched .. " to carriers hatching from eggs, " .. counts.triggered .. " to trigger slots, " .. counts.wrecked .. " to wrecks, " .. counts.friendly .. " friendly biters, " .. counts.detached .. " detached")
+    log("Entity randomization: " .. counts.moved .. " of " .. #position_keys .. " slots changed; " .. counts.spoofs .. " to an item that placed nothing, " .. counts.salvaged .. " to salvage from the wild, " .. counts.carried .. " to biter carriers, " .. counts.hatched .. " to carriers hatching from eggs, " .. counts.triggered .. " to trigger slots, " .. counts.asteroid_salvaged .. " to asteroid salvage, " .. counts.friendly .. " friendly biters, " .. counts.detached .. " detached")
 
     return true
 end
@@ -1793,6 +1928,7 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
     local package_places = {}
     local package_assignments = {}
     local package_claimed = {}
+    local death_packages = {}
     local entity_to_items = {}
     local entity_to_old_items = {}
     -- item that placed it in vanilla --> build slot (head key), and the items that placed nothing in vanilla (spoof placers)
@@ -1806,12 +1942,21 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
     local carried = {}
     local is_friendly_placer = {}
     local spawn_occupants = {}
-    -- Built entity made by a trigger slot --> its trigger base, built entity a carrier hatches from an egg --> its spoil base, and built entity left as a wreck --> its dying base
+    -- Built entity made by a trigger --> its trigger base; egg carrier --> spoil base; asteroid salvage --> collector-backed death base
     local triggered = {}
     local hatched = {}
-    local wrecked = {}
-    -- Base where a trigger makes an entity (see is_made_kind) --> the entity it makes now, only ones that changed (carriers and wrecks are added once they're made)
+    local asteroid_salvaged = {}
+    -- Base where a trigger makes an entity (see is_made_kind) --> the entity it makes now, only ones that changed (carriers are added once they're made)
     local made_occupants = {}
+    -- A native creation output moved to a death slot must disappear from its old trigger.
+    for head_key, handler in pairs(head_to_handler) do
+        local head = graph.nodes[head_key]
+        local destination = graph.nodes[head_to_base[head_key]]
+        if handler.id == entity.id and is_made_kind(head.acq_kind) and head.projectile_package == nil and destination ~= nil and destination.acq_kind == "dying" and head_to_base[head_key] ~= head.old_base then
+            local base = graph.nodes[head.old_base]
+            if base.death_spoof == nil and base.trigger_spoof == nil then made_occupants[head.old_base] = false end
+        end
+    end
     -- Carrier base --> the spawn or spoil slot's base it stands in for (see spoof)
     local _, slot_base_of = carrier_bases(graph)
     -- Built entity --> the item that placed it in vanilla, its own item (so its look and what mining it gave)
@@ -1836,7 +1981,9 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
                 package_claimed[head.projectile_package] = true
                 if base_key ~= nil then
                     local base = graph.nodes[base_key]
-                    if base.acq_kind == "build" then
+                    if base.death_spoof then
+                        death_packages[base.death_host] = projectile_packages[head.projectile_package]
+                    elseif base.acq_kind == "build" then
                         package_places[base_item_name(graph, base)] = projectile_packages[head.projectile_package]
                     elseif base.projectile_package ~= nil then
                         package_assignments[base.projectile_package] = projectile_packages[head.projectile_package]
@@ -1859,10 +2006,17 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
                     end
                 end
             elseif head.acq_kind == "spawn" then
+                local original = graph.nodes[head.old_base]
+                spawn_occupants[original.spawner] = spawn_occupants[original.spawner] or {}
+                if spawn_occupants[original.spawner][original.entity] == nil then spawn_occupants[original.spawner][original.entity] = false end
                 if base_key ~= nil then
                     local base = graph.nodes[base_key]
-                    spawn_occupants[base.spawner] = spawn_occupants[base.spawner] or {}
-                    spawn_occupants[base.spawner][base.entity] = entity_name
+                    if base.acq_kind == "dying" then
+                        made_occupants[base_key] = entity_name
+                    else
+                        spawn_occupants[base.spawner] = spawn_occupants[base.spawner] or {}
+                        spawn_occupants[base.spawner][base.entity] = entity_name
+                    end
                 end
             elseif head.acq_kind == "build" then
                 -- The item that placed this entity in vanilla (its own item), and where first pass put it (its base)
@@ -1885,7 +2039,7 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
                         hatched[entity_name] = slot_base_key
                     end
                 elseif graph.nodes[base_key].acq_kind == "dying" then
-                    wrecked[entity_name] = base_key
+                    asteroid_salvaged[entity_name] = base_key
                 elseif is_trigger_kind(graph.nodes[base_key].acq_kind) then
                     triggered[entity_name] = base_key
                     made_occupants[base_key] = entity_name
@@ -1907,7 +2061,12 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
                     made_occupants[base_key] = entity_name
                 end
             elseif base_key ~= head.old_base then
-                autoplace_moves[entity_name] = base_key or false
+                if base_key ~= nil and graph.nodes[base_key].acq_kind == "dying" then
+                    made_occupants[base_key] = entity_name
+                    autoplace_moves[entity_name] = false
+                else
+                    autoplace_moves[entity_name] = base_key or false
+                end
             end
         end
     end
@@ -2044,10 +2203,11 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
                 local egg = dutils.get_prot("item", gutils.get_owner(graph, graph.nodes[hatched[last_entity.name]]).name)
                 log("Entity randomization: " .. old_item_name .. " places nothing now, and looks like a darkened " .. look.name .. " (" .. last_entity.name .. " is now carried by biters hatching from " .. egg.name .. ")")
                 now_from = {"propertyrandomizer-entity.source-hatched", "[item=" .. egg.name .. "]", locale.find_localised_name(egg)}
-            elseif wrecked[last_entity.name] ~= nil then
-                local dying = dutils.get_prot("entity", gutils.get_owner(graph, graph.nodes[wrecked[last_entity.name]]).name)
-                log("Entity randomization: " .. old_item_name .. " places nothing now, and looks like a darkened " .. look.name .. " (" .. last_entity.name .. " is now left as a wreck by " .. dying.name .. ")")
-                now_from = {"propertyrandomizer-entity.source-wreck", "[entity=" .. dying.name .. "]", locale.find_localised_name(dying)}
+            elseif asteroid_salvaged[last_entity.name] ~= nil then
+                local death_base = graph.nodes[asteroid_salvaged[last_entity.name]]
+                local dying = dutils.get_prot("entity", death_base.death_host or gutils.get_owner(graph, death_base).name)
+                log("Entity randomization: " .. old_item_name .. " places nothing now, and looks like a darkened " .. look.name .. " (" .. last_entity.name .. " is now collected as asteroid salvage from " .. dying.name .. ")")
+                now_from = {"propertyrandomizer-entity.source-asteroid-salvage", "[entity=" .. dying.name .. "]", locale.find_localised_name(dying)}
             else
                 local spoof_placer = dutils.get_prot("item", placer_of(last_head_key))
                 log("Entity randomization: " .. old_item_name .. " places nothing now, and looks like a darkened " .. look.name .. " (" .. last_entity.name .. " is now placed by " .. spoof_placer.name .. ")")
@@ -2151,7 +2311,11 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
 
     -- A salvaged entity is found in the wild for the neutral force (its slot's autoplace force), which can't be used where it stands, so it's mined for a salvage item
     for entity_name, base_key in pairs(salvaged) do
-        local salvage = add_salvage_item(entity_name, salvage_description(dutils.get_prot("entity", entity_name)))
+        local entity_prot = dutils.get_prot("entity", entity_name)
+        local salvage = add_salvage_item(entity_name, salvage_description(entity_prot))
+        entity_prot.localised_description = with_description_line(entity_prot, "entity-description", {
+            "propertyrandomizer-entity.found-in-wild", "[item=" .. salvage.name .. "]", locale.find_localised_name(salvage),
+        })
         log("Entity randomization: " .. entity_name .. " is found in the wild where " .. graph.nodes[base_key].entity .. " was, and mined for " .. salvage.name)
     end
 
@@ -2244,24 +2408,35 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
         is_carrier[carrier.name] = true
     end
 
-    -- A dying enemy leaves a wreck of a built entity in place of what it left behind (made_occupants rewrites what it leaves), which is mined for a salvage item
-    local is_wreck = {}
-    for entity_name, base_key in pairs(wrecked) do
+    -- Asteroid rewards are collectible chunks whose mining product places the building.
+    for entity_name, base_key in pairs(asteroid_salvaged) do
         local base = graph.nodes[base_key]
-        local dying_name = gutils.get_owner(graph, base).name
-        local entity_prot = dutils.get_prot("entity", entity_name)
-        local wreck_name = "propertyrandomizer-wreck-" .. entity_name
-        local salvage = add_salvage_item(entity_name, {"propertyrandomizer-entity.wreck-salvage", "[entity=" .. wreck_name .. "]", "[entity=" .. dying_name .. "]", locale.find_localised_name(dutils.get_prot("entity", dying_name))})
-        local wreck = common.wreck_of(entity_prot, wreck_name, salvage.name, starting_item(entity_to_old_items[entity_name][1]))
-        wreck.localised_name = {"propertyrandomizer-entity.wreck-name", locale.find_localised_name(entity_prot)}
-        wreck.localised_description = {"propertyrandomizer-entity.mine-salvage", "[item=" .. salvage.name .. "]", locale.find_localised_name(salvage)}
-        data:extend({
-            wreck,
+        assert(base.salvage_source ~= nil, "Building death rewards require a collectible asteroid slot")
+        local template = assert(death_slots.salvage_template(data.raw["asteroid-chunk"]), "Asteroid salvage requires a visible chunk template")
+        local salvage = add_salvage_item(entity_name, {"propertyrandomizer-entity.asteroid-salvage", locale.find_localised_name(dutils.get_prot("entity", base.death_host))})
+        local icons = common.icon_layers(dutils.get_prot("entity", entity_name), "") or common.icon_layers(salvage, "")
+        local chunk = death_slots.salvage_chunk(template, "propertyrandomizer-salvage-chunk-" .. entity_name, salvage.name, icons)
+        chunk.localised_name = {"propertyrandomizer-entity.salvage-chunk", locale.find_localised_name(dutils.get_prot("entity", entity_name))}
+        common.set_icon_layers(chunk, "", icons)
+        data:extend({chunk})
+        local host = dutils.get_prot("entity", base.death_host)
+        death_slots.append(host, {type = "create-asteroid-chunk", asteroid_name = chunk.name})
+        host.localised_description = with_description_line(host, "entity-description", {
+            "propertyrandomizer-entity.asteroid-reward",
+            "[item=" .. salvage.name .. "]",
+            locale.find_localised_name(salvage),
         })
-        made_occupants[base_key] = wreck.name
-        is_wreck[wreck.name] = true
-        table.insert(farm_report, "wreck: " .. entity_name .. " (" .. demand_tier_of(entity_name) .. "), left by killing " .. dying_name .. ", in place of " .. head_entity_name(graph, graph.nodes[base.old_head]))
-        log("Entity randomization: killing " .. dying_name .. " leaves " .. wreck.name .. ", mined for " .. salvage.name)
+        table.insert(farm_report, "asteroid salvage: " .. entity_name .. ", from " .. base.death_host)
+    end
+    for host_name, package in pairs(death_packages) do
+        local host = dutils.get_prot("entity", host_name)
+        local action, copies = packages.copy_action(package.impact, function(name) return dutils.get_prot("entity", name) end, "propertyrandomizer-death-" .. host_name)
+        if #copies > 0 then data:extend(copies) end
+        death_slots.append(host, {type = "nested-result", action = action})
+        host.propertyrandomizer_death_payload = action
+        host.propertyrandomizer_death_budget = death_budgets[host_name]
+        host.localised_description = with_description_line(host, "entity-description", {"propertyrandomizer-entity.death-payload", locale.find_localised_name(package.look)})
+        log("Entity randomization: killing " .. host_name .. " activates payload " .. package.id)
     end
 
     -- Slots where a trigger makes the entity make whatever took them now, and one nothing took keeps making what it did
@@ -2277,9 +2452,13 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
         local owner_name = gutils.get_owner(graph, base).name
         local made_before = head_entity_name(graph, graph.nodes[base.old_head])
         if occupant ~= made_before then
-            local occupant_prot = dutils.get_prot("entity", occupant)
-            local occupant_line = {"propertyrandomizer-entity.occupant", "[entity=" .. occupant .. "]", locale.find_localised_name(occupant_prot)}
-            if base.projectile_package ~= nil then
+            local occupant_prot = occupant ~= false and dutils.get_prot("entity", occupant) or nil
+            local occupant_line = occupant ~= false and {"propertyrandomizer-entity.occupant", "[entity=" .. occupant .. "]", locale.find_localised_name(occupant_prot)} or {"propertyrandomizer-entity.empty-death"}
+            if base.death_spoof then
+                local host = dutils.get_prot("entity", base.death_host)
+                death_slots.append(host, death_slots.create(occupant))
+                host.localised_description = with_description_line(host, "entity-description", {"propertyrandomizer-entity.dying", occupant_line})
+            elseif base.projectile_package ~= nil then
                 packages.replace_with_building(projectile_packages[base.projectile_package], occupant, "propertyrandomizer-package-building-" .. base.projectile_package)
                 package_assignments[base.projectile_package] = false
             elseif base.trigger_spoof ~= nil then
@@ -2308,15 +2487,24 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
                     table.insert(retargeted_holders, holder_key)
                 end
                 local retarget = holder_retargets[holder_key]
-                -- A building (anything an item placed in vanilla, like the captive spawner, and wrecks) is made once, where there's room for it, and never as an enemy (common.create_as_building)
+                -- A building (anything an item placed in vanilla, like the captive spawner) is made once, where there's room for it, and never as an enemy (common.create_as_building)
                 -- Anything else (like combat robots, which come in swarms) is made as often as what it replaces, where there's room
-                local as_building = triggered[occupant] == base_key or entity_to_old_items[occupant] ~= nil or is_wreck[occupant] ~= nil
+                local as_building = triggered[occupant] == base_key or entity_to_old_items[occupant] ~= nil
                 local as_carrier = is_carrier[occupant] ~= nil
                 retarget.retargets[made_before] = function(effect)
-                    if as_building then
+                    if occupant == false then
+                        for field, _ in pairs(effect) do effect[field] = nil end
+                        effect.type = "nested-result"
+                        effect.action = {type = "direct", action_delivery = {type = "instant"}}
+                    elseif as_building then
                         common.create_as_building(effect, occupant)
                     else
                         common.create_at_free_spot(effect, occupant)
+                        if base.acq_kind == "dying" then
+                            effect.offsets, effect.repeat_count, effect.repeat_count_deviation = nil, nil, nil
+                            effect.as_enemy = death_slots.creature(occupant_prot) or nil
+                            effect.ignore_no_enemies_mode = effect.as_enemy
+                        end
                         -- A carrier is an enemy, and hatches even with enemies turned off (no_enemies_mode), since logic counts on its loot
                         if as_carrier then
                             effect.as_enemy = true
@@ -2326,7 +2514,7 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
                 end
                 table.insert(retarget.lines, occupant_line)
                 -- An item used by clicking (a capsule or ammo) gets a badge of what it makes, which looks like its own item if it's a building
-                if is_trigger_kind(base.acq_kind) then
+                if occupant ~= false and is_trigger_kind(base.acq_kind) then
                     local look = occupant_prot
                     if entity_to_old_items[occupant] ~= nil then
                         look = starting_item(entity_to_old_items[occupant][1])
@@ -2335,7 +2523,7 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
                 end
             end
             if base.trigger_spoof == nil then
-                log("Entity randomization: " .. trigger_action(graph, base) .. " makes " .. occupant .. " in place of " .. made_before)
+                log("Entity randomization: " .. trigger_action(graph, base) .. " makes " .. tostring(occupant) .. " in place of " .. made_before)
             end
         end
     end
@@ -2642,7 +2830,14 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
         local entry_of = {}
         for _, definition in pairs(starting_entity(spawner_name).result_units) do
             local unit_name, points = acquisition.read_spawn_definition(definition)
-            local occupant = occupants[unit_name] or unit_name
+            local occupant = occupants[unit_name]
+            if occupant == false then
+                occupant = unit_name
+                points = table.deepcopy(points)
+                for _, point in pairs(points) do point.weight = 0 end
+            elseif occupant == nil then
+                occupant = unit_name
+            end
             if occupant ~= unit_name and lookups.unit_spawns[spawner_name][unit_name].class == "transient" then
                 points = acquisition.floor_spawn_points(points, TRANSIENT_WEIGHT_FLOOR)
             end
@@ -2675,7 +2870,7 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
         local class = dutils.get_prot("entity", entity_name).type
         if acquisition.bulk_entity_types[class] ~= nil then
             class_members[class] = class_members[class] or {}
-            if salvaged[entity_name] ~= nil or carried[entity_name] ~= nil or hatched[entity_name] ~= nil or triggered[entity_name] ~= nil or wrecked[entity_name] ~= nil then
+            if salvaged[entity_name] ~= nil or carried[entity_name] ~= nil or hatched[entity_name] ~= nil or triggered[entity_name] ~= nil or asteroid_salvaged[entity_name] ~= nil then
                 has_hand_member[class] = true
                 table.insert(class_members[class], entity_name .. " (by hand)")
             else
@@ -2738,6 +2933,19 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
             prot.next_upgrade = nil
         end
     end
+end
+
+-- Other reflection steps can change a host's attack strength after matching, including military copies.
+-- Reject that attempt if its final death payload exceeds the same bound used during candidate search.
+entity.after_reflection = function()
+    local function lookup(name) return dutils.get_prot("entity", name) end
+    for _, host in pairs(dutils.get_all_prots("entity")) do
+        if host.propertyrandomizer_death_payload ~= nil and not death_slots.payload_fits(host, host.propertyrandomizer_death_payload, lookup, host.propertyrandomizer_death_budget) then
+            log("Entity randomization: final death payload exceeds the combat budget of " .. host.name)
+            return false
+        end
+    end
+    return true
 end
 
 -- Conservative pure preflight: false proves claim has no effect; true still needs ordinary claiming.

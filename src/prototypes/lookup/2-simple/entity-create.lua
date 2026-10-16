@@ -152,19 +152,21 @@ stage.dying_spawns = function()
         if entity.dying_trigger_effect ~= nil then
             local entity_key = gutils.key("entity", entity.name)
 
-            local gather_func = tutils.type_to_gather_struct_func[entity.type]
-            if gather_func ~= nil then
-                local structs = {}
-                gather_func(structs, entity, nil)
+            -- Death effects exist on every health-bearing type, including rocks and fish.
+            -- Stop at referenced prototypes: their attacks and later deaths are separate sources.
+            local structs = {}
+            tutils.gather_trigger_structs(structs, {
+                type = "direct",
+                action_delivery = {type = "instant", target_effects = entity.dying_trigger_effect},
+            }, true)
 
-                if structs["trigger-effect"] ~= nil then
-                    for _, te in pairs(structs["trigger-effect"]) do
-                        if te.type == "create-entity" and te.entity_name ~= nil then
-                            add_spawn(entity_key, gutils.key("entity", te.entity_name))
-                        end
-                        if te.type == "create-asteroid-chunk" and te.asteroid_name ~= nil then
-                            add_spawn(entity_key, gutils.key("asteroid-chunk", te.asteroid_name))
-                        end
+            if structs["trigger-effect"] ~= nil then
+                for _, te in pairs(structs["trigger-effect"]) do
+                    if te.type == "create-entity" and te.entity_name ~= nil then
+                        add_spawn(entity_key, gutils.key("entity", te.entity_name))
+                    end
+                    if te.type == "create-asteroid-chunk" and te.asteroid_name ~= nil then
+                        add_spawn(entity_key, gutils.key("asteroid-chunk", te.asteroid_name))
                     end
                 end
             end

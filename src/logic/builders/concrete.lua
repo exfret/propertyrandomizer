@@ -16,6 +16,8 @@ local tile_requirements = require("src/logic/builders/tile-requirements")
 local military_variants = require("src/randomizations/unified/military-variants")
 local science_rooms = require("src/logic/science-rooms")
 local recipe_loops = require("src/prototypes/recipes/recipe-loops")
+local death_slots = require("src/prototypes/entities/death-slots")
+local wild_entities = require("src/prototypes/entities/wild-entities")
 
 local prots = dutils.prots
 local key = gutils.key
@@ -39,6 +41,7 @@ local BUILD_EQUIPMENT = false
 
 function concrete.build(lu, extra_params)
     extra_params = extra_params or {}
+    local death_kept = config.entity_randomization and wild_entities.kept_in_place() or {}
     local payback_time = extra_params.payback_time or constants.cost.default_payback_time
     local biome_report = (data.raw["mod-data"] or {})["propertyrandomizer-biome-placement"]
     local biome_entities = biome_report ~= nil and biome_report.data.entities or {}
@@ -153,6 +156,8 @@ function concrete.build(lu, extra_params)
                         damage_amount = source_info.amount,
                         abilities = ctx.LOSES_AUTOMATABILITY,
                     })
+                elseif source_info.source_type == "death-effect" then
+                    add_edge("entity-kill", source.name, {damage_amount = source_info.amount})
                 elseif source_info.source_type == "turret" then
                     -- Turrets with built-in damage (electric/fluid)
                     add_edge("entity-operate", source.name, {
@@ -685,7 +690,7 @@ function concrete.build(lu, extra_params)
         --end
 
         -- Just check for asteroids and other critical entities now for performance
-        if not categories.without_health[entity.type] and (entity.type == "asteroid" or lu.dying_spawns[key("entity", entity.name)] or (entity.loot ~= nil and #entity.loot > 0) or (entity.corpse ~= nil and lu.minable_corpses[entity.corpse])) then
+        if not categories.without_health[entity.type] and ((config.entity_randomization and death_slots.host(entity, lu, death_kept)) or entity.propertyrandomizer_death_payload ~= nil or entity.type == "asteroid" or lu.dying_spawns[key("entity", entity.name)] or (entity.loot ~= nil and #entity.loot > 0) or (entity.corpse ~= nil and lu.minable_corpses[entity.corpse])) then
             ----------------------------------------
             add_node("entity-kill", "AND", nil, nil, { coproduct = true })
             ----------------------------------------

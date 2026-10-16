@@ -128,3 +128,13 @@ for _, pebble in pairs(prom.promised_pebbles()) do
 end
 assert(found, "automatic projectile damage survives the separate construction restriction")
 print("Projectile supply protection passed: optional bulk member allowed, last automatic supplier protected, automatic damage retained")
+
+local death_base = {acq_kind = "dying"}
+local damage_head = {acq_kind = "ammo", projectile_package = "fixture", ours = true}
+assert(acquisition.pairing(death_base, damage_head) ~= nil, "a death can supply a payload without owning its host")
+assert(acquisition.pairing(death_base, damage_head).abilities == nil, "automatic death damage retains source abilities")
+local building_pair = acquisition.pairing(death_base, {acq_kind = "build"})
+assert(ctx.edge_loses_ability(building_pair.abilities, ctx.AUTOMATABILITY), "death salvage does not prove automatic construction")
+print("Death source automation stays separate from building acquisition")
+local collected = acquisition.pairing({acq_kind = "dying", salvage_source = "asteroid"}, {acq_kind = "build"})
+assert(collected and collected.abilities == nil, "collecting a placement item preserves automatic supply")

@@ -1,5 +1,6 @@
 -- Logs lines for dev/run-tests.py to read, all starting with PRTEST
 
+local entity_death = require("test-entity-death")
 local biomes = require("biomes")
 local tile_buildability = require("test-tile-buildability")
 local biome_placement = require("test-biome-placement")
@@ -49,6 +50,7 @@ local function generate_planets(biomes_enabled)
 end
 
 script.on_init(function()
+    entity_death.run()
     tile_buildability.run()
     biome_placement.run()
     log_settings()
@@ -64,5 +66,6 @@ script.on_init(function()
 end)
 
 script.on_nth_tick(60, function(event)
+    entity_death.check(event.tick)
     log("PRTEST tick " .. tostring(event.tick))
 end)

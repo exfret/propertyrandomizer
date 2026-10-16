@@ -241,12 +241,13 @@ acquisition.carrier_kinds = {
 -- A slot giving an item can't connect to an entity that isn't built yet, since placing an entity that isn't built in vanilla has placement prereqs logic doesn't have
 -- An entity that has to be ours (its head is tagged ours) only connects to a slot that makes it ours, since what's found in the wild or spawned by enemies can't be operated
 acquisition.pairing = function(base, head)
-    local base_gives_item = acquisition.gives_item(base.acq_kind)
+    -- Collector-backed asteroid rewards supply placement items through the normal item delivery model.
+    local base_gives_item = acquisition.gives_item(base.acq_kind) or base.salvage_source ~= nil
     local head_is_built = acquisition.gives_item(head.acq_kind)
     if base_gives_item and not head_is_built and head.projectile_package == nil then
         return nil
     end
-    if not head_is_built and not base_gives_item and head.ours ~= nil and base.ours == nil then
+    if not head_is_built and not base_gives_item and head.ours ~= nil and base.ours == nil and head.projectile_package == nil then
         return nil
     end
     local abilities = base.abilities
