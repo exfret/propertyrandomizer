@@ -142,6 +142,17 @@ local function optimize_single_ing(old_recipe_costs, material_to_costs, all_ings
 
     -- The ingredient's own amount is left alone; the amounts tried only go through costs_at
     local costs_at = varied_amount_costs(material_to_costs, all_ings, ing_ind)
+    -- Bracketing and trisection revisit amounts; this cache belongs to this fixed target and other-ingredient vector only.
+    local point_cache = {}
+    local point_params = {dont_preserve_resource_costs = dont_preserve_resource_costs}
+    local function points_at(amount)
+        local points = point_cache[amount]
+        if points == nil then
+            points = calculate_points(old_recipe_costs, costs_at(amount), point_params)
+            point_cache[amount] = points
+        end
+        return points
+    end
 
     -- Amounts are at most 2^16, and a fluid's at most extra_params.fluid_amount_cap when given (recipe shapes cap them at the largest fluid amount any recipe takes, see src/randomizations/unified/recipe-shape.lua)
     local max_amount = 65535
@@ -152,8 +163,7 @@ local function optimize_single_ing(old_recipe_costs, material_to_costs, all_ings
     local lower_bound = 0.25
     local upper_bound = 1
     for i = 1, 16 do
-        local costs = costs_at(upper_bound)
-        local curr_points = calculate_points(old_recipe_costs, costs, {dont_preserve_resource_costs = dont_preserve_resource_costs})
+        local curr_points = points_at(upper_bound)
 
         if not (best_points == nil or curr_points < best_points) then
             -- We've found the max number of ingredients it could be
@@ -182,10 +192,8 @@ local function optimize_single_ing(old_recipe_costs, material_to_costs, all_ings
         best_amount = 1
     else
         -- Find lower bound and upper bound costs
-        local lower_costs = costs_at(lower_bound)
-        local lower_points = calculate_points(old_recipe_costs, lower_costs, {dont_preserve_resource_costs = dont_preserve_resource_costs})
-        local upper_costs = costs_at(upper_bound)
-        local upper_points = calculate_points(old_recipe_costs, upper_costs, {dont_preserve_resource_costs = dont_preserve_resource_costs})
+        local lower_points = points_at(lower_bound)
+        local upper_points = points_at(upper_bound)
 
         -- Now trinary search between lower_bound and upper_bound
         while true do
@@ -201,9 +209,8 @@ local function optimize_single_ing(old_recipe_costs, material_to_costs, all_ings
 
                 break
             elseif upper_bound == lower_bound + 2 then
-                middle_amount = lower_bound + 1
-                local middle_amount_cost = costs_at(middle_amount)
-                local middle_amount_points = calculate_points(old_recipe_costs, middle_amount_cost, {dont_preserve_resource_costs = dont_preserve_resource_costs})
+                local middle_amount = lower_bound + 1
+                local middle_amount_points = points_at(middle_amount)
 
                 if lower_points <= middle_amount_points and lower_points <= upper_points then
                     best_points = lower_points
@@ -222,21 +229,17 @@ local function optimize_single_ing(old_recipe_costs, material_to_costs, all_ings
             local curr_amount_1 = math.floor(lower_bound * 2 / 3 + upper_bound * 1 / 3)
             local curr_amount_2 = math.floor(lower_bound * 1 / 3 + upper_bound * 2 / 3)
 
-            local amount_costs_1 = costs_at(curr_amount_1)
-            local amount_points_1 = calculate_points(old_recipe_costs, amount_costs_1, {dont_preserve_resource_costs = dont_preserve_resource_costs})
-            local amount_costs_2 = costs_at(curr_amount_2)
-            local amount_points_2 = calculate_points(old_recipe_costs, amount_costs_2, {dont_preserve_resource_costs = dont_preserve_resource_costs})
+            local amount_points_1 = points_at(curr_amount_1)
+            local amount_points_2 = points_at(curr_amount_2)
 
             -- Could probably be optimized for cases where optimum is between, for example, curr_amount_2 and upper_bound
             if amount_points_1 < amount_points_2 then
                 -- Move upper bound down
                 upper_bound = curr_amount_2
-                upper_costs = amount_costs_2
                 upper_points = amount_points_2
             else
                 -- Move lower bound up
                 lower_bound = curr_amount_1
-                lower_costs = amount_costs_1
                 lower_points = amount_points_1
             end
         end
@@ -252,7 +255,7 @@ end
 -- Modifies proposed_ings
 -- Needs num_ings_to_find to know which ings it needs to calculate for, and which ones are fixed
 local function calculate_optimal_amounts(old_recipe_costs, material_to_costs, proposed_ings, num_ings_to_find, extra_params)
-    dont_preserve_resource_costs = false
+    local dont_preserve_resource_costs = false
     if extra_params.dont_preserve_resource_costs then
         dont_preserve_resource_costs = extra_params.dont_preserve_resource_costs
     end
@@ -298,40 +301,37 @@ local function calculate_optimal_amounts(old_recipe_costs, material_to_costs, pr
     local curr_points = calculate_points(old_recipe_costs, curr_costs, {dont_preserve_resource_costs = dont_preserve_resource_costs})
     local num_failed_attempts = 0
     while true do
-        local new_proposals = {}
-
-        allocated_amounts = math.min(1, allocated_amounts + 1 / (3 * #proposed_ings))
-
-        recipe_costs_to_use = table.deepcopy(old_recipe_costs)
-        recipe_costs_to_use.aggregate_cost = recipe_costs_to_use.aggregate_cost * allocated_amounts
-        -- Don't do complexity costs in this part
-        if not config.only_randomize_science_recipes then
-            for _, resource_id in pairs(major_raw_resources) do
-                recipe_costs_to_use.resource_costs[resource_id] = recipe_costs_to_use.resource_costs[resource_id] * allocated_amounts
+        -- Every proposal sees the same amounts and target until the round ends, so fit each sampled coordinate only once, keeping every RNG draw.
+        local evaluated = {}
+        local next_allocation = math.min(1, allocated_amounts + 1 / (3 * #proposed_ings))
+        if next_allocation ~= allocated_amounts then
+            recipe_costs_to_use = table.deepcopy(old_recipe_costs)
+            recipe_costs_to_use.aggregate_cost = recipe_costs_to_use.aggregate_cost * next_allocation
+            -- Don't do complexity costs in this part
+            if not config.only_randomize_science_recipes then
+                for _, resource_id in pairs(major_raw_resources) do
+                    recipe_costs_to_use.resource_costs[resource_id] = recipe_costs_to_use.resource_costs[resource_id] * next_allocation
+                end
             end
         end
+        allocated_amounts = next_allocation
 
-        for i = 1, 2 * (#proposed_ings) do
-            local ing_ind = rng.int("recipe-ingredients-calculate-optimal-amounts", num_ings_to_find)
-            local optimization_info = optimize_single_ing(recipe_costs_to_use, material_to_costs, proposed_ings, ing_ind, {
-                dont_preserve_resource_costs = dont_preserve_resource_costs,
-                fluid_amount_cap = extra_params.fluid_amount_cap,
-            })
-            -- Get actual points
-            local this_proposal_curr_points = calculate_points(old_recipe_costs, optimization_info.costs, {dont_preserve_resource_costs = dont_preserve_resource_costs})
-            optimization_info.best_points = this_proposal_curr_points
-            table.insert(new_proposals, {ind = ing_ind, optimization_info = optimization_info})
-        end
-
-        -- Choose best proposal
+        -- Choose the first best proposal, then apply it after all the draws.
         local new_points = curr_points
         local ing_ind_to_change
         local new_ing_amount
-        for _, proposal in pairs(new_proposals) do
-            if proposal.optimization_info.best_points < new_points then
-                ing_ind_to_change = proposal.ind
-                new_ing_amount = proposal.optimization_info.best_amount
-                new_points = proposal.optimization_info.best_points
+        for i = 1, 2 * (#proposed_ings) do
+            local ing_ind = rng.int("recipe-ingredients-calculate-optimal-amounts", num_ings_to_find)
+            if not evaluated[ing_ind] then
+                evaluated[ing_ind] = true
+                local optimization_info = optimize_single_ing(recipe_costs_to_use, material_to_costs, proposed_ings, ing_ind, extra_params)
+                -- Judge against the full target, even while fitting a partial one.
+                local proposal_points = calculate_points(old_recipe_costs, optimization_info.costs, extra_params)
+                if proposal_points < new_points then
+                    ing_ind_to_change = ing_ind
+                    new_ing_amount = optimization_info.best_amount
+                    new_points = proposal_points
+                end
             end
         end
         if ing_ind_to_change ~= nil then

@@ -356,4 +356,154 @@ test("a fluid's amount stops at the cap, an item's doesn't", function()
     assert(result.ings[1].amount <= 1000, "the search picked " .. result.ings[1].amount)
 end)
 
+local function amount_case(case)
+    config.only_randomize_science_recipes = case.science
+    rng_states["recipe-ingredients-calculate-optimal-amounts"] = 12345
+    local costs = costs_with_fluids({
+        0.13,
+        27,
+        1.75,
+        61,
+        0.02,
+    }, {0.07})
+    for id, value in pairs(costs.aggregate_cost) do
+        costs.resource_costs["item-ore"][id] = value * 0.003
+        costs.resource_costs["item-coal"][id] = value * 0.4
+    end
+    local target = {
+        aggregate_cost = 5000,
+        complexity_cost = 0,
+        resource_costs = case.science and {} or {
+            ["item-ore"] = 3000,
+            ["item-coal"] = 0,
+        },
+    }
+    local ings = {
+        {
+            type = "item",
+            name = "c1",
+        },
+        {
+            type = "item",
+            name = "c2",
+        },
+        {
+            type = "fluid",
+            name = "f1",
+        },
+        {
+            type = "item",
+            name = "c3",
+        },
+        {
+            type = "item",
+            name = "c4",
+            amount = 7,
+        },
+    }
+    local points = cost_lib.calculate_optimal_amounts(target, costs, ings, case.kept and 4 or 5, {
+        fluid_amount_cap = 1000,
+        dont_preserve_resource_costs = case.unbalanced,
+    })
+    local amounts = {}
+    for i, ing in pairs(ings) do amounts[i] = ing.amount end
+    return points, amounts, rng_states["recipe-ingredients-calculate-optimal-amounts"]
+end
+
+-- Expected fits and the final RNG state were captured from the fresh source baseline, before memoization.
+local function check_amount_case(case, expected_points, expected_amounts)
+    local points, amounts, state = amount_case(case)
+    assert(near(points, expected_points), tostring(points))
+    for i, amount in pairs(expected_amounts) do
+        assert(amounts[i] == amount, "ingredient " .. i .. " got " .. amounts[i] .. ", expected " .. amount)
+    end
+    assert(state == 20810422, "memoization changed the RNG stream")
+    config.only_randomize_science_recipes = nil
+end
+
+test("conflicting resource targets keep the baseline fit and RNG draws", function()
+    check_amount_case({}, 59.363238415965952, {
+        1938,
+        13,
+        1000,
+        152,
+        7,
+    })
+end)
+
+test("a kept ingredient stays fixed through allocation changes and coordinate proposals", function()
+    check_amount_case({kept = true}, 59.363238391475903, {
+        2421,
+        11,
+        1000,
+        147,
+        7,
+    })
+end)
+
+test("resource balancing off keeps the baseline aggregate fit and RNG draws", function()
+    check_amount_case({unbalanced = true}, 7.9998400031033867e-06, {
+        20508,
+        12,
+        1000,
+        760,
+        10,
+    })
+end)
+
+test("science-only fitting keeps the baseline result without resource costs", function()
+    check_amount_case({science = true}, 7.9998400031033867e-06, {
+        20508,
+        12,
+        1000,
+        760,
+        10,
+    })
+end)
+
+test("coordinate caches cannot cross targets or changes in other ingredient amounts", function()
+    local costs = costs_for({
+        0.25,
+        1.5,
+    })
+    for _, other_amount in pairs({
+        1,
+        5,
+        13,
+    }) do
+        for _, target_amount in pairs({
+            8,
+            23,
+            52,
+        }) do
+            local target = {
+                aggregate_cost = target_amount,
+                complexity_cost = 0,
+                resource_costs = {
+                    ["item-ore"] = target_amount * 0.25,
+                    ["item-coal"] = target_amount * 0.75,
+                },
+            }
+            local ings = {
+                {
+                    type = "item",
+                    name = "c1",
+                    amount = 1,
+                },
+                {
+                    type = "item",
+                    name = "c2",
+                    amount = other_amount,
+                },
+            }
+            local info = cost_lib.optimize_single_ing(target, costs, ings, 1, {})
+            for amount = 1, 256 do
+                ings[1].amount = amount
+                local points = cost_lib.calculate_points(target, cost_lib.get_costs_from_ings(costs, ings), {})
+                assert(info.best_points <= points + 1e-12, "coordinate fit lost the optimum")
+            end
+        end
+    end
+end)
+
 print(num_passed .. " tests passed")

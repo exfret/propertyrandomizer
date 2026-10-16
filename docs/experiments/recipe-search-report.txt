@@ -1,0 +1,286 @@
+Recipe optimizer sensitivity investigation — 2026-10-15
+
+The combined implementation's Space Age preview seed 3 takes 4,482.8M Lua
+instructions. Memoizing repeated work reduces it to 3,422.7M (-23.65%), with
+byte-identical data.raw output and unchanged search decisions. No search budget,
+threshold, scoring weight, candidate eligibility rule, or promotion rule changes.
+
+Provenance and measurement
+
+Read AGENTS.md, CLAUDE.md, and the historical manifest/profile/validation first.
+Historical evidence is unchanged at:
+  /private/tmp/propertyrandomizer-sort-fixes-vgqxtcsw
+A fresh working-source baseline, candidate copies, manifest with source hashes,
+commands, raw logs, telemetry, and analysis scripts are preserved at:
+  /private/tmp/propertyrandomizer-recipe-sensitivity-_lja3vk1
+Its sources/current copy is immutable. sources/memoized changes only recipe-cost.lua.
+The eventual working-tree implementation differs from that measured file only in
+comments and its final newline. Concurrent bootstrap changes were not edited,
+reverted, staged, or committed by this investigation. A late concurrent edit to
+src/randomizations/numerical/tile.lua appeared at the final audit and was left
+untouched; it is not part of these frozen paired benchmarks.
+
+The fresh baseline's game-loaded files are byte-identical to the historical
+sources/combined copy (historical-combined-parity.json). This makes the existing
+combined seed-3 data.raw dump a valid independent output comparison. The fresh
+seed-1/2/3 instruction counts reproduce combined-validation.json exactly.
+
+All runs use the existing dev runner and factorio_launch; the session limit stays
+at two Factorio processes. The frozen run-tests-counter.py from the supplied
+experiment adds standalone instruction counting and JSON results; only its output
+root was redirected for this experiment. No production runner changes were made.
+The executable identifies itself as Factorio 2.1.20, build 87512, mac-arm64,
+Space Age (see the first line of each create.log).
+
+Totals use the existing counter's 100,000-instruction resolution, covering map
+creation (data stage plus control initialization) and control verification. The
+separate prototype dump load is uncounted. Instrumented diagnostic copies are
+never used for performance totals. Runtime/queue contention is substantial and
+is not used as the performance criterion. Seed offsets retain @1..@4 in runner
+folder names; results below use the actual PRTEST startup seed, not that suffix.
+
+Root cause and trace
+
+recipe-ingredients.custom_prereq_search prepares each recipe's staged regional
+budget and material prices. find_valid_prereq_list applies the existing promotion,
+reachability, automatability, result/fuel/furnace, duplicate, and price checks.
+The recipe handler retains the inherited first_pass=true declaration from
+handlers/default.lua and continues sharing the runner's existing pass.
+The handler then tries its existing paying-pool / shape-ladder searches and
+reflects accepted ingredients through the unified runner. Failed searches retain
+the existing vanilla fallback and promised-context checks. This extension point
+already owns progression decisions; the optimization adds no graph build, sort,
+validation pass, retry loop, node type, or alternative progression algorithm.
+
+recipe-cost.search_for_ings selects an initial distinct ingredient set, fits its
+amounts, and tries compatible one-slot substitutions. It checks the target only
+after a candidate, and retains the existing 30-candidate stall / 0.5-point
+progress rule. Each proposed set calls calculate_optimal_amounts, which initializes
+partial budgets, ramps the allocation by 1/(3*ingredient_count), and samples
+2*ingredient_count coordinate proposals per round before applying one winner.
+optimize_single_ing brackets and trisects each amount using the same cost score.
+
+Removing the discarded pool advances the shared sort RNG differently, changing
+later matching, availability, staged prices, and candidate-search trajectories.
+The amount fitter and ingredient handler themselves are byte-identical between
+the historical baseline and the fresh combined baseline. The saved profiles
+already ruled out more unified attempts or matching refinements as the cause.
+Diagnostic replay now measures the actual ingredient-search workload:
+
+                                      historical baseline   current combined
+  search calls                              294                  297
+  candidate-search attempts                 336                  988
+  accepted candidate substitutions          139                  311
+  amount-fitting calls                      696                2,625
+  fitting rounds                          6,573               43,070
+  coordinate optimizations               50,387              437,919
+  score evaluations                     625,997            7,325,368
+  cost-vector evaluations               627,391            7,333,683
+  duplicate coordinate proposals         27,730              243,156
+  repeated amount evaluations           236,443            2,519,515
+  largest individual fit (rounds)             23                   91
+  fits hitting the 10,000-round limit          0                    0
+
+These are counts of actual calls/rounds, not instruction samples. Candidate-search
+attempts count unused candidates considered by the substitution loop, including
+ones of an incompatible form. They do not count initial rejection-sampling RNG
+draws. There were 13 historical and 18 current initial-selection limit failures:
+each entails exactly 10,000 rejected draws at the failing slot, in addition to
+any earlier slot selections. Empty-pool failures were 1 and 2, respectively.
+Thus the sensitivity is not an amount fit running to the emergency limit.
+It is many more large, difficult fits, multiplied by redundant work per fit.
+
+The seed-3 current searches most expensive by score-evaluation count are:
+
+  recipe position           pool   fits   rounds   score evaluations   stop
+  spidertron                 125    429   10,511       2,016,071        threshold
+  fusion-reactor-equipment   139    196    5,328       1,301,967        stall
+  captive-biter-spawner      135    146    3,965       1,114,904        stall
+  atomic-bomb                102    139    2,713         548,431        stall
+  biolab                     125    146    2,806         345,116        stall
+  mech-armor                 129    111    1,517         263,534        stall
+  electromagnetic-plant       40     96    1,151         255,241        stall
+  railgun-turret             138    106    1,754         214,459        stall
+
+The first three account for 60.5% of score evaluations; these are workload rankings,
+not separately profiled instruction totals. Historical spidertron used 3,985
+score evaluations (see historical-probe-summary.json for exact per-search data).
+Historically spidertron starts below threshold and stops after one candidate
+consideration and one fit. In the current world it considers 93 candidates,
+accepts 32 substitutions, and fits 429 sets. The existing 0.5-point progress
+resets permit that search to keep running past 30 total candidates.
+The raw RECIPESEARCH records retain every candidate pool, target, chosen set,
+stopping reason, and the longest fit's input costs, RNG state, and round trace.
+Candidate names identify positions before item reflection, not the final displayed
+identities. No candidate list was hardcoded into production.
+
+For example, the longest recorded spidertron fit tries battery-equipment,
+oxide-asteroid-chunk, plastic-bar, advanced-circuit, electric-engine-unit, and
+steel-plate. Its aggregate target is 5,371.61 and scrap-resource target 2,809.77.
+The highest scrap/aggregate unit-price ratio among those six materials can supply
+only 22.43 scrap cost at that aggregate total. Exact matching of both objectives
+is impossible for that particular set. Similar observed maxima are 36.28 against
+3,432.32 for the recorded fusion-reactor-equipment set, and 53.34 against
+10,914.29 for captive-biter-spawner. This arithmetic is about measured optimizer
+prices, not a claim about intrinsic game resource requirements or every member
+of the full candidate pool. It explains why fitting has to trade off objectives
+and why subsequent substitutions can remain far above the score threshold.
+
+Historical searches stop at threshold/exhaustion in 258/12 cases, with 10 kept-only
+and 14 failed initial selections. Current searches stop at threshold/stall/
+exhaustion in 243/13/13 cases, with 8 kept-only and 20 failed initial selections.
+The number of successful nonempty search calls returning a bonus-adjusted score
+above 1.5 grows from 4/270 to 19/269. Aggregate drift alone obscures this change:
+historical/current mean absolute log drift is 0.095/0.096, while vanilla fallbacks
+rise from 1 to 4. The bonus-adjusted score includes the existing novelty and
+non-starting-position bonuses; it is not a raw aggregate cost ratio.
+
+Implemented improvement
+
+1. Cache scores by amount only inside one optimize_single_ing invocation. The
+   target and all other ingredient amounts are fixed in that scope. Bracketing,
+   trisection, endpoint checks and terminal cases reuse exactly the same scores.
+   No cache survives a changed coordinate vector, target, or recipe.
+2. Fit each sampled ingredient index once within a round. All original RNG draws
+   are consumed; every proposal sees the same vector until the round finishes.
+   Preserve first-best tie handling and apply the winner only after those draws.
+3. Reuse the scaled target once allocation stops changing at one. Keep every
+   allocation step and stopping check. Remove temporary proposal-list records
+   and per-proposal parameter tables. Scope the two accidental temporaries
+   dont_preserve_resource_costs and middle_amount locally.
+
+This removes arithmetic and allocation without weakening the search. It does
+not attempt to change the established balancing design, suppress difficult
+candidates, lower budgets, relax safety checks, or special-case any seed.
+
+Diagnostic verification of the implementation
+
+All 297 seed-3 search calls retain identical recipe/slot, candidate pool, target,
+slot forms, result ingredients/amounts/indices/points, fit count, round count,
+candidate attempts, accepted substitutions, and fit stopping reasons. The saved
+longest-fit replay inputs, RNG states, chosen amounts, scores, and traces also
+match exactly. Search calls stay at 297, amount fits at 2,625, rounds at 43,070,
+and proposal RNG draws at 427,024. Actual coordinate optimizations fall from
+437,919 to 194,763 (-55.5%); score evaluations from 7,325,368 to 2,344,735
+(-68.0%); cost-vector evaluations from 7,333,683 to 2,353,050 (-67.9%).
+The remaining 194,763 repeated amount-cost evaluations reconstruct the returned
+best cost vector once per coordinate fit; cached scores do not retain all those
+transient cost tables. See probe-comparison.json in the evidence directory.
+
+Benchmark results
+
+Total counted Lua instructions, in millions. Each row is a matched preview seed.
+Drift (mean absolute log cost ratio) and fallback counts are identical on both sides.
+
+  seed    baseline   memoized    change    drift   vanilla fallbacks
+     0      3383.7     3196.5    -5.53%   0.077       0
+     1      2842.7     2755.1    -3.08%   0.112       3
+     2      2872.6     2782.1    -3.15%   0.105       2
+     3      4482.8     3422.7   -23.65%   0.096       4
+     4      3113.5     3021.7    -2.95%   0.097       2
+     5      3018.2     2882.0    -4.51%   0.106       1
+     6      3016.2     2771.2    -8.12%   0.095       1
+     7      2779.1     2693.1    -3.09%   0.088       2
+     8      2972.0     2882.8    -3.00%   0.073       5
+   659      2892.1     2801.9    -3.12%   0.085       2
+
+All ten pairs have identical recipe result-summary hashes, full result-summary
+hashes, RECIPESTATS lines, recipe-shape summaries, and validation problem lists.
+UNIFIEDCHECK and MECHCHECK pass for every measured final world on both sides.
+Control verification passes. Seeds 5–8 are additional consecutive holdouts;
+0 and 659 were chosen from earlier profile/cost investigations, not to tune code.
+All ten use one unified attempt; the recorded matching-round/refinement data
+are included in recipe-search-results.json.
+
+Unchanged REBUILDCHECK failures:
+  seed 1: REBUILDCHECK verdict FAILED (contexts 1, science 3) [REBUILDCHECK contexts: 1; REBUILDCHECK science: 3]
+  seed 2: REBUILDCHECK verdict FAILED (contexts 1, science 1) [REBUILDCHECK contexts: 1; REBUILDCHECK science: 1]
+  seed 3: REBUILDCHECK verdict FAILED (superfluous 1) [REBUILDCHECK superfluous: 1]
+  seed 6: REBUILDCHECK verdict FAILED (contexts 1) [REBUILDCHECK contexts: 1]
+  seed 7: REBUILDCHECK verdict FAILED (superfluous 1) [REBUILDCHECK superfluous: 1]
+  seed 659: REBUILDCHECK verdict FAILED (superfluous 1) [REBUILDCHECK superfluous: 1]
+
+These failures were present in the fresh baseline and do not change with the
+optimization. The preview leaves the legacy recipe toggle off, so the runner's
+legacy science-cost gate is not exercised here (science_costs is empty). Quality
+comparisons instead use the unified handler's staged cost drift, novelty totals,
+changed-ingredient counts, fallbacks, exact recipe summaries, and the seed-3
+prototype dump. This is not a claim that the legacy science-cost gate ran.
+
+The seed-3 total repeats exactly at 3,422.7M. Its full prototype dump SHA-256 is:
+  f24e1cef2a3fe1c01bed875c3ac829b34a6d61d5d92359bef47904c8ec41eb32
+It matches the saved combined baseline dump. No full-dump identity claim is
+made for the other seeds; their exact result summaries and quality lines match.
+
+Saved-settings follow-up
+
+One current-working-tree replay used the user's saved startup settings, seed 0,
+with dupes=2, biome placement and independent deposits enabled. Its enabled mods
+match the Space Age mod set. Settings were copied unchanged and replayed without
+test pins; no source or user settings files were edited for this check.
+
+Map creation and the 600-tick control test completed. UNIFIEDCHECK and MECHCHECK
+passed with zero unreachable recipes, lost contexts, missing promised pebbles,
+or furnace collisions. REBUILDCHECK reported served=39, science=36, copies=1;
+these are the known work-in-progress rebuild-check category the user confirmed
+is expected, not a clean overall checker pass. This was one current-source run,
+so those exact warnings have not been attributed by a paired before/after run.
+It used one unified attempt, 24,076.7M Lua instructions, 491.7 seconds for map
+creation, and 17.0 seconds for the control process. These are not comparative
+performance results for the much larger saved configuration.
+
+Evidence and the copied settings are preserved at:
+  /private/tmp/propertyrandomizer-user-settings-check-cqlj7qbg
+The settings fingerprint, run results, and verdicts are also in the companion
+recipe-search-results.json under saved_settings_check.
+
+Verification and remaining limits
+
+11 targeted unit-test files pass:
+  python3 dev/run-unit-tests.py --only recipe-cost --only recipe-shape --only unified/handlers --only test-progression-architecture
+The recipe-cost tests add frozen-baseline amounts/scores/RNG-state fixtures for
+conflicting resources, kept ingredients, fluid caps, disabled resource balance,
+and science-only scoring, plus exhaustive coordinate checks across changing
+targets and other-ingredient amounts.
+
+Required audits: style-check.py has zero errors; the complete require-only
+audit passes; hardcoded-names.py reports zero unapproved tables; node-types.py
+reports zero unapproved types/sites; check-progression-architecture.py reports
+zero new execution sites. Boolean-map truthiness warnings in the changed
+optimizer are intentional; repository-wide unrelated warnings remain.
+
+At initial completion, review-player-text.py reported four pending files outside
+this optimization (three pre-existing, plus the late concurrent tile edit):
+  04dcc9fdd8a35c32 src/pipeline/data-final-fixes.lua
+  64a2a9bd462f15f4 src/randomizations/numerical/entity.lua
+  09c5fa3ef9212ef9 src/randomizations/planetary/execute.lua
+  90ee98999a8e54cc src/randomizations/numerical/tile.lua (late concurrent edit)
+No player-facing wording was added by this change, no review IDs were approved,
+and no receipts were edited. Those audit diffs are in player-text-end.log.
+The commit-time wording audit reports zero pending files.
+
+Performance still depends on the randomized world and objective mismatch.
+The improvement removes repeated work; it does not make a difficult candidate
+set as cheap to search as a lucky initial set. Seed 3 remains more expensive
+than the historical pre-pool-removal world, and its high-score tail is retained.
+Other mod sets, settings, and a broad seed distribution were not benchmarked.
+One candidate batch had a pre-game dump-settings setup failure and was rerun;
+the failed setup produced no benchmark result and remains in the evidence.
+
+Reproduction
+
+The evidence root contains run-tests-counter.py, all source snapshots, manifests,
+per-batch runner logs/JSON, analyze.py, run-extra.py, and probe-comparison.json.
+Example uninstrumented batch (replace current with memoized for the candidate):
+  python3 <evidence>/run-tests-counter.py unified --only sa/preview@ --jobs 1 --count-instructions --dir <evidence>/sources/current --experiment-output <output.json>
+Add --seed-offset 4 for actual seeds 5–8. For seed 0 or 659, select only
+sa/preview@1 with --seed-offset -1 or 658, respectively. --dump-data adds the
+separate uncounted full-dump comparison.
+
+Diagnostic copies (never use their instruction counts as performance results):
+  python3 dev/experiments/test-recipe-search.py SOURCE DEST
+  python3 dev/run-tests.py unified --only sa/preview@3 --jobs 1 --dir DEST
+  python3 dev/experiments/test-recipe-search.py --summarize RUN_FOLDER
+The instrumenter refuses working-tree paths and requires fresh destinations.
+Its RECIPESEARCH lines retain pools, replay inputs, traces, workload, and stops.
+See recipe-search-results.json for machine-readable comparisons and rankings.
