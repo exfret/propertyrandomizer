@@ -58,13 +58,12 @@ def candidate(path):
 
 
 def localized_snapshot(source):
-    """Fingerprint localization expressions and their same-file suppliers.
+    """Fingerprint wording definitions, not the gameplay which uses them.
 
-    Compare both versions, so removing text or editing an indirect supplier still
-    requires review. Keep complete file diffs and byte-specific approval IDs;
-    this only decides whether a Lua change belongs in the wording review queue.
-    Suppliers are resolved conservatively within each function (and its enclosing
-    functions), with qualified members kept separate from unrelated table fields.
+    Follow string/table values and helper return values feeding localized fields.
+    Ignore guards, numerical inputs, helper options, and bare uses of locale keys:
+    the wording behind those keys is reviewed in locale/ itself. Approvals still
+    cover exact file contents, and relevant files still display complete diffs.
     """
     source = source.encode("utf-8")
     tree = style.PARSER.parse(source)
@@ -77,9 +76,18 @@ def localized_snapshot(source):
     def text(node):
         return source[node.start_byte:node.end_byte]
 
+    def syntax(node):
+        # Direct localized-field edits are always relevant, including changes to
+        # variables/parameters in a localized table. Ignore formatting/comments.
+        if node.type == "comment":
+            return ()
+        if node.type == "string" or not node.children:
+            return ((node.type, text(node)),)
+        return tuple(token for child in node.children for token in syntax(child))
+
     def scope(node):
         parent = node.parent
-        while parent is not None and parent.type not in functions:
+        while parent is not None and parent.type not in functions | {"block", "chunk"}:
             parent = parent.parent
         return parent if parent is not None else tree.root_node
 
@@ -99,6 +107,7 @@ def localized_snapshot(source):
     bindings = {}
     for node in nodes:
         names = []
+        owner = scope(node)
         if node.type == "variable_declaration":
             variables = node.named_children[0]
             if variables.type == "assignment_statement":
@@ -108,13 +117,15 @@ def localized_snapshot(source):
             names = node.named_children
         elif node.type == "for_generic_clause":
             names = node.named_children[0].named_children
+            owner = node.parent.child_by_field_name("body") or owner
         elif node.type == "for_numeric_clause":
             names = node.named_children[:1]
+            owner = node.parent.child_by_field_name("body") or owner
         elif node.type == "function_declaration" and text(node).startswith(b"local "):
             names = [node.child_by_field_name("name")]
         for name in names:
             if name.type == "identifier":
-                bindings.setdefault(scope(node).id, set()).add(text(name))
+                bindings.setdefault(owner.id, set()).add(text(name))
 
     providers = {}
 
@@ -125,12 +136,23 @@ def localized_snapshot(source):
                 owner = scope(owner)
             providers.setdefault((owner.id, name), []).append(value)
 
+    def provide_value(node, name, value):
+        provide(node, name, value)
+        if name is not None and value.type == "table_constructor":
+            for field in value.named_children:
+                member = field.child_by_field_name("name")
+                item = field.child_by_field_name("value")
+                if member is not None and item is not None and member.type in {"identifier", "string"}:
+                    provide_value(node, name + (text(member).strip(b"\"'"),), item)
+
     for node in nodes:
         if node.type == "assignment_statement":
             variables, *values = node.named_children
             if values:
-                for variable in variables.named_children:
-                    provide(node, symbol(variable), values[0])
+                for index, variable in enumerate(variables.named_children):
+                    expressions = values[0].named_children
+                    if expressions:
+                        provide_value(node, symbol(variable), expressions[min(index, len(expressions) - 1)])
         elif node.type == "function_declaration":
             provide(node, symbol(node.child_by_field_name("name")), node)
         elif node.type == "function_call" and symbol(node.child_by_field_name("name")) in {(b"table", b"insert"), (b"table", b"remove")}:
@@ -138,54 +160,81 @@ def localized_snapshot(source):
             if arguments:
                 provide(node, symbol(arguments[0]), node)
 
-    roots = []
-    regions = {"assignment_statement", "field", "function_call", "table_constructor", "return_statement"} | functions
+    fields = {b"localised_name", b"localized_name", b"localised_description", b"localized_description", b"caption", b"tooltip"}
+    roots, sites = [], []
     for node in nodes:
-        if node.type not in {"identifier", "string"} or not TEXT.search(text(node).decode()):
-            continue
-        if text(node).strip(b"\"'") in {b"caption", b"tooltip"}:
+        if node.type == "assignment_statement":
+            variables, *values = node.named_children
+            for index, variable in enumerate(variables.named_children):
+                name = symbol(variable)
+                if name is not None and len(name) > 1 and name[-1] in fields and values:
+                    expressions = values[0].named_children
+                    if expressions:
+                        value = expressions[min(index, len(expressions) - 1)]
+                        sites.append((syntax(variable), syntax(value)))
+                        roots.append(value)
+        elif node.type == "field":
+            name = node.child_by_field_name("name")
+            value = node.child_by_field_name("value")
+            if name is not None and text(name).strip(b"\"'") in fields and value is not None:
+                sites.append((syntax(name), syntax(value)))
+                roots.append(value)
+        elif node.type == "string" and re.search(rb"propertyrandomizer-[\w-]+\.", text(node)):
             parent = node.parent
-            if parent is None or not (
-                (parent.type == "field" and parent.child_by_field_name("name") == node)
-                or (parent.type in {"dot_index_expression", "bracket_index_expression"}
-                    and parent.child_by_field_name("field") == node)
-            ):
-                continue
-        region = node
-        while region.parent is not None and region.type not in regions:
-            region = region.parent
-        roots.append(region)
+            if parent.type == "field" and parent.child_by_field_name("name") is None:
+                roots.append(parent.parent)
+            elif parent.type == "arguments" and parent.named_children[0] == node:
+                # Existing locale-key calls are consumers, not wording. Literal
+                # placeholder text can still introduce wording of its own.
+                roots.extend(parent.named_children[1:])
+
+    def output_children(node):
+        """Only expressions contributing text, not a helper's entire body."""
+        if node.type in functions:
+            for child in style.walk(node):
+                if child.type == "return_statement":
+                    owner = child.parent
+                    while owner is not None and owner.type not in functions:
+                        owner = owner.parent
+                    if owner == node:
+                        yield from child.named_children
+        elif node.type == "field":
+            name = node.child_by_field_name("name")
+            if name is None or name.type == "number":
+                value = node.child_by_field_name("value")
+                if value is not None:
+                    yield value
+        elif node.type == "function_call":
+            callee = node.child_by_field_name("name")
+            if symbol(callee) == (b"require",):
+                return
+            yield callee
+            arguments = node.child_by_field_name("arguments").named_children
+            if symbol(callee) in {(b"table", b"insert"), (b"table", b"remove")}:
+                arguments = arguments[1:]
+            yield from arguments
+        elif node.type == "binary_expression":
+            operator = text(node.child_by_field_name("operator"))
+            if operator in {b"..", b"or"}:
+                yield node.child_by_field_name("left")
+                yield node.child_by_field_name("right")
+            elif operator == b"and":
+                yield node.child_by_field_name("right")
+        elif node.type not in {"comment", "dot_index_expression", "method_index_expression", "bracket_index_expression", "unary_expression"}:
+            yield from node.named_children
 
     def references(node):
-        if node.type == "field":
-            # A literal table key is not a reference to a same-named variable.
-            value = node.child_by_field_name("value")
-            if value is not None:
-                yield from references(value)
-            name = node.child_by_field_name("name")
-            if name is not None and text(node).startswith(b"["):
-                yield from references(name)
-            return
         name = symbol(node)
         if name is not None:
             yield node, name
-            # A computed index can itself depend on a helper or a variable.
-            if node.type == "bracket_index_expression":
-                yield from references(node.child_by_field_name("field"))
             return
-        for child in node.named_children:
-            if child.type != "comment":
-                yield from references(child)
+        for child in output_children(node):
+            yield from references(child)
 
     def suppliers(node, name):
         current = scope(node)
         while True:
-            # Reading a member also depends on the table's initializer, without
-            # pulling in assignments to all its other members.
-            for length in range(1, len(name) + 1):
-                key = (current.id, name[:length])
-                if key in providers:
-                    yield from providers[key]
+            yield from providers.get((current.id, name), ())
             for (owner, member), values in providers.items():
                 if owner == current.id and len(member) > len(name) and member[:len(name)] == name:
                     yield from values
@@ -201,25 +250,15 @@ def localized_snapshot(source):
         selected[node.id] = node
         for reference, name in references(node):
             roots.extend(suppliers(reference, name))
-        # Include guards which choose whether/which text appears, without taking
-        # unrelated statements from their bodies or their enclosing function.
-        parent = node.parent
-        while parent is not None:
-            if parent.type in {"if_statement", "elseif_statement", "while_statement", "repeat_statement", "for_statement"}:
-                for child in parent.named_children:
-                    if child.type not in {"block", "else_statement", "elseif_statement", "comment"}:
-                        roots.append(child)
-            parent = parent.parent
 
     def tokens(node):
-        if node.type == "comment":
-            return ()
-        if node.type == "string" or not node.children:
+        if node.type == "string":
             return ((node.type, text(node)),)
-        return tuple(token for child in node.children for token in tokens(child))
+        return tuple(token for child in output_children(node) for token in tokens(child))
 
-    # Ignore movement, formatting and comments, but preserve literal string bytes.
-    return tuple(sorted(tokens(node) for node in selected.values()))
+    # Reusing wording, moving it, or changing a displayed number is not new text.
+    wording = {value for node in selected.values() if (value := tokens(node))}
+    return (tuple(sorted(sites)), tuple(sorted(wording))) if sites or wording else ()
 
 
 def changes(root=ROOT, staged=False):

@@ -110,8 +110,7 @@ class PlayerTextReviewTests(unittest.TestCase):
 
     def test_captions_tooltips_and_locale_helpers_are_reviewed(self):
         for source in ('gui.caption = value', 'gui.tooltip = value',
-                       'return {"propertyrandomizer-panel.title"}',
-                       'return prototype.localised_description'):
+                       'return {"propertyrandomizer-panel.title"}'):
             with self.subTest(source=source):
                 self.write("src/new.lua", source)
                 self.assertEqual(["src/new.lua"], [item["path"] for item in review.pending(self.root)])
@@ -169,11 +168,132 @@ end
             with self.subTest(source=before):
                 self.assertEqual(review.localized_snapshot(before), review.localized_snapshot(before.replace("Original", "Revised")))
 
-    def test_guards_and_removed_localized_expressions_require_review(self):
+    def test_guards_are_ignored_but_removed_wording_requires_review(self):
         before = 'if enabled then\n item["localised_description"] = {"", "Description"}\nend\n'
         snapshot = review.localized_snapshot(before)
-        self.assertNotEqual(snapshot, review.localized_snapshot(before.replace("enabled", "other_flag")))
+        self.assertEqual(snapshot, review.localized_snapshot(before.replace("enabled", "other_flag")))
         self.assertNotEqual(snapshot, review.localized_snapshot(""))
+
+    def test_four_reported_gameplay_diffs_do_not_require_wording_review(self):
+        cases = {
+            "src/pipeline/data-final-fixes.lua": (
+                '''local biome_placement = require("placement")
+for i = 1, 2 do
+    local problem = "Diagnostic text for logs only"
+    log(problem)
+end
+''',
+                '''local biome_placement = require("placement")
+for i = 1, 2 do
+    local problem = "Diagnostic text for logs only"
+    log(problem)
+end
+if config.planetary_biome_placement == true then
+    local problem = biome_placement.prepare()
+    if problem ~= nil then
+        table.insert(randomization_info.warnings, localised_text.get("propertyrandomizer-warning.planetary-skipped", problem))
+    end
+end
+'''),
+            "src/randomizations/numerical/entity.lua": (
+                '''randomizations.speed = function(id)
+    if collector.arm_speed_base ~= nil then
+        collector.arm_speed_base = 0.1
+    end
+    local factor = collector.arm_speed_base / old_arm_speed
+    locale_utils.create_localised_description(collector, factor, id)
+end
+''', None),
+            "src/randomizations/numerical/tile.lua": (
+                '''randomize({prototype = tile, variance = "big"})
+locale_utils.create_localised_description(tile, tile.walking_speed_modifier / old_value, id, {variance = "big"})
+''', None),
+            "src/randomizations/planetary/execute.lua": (
+                '''local function message(graph)
+    local after = {graph = graph, sort_info = top.sort(graph, nil, nil, {complex_contexts = true})}
+    local passes, failures = check.required(before, after)
+    warn(localised_text.get("propertyrandomizer-warning.planetary-skipped", failures))
+end
+''',
+                '''local function message(graph, sort_info)
+    if sort_info == nil then
+        sort_info = top.sort(graph, nil, nil, {complex_contexts = true})
+    end
+    local after = {graph = graph, sort_info = sort_info}
+    local passes, failures = check.required(before, after)
+    warn(localised_text.get("propertyrandomizer-warning.planetary-skipped", failures))
+end
+'''),
+        }
+        for path, (before, _) in cases.items():
+            self.write(path, before)
+        self.git("add", ".")
+        self.git("commit", "-qm", "gameplay code with unchanged text")
+        for path, (before, after) in cases.items():
+            if path.endswith("entity.lua"):
+                after = before.replace("arm_speed_base ~= nil", "arm_speed_base == nil")
+            elif path.endswith("tile.lua"):
+                after = before.replace('"big"', '"small"')
+            self.write(path, after)
+        self.assertEqual([], review.pending(self.root))
+        self.git("add", ".")
+        self.assertEqual([], review.pending(self.root, staged=True))
+
+    def test_dynamic_values_options_and_helper_internals_are_not_wording(self):
+        for before, after in (
+            ('local amount = 1\ngui.caption = {"", "Count: ", amount}\n',
+             'local amount = 2\ngui.caption = {"", "Count: ", amount}\n'),
+            ('local function label()\n local mode = "big"\n return "Unchanged"\nend\ngui.caption = label()\n',
+             'local function label()\n local mode = "small"\n return "Unchanged"\nend\ngui.caption = label()\n'),
+            ('local options = {label = "Unchanged", mode = "big"}\ngui.caption = options.label\n',
+             'local options = {label = "Unchanged", mode = "small"}\ngui.caption = options.label\n'),
+            ('describe(tile, {variance = "big"})\ngui.caption = "Unchanged"\n',
+             'describe(tile, {variance = "small"})\ngui.caption = "Unchanged"\n'),
+        ):
+            with self.subTest(source=before):
+                self.assertEqual(review.localized_snapshot(before), review.localized_snapshot(after))
+
+    def test_literal_placeholder_wording_in_locale_calls_still_requires_review(self):
+        before = 'warn(localised_text.get("propertyrandomizer-warning.planetary-skipped", "Original wording"))\n'
+        self.assertNotEqual(review.localized_snapshot(before), review.localized_snapshot(before.replace("Original wording", "Revised wording")))
+
+    def test_reading_existing_localized_text_does_not_define_new_wording(self):
+        self.assertEqual((), review.localized_snapshot('return prototype.localised_description\n'))
+
+    def test_all_direct_localized_field_expression_edits_require_review(self):
+        for field in ("localised_name", "localised_description", "caption", "tooltip"):
+            for target in ("prototype." + field, 'prototype["' + field + '"]'):
+                for old, new in (
+                    ('"Original"', '"Revised"'),
+                    ("first_value", "second_value"),
+                    ('{"key", first_value}', '{"key", second_value}'),
+                    ("helper(first_value)", "helper(second_value)"),
+                ):
+                    with self.subTest(target=target, old=old, new=new):
+                        self.assertNotEqual(review.localized_snapshot(target + " = " + old),
+                                            review.localized_snapshot(target + " = " + new))
+                        self.assertNotEqual(review.localized_snapshot("prototype = {" + field + " = " + old + "}"),
+                                            review.localized_snapshot("prototype = {" + field + " = " + new + "}"))
+
+    def test_every_locale_file_change_requires_review(self):
+        for contents in (
+            "[test]\nname=Revised\n",
+            "[test]\nname=Original\n# Comment only\n",
+            "[test]\nname=Original\n\n",
+            "",
+        ):
+            with self.subTest(contents=contents):
+                self.write("locale/en/test.cfg", contents)
+                self.assertEqual(["locale/en/test.cfg"], [item["path"] for item in review.pending(self.root)])
+                self.git("add", "locale")
+                self.assertEqual(["locale/en/test.cfg"], [item["path"] for item in review.pending(self.root, staged=True)])
+        (self.root / "locale/en/test.cfg").unlink()
+        self.write("locale/en/empty.cfg", "")
+        self.assertEqual(["locale/en/empty.cfg", "locale/en/test.cfg"],
+                         [item["path"] for item in review.pending(self.root)])
+        self.git("add", "locale")
+        self.assertEqual(["locale/en/empty.cfg", "locale/en/test.cfg"],
+                         [item["path"] for item in review.pending(self.root, staged=True)])
 
     def test_formatting_comments_and_movement_do_not_require_lua_review(self):
         before = 'local number = 1\nitem.localised_name = {"", "Description"}\n'
